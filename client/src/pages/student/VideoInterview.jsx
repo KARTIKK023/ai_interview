@@ -42,16 +42,40 @@ const VideoInterview = () => {
   const [showStopModal, setShowStopModal] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
 
+  const autoSubmittedRef = useRef(false);
+
   useEffect(() => {
     fetchInterviewDetails();
   }, [id]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (!interview || !interview.startedAt) return;
+
+    const updateTimer = () => {
+      const startTime = new Date(interview.startedAt).getTime();
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      setTimerSeconds(elapsed);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [interview?.startedAt]);
+
+  // Auto-submit when video interview duration is reached
+  useEffect(() => {
+    if (!interview || evaluating || isSaving || autoSubmittedRef.current) return;
+
+    const maxSeconds = (interview.duration || 30) * 60;
+    if (timerSeconds >= maxSeconds) {
+      autoSubmittedRef.current = true;
+      if (recorderRef.current?.isRecording) {
+        recorderRef.current.stopRecording();
+      }
+      toast.error(`⏰ ${interview.duration || 30}-minute time limit reached! Auto-submitting your video interview...`, { duration: 6000 });
+      executeFinalSubmission(savedAnswers);
+    }
+  }, [timerSeconds, interview, evaluating, isSaving]);
 
   const fetchInterviewDetails = async () => {
     try {
@@ -59,10 +83,18 @@ const VideoInterview = () => {
       setErrorMessage(null);
       const res = await API.get(`/interviews/${id}`);
       if (res.data.interview) {
-        setInterview(res.data.interview);
-        if (res.data.interview.status === 'Pending') {
-          await API.post(`/interviews/${id}/start`);
+        let activeInterview = res.data.interview;
+        if (activeInterview.status === 'Completed') {
+          navigate(`/student/result/${id}`, { replace: true });
+          return;
         }
+        if (activeInterview.status === 'Pending') {
+          const startRes = await API.post(`/interviews/${id}/start`);
+          if (startRes.data?.interview) {
+            activeInterview = startRes.data.interview;
+          }
+        }
+        setInterview(activeInterview);
       }
     } catch (err) {
       console.error('Failed to load video interview:', err);
@@ -297,10 +329,20 @@ const VideoInterview = () => {
 
           {/* Center Timer & Question Counter */}
           <div className="d-flex align-items-center gap-4">
-            <div className="d-flex align-items-center gap-2 px-3 py-1 bg-black bg-opacity-50 border border-secondary border-opacity-25 rounded-pill">
-              <FaClock className="text-info extra-small" />
-              <span className="fw-mono text-info fw-bold small">{formatTimer(timerSeconds)}</span>
-            </div>
+            {(() => {
+              const maxSecs = (interview?.duration || 30) * 60;
+              const remainingSecs = Math.max(0, maxSecs - timerSeconds);
+              const isTimeLow = remainingSecs <= 60;
+              return (
+                <div className={`d-flex align-items-center gap-2 px-3 py-1 bg-black bg-opacity-50 border ${isTimeLow ? 'border-danger' : 'border-secondary border-opacity-25'} rounded-pill`}>
+                  <FaClock className={isTimeLow ? 'text-danger extra-small' : 'text-info extra-small'} />
+                  <span className={`fw-mono fw-bold small ${isTimeLow ? 'text-danger' : 'text-info'}`}>
+                    {formatTimer(remainingSecs)}
+                  </span>
+                  <span className="extra-small text-white-50">/ {interview?.duration || 30}m</span>
+                </div>
+              );
+            })()}
 
             <div className="d-flex align-items-center gap-2">
               <span className="extra-small text-white-50 fw-bold">Question {currentIndex + 1} / {totalQuestions}</span>

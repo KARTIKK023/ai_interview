@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import Loading from '../../components/Loading';
@@ -36,6 +36,8 @@ const TextInterview = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
 
+  const autoSubmittedRef = useRef(false);
+
   useEffect(() => {
     fetchInterviewDetails();
   }, [id]);
@@ -53,11 +55,31 @@ const TextInterview = () => {
   };
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimerSeconds((prev) => prev + 1);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (!interview || !interview.startedAt) return;
+
+    const updateTimer = () => {
+      const startTime = new Date(interview.startedAt).getTime();
+      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+      setTimerSeconds(elapsed);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [interview?.startedAt]);
+
+  // Auto-submit when interview duration is reached
+  useEffect(() => {
+    if (!interview || submitting || autoSubmittedRef.current) return;
+
+    const maxSeconds = (interview.duration || 30) * 60;
+    if (timerSeconds >= maxSeconds) {
+      autoSubmittedRef.current = true;
+      toast.error(`⏰ ${interview.duration || 5}-minute time limit reached! Auto-submitting your answers...`, { duration: 6000 });
+      const finalAnswersMap = getUpdatedAnswersMap();
+      executeFinalSubmission(finalAnswersMap);
+    }
+  }, [timerSeconds, interview, submitting]);
 
   const fetchInterviewDetails = async () => {
     try {
@@ -65,10 +87,18 @@ const TextInterview = () => {
       setError('');
       const res = await API.get(`/interviews/${id}`);
       if (res.data.interview) {
-        setInterview(res.data.interview);
-        if (res.data.interview.status === 'Pending') {
-          await API.post(`/interviews/${id}/start`);
+        let activeInterview = res.data.interview;
+        if (activeInterview.status === 'Completed') {
+          navigate(`/student/result/${id}`, { replace: true });
+          return;
         }
+        if (activeInterview.status === 'Pending') {
+          const startRes = await API.post(`/interviews/${id}/start`);
+          if (startRes.data?.interview) {
+            activeInterview = startRes.data.interview;
+          }
+        }
+        setInterview(activeInterview);
       }
     } catch (err) {
       console.error('Failed to load interview:', err);
@@ -276,12 +306,19 @@ const TextInterview = () => {
             </div>
 
             <div className="d-flex align-items-center gap-3">
-              <div className="text-end me-2">
-                <span className="text-muted small">Timer</span>
-                <h5 className="fw-bold mb-0 text-danger d-flex align-items-center gap-1">
-                  <FaClock /> {formatTimer(timerSeconds)}
-                </h5>
-              </div>
+              {(() => {
+                const maxSecs = (interview.duration || 30) * 60;
+                const remainingSecs = Math.max(0, maxSecs - timerSeconds);
+                const isTimeLow = remainingSecs <= 60;
+                return (
+                  <div className="text-end me-2">
+                    <span className="text-muted small">Time Remaining ({interview.duration || 30}m limit)</span>
+                    <h5 className={`fw-bold mb-0 d-flex align-items-center gap-1 ${isTimeLow ? 'text-danger fw-extrabold' : 'text-primary'}`}>
+                      <FaClock /> {formatTimer(remainingSecs)}
+                    </h5>
+                  </div>
+                );
+              })()}
 
               <button
                 type="button"
