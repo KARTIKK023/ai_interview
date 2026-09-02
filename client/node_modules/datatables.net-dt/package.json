@@ -1,0 +1,35 @@
+{
+    "name": "datatables.net-dt",
+    "description": "DataTables with styling for [DataTables](https://datatables.net/)",
+    "main": "js/dataTables.dataTables.js",
+    "module": "js/dataTables.dataTables.mjs",
+    "style": "css/dataTables.dataTables.css",
+    "types": "./types/dataTables.dataTables.d.ts",
+    "version": "3.0.2",
+    "files": [
+        "css/**/*.css",
+        "js/**/*.js",
+        "js/**/*.mjs",
+        "types/**/*.d.ts"
+    ],
+    "keywords": [
+        "Datatables",
+        "table",
+        "filter",
+        "sort"
+    ],
+    "dependencies": {
+        "datatables.net": "3.0.2"
+    },
+    "author": {
+        "name": "SpryMedia Ltd",
+        "url": "http://datatables.net"
+    },
+    "homepage": "https://datatables.net",
+    "bugs": "https://datatables.net/forums",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/DataTables/DataTablesSrc.git"
+    }
+}
