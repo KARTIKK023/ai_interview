@@ -1187,222 +1187,370 @@ const QuestionBankReader = () => {
   const downloadEndQNum = currentQNum;
   const hasUnDownloadedBatch = downloadStartQNum <= downloadEndQNum;
 
-  return (
+    return (
     <StudentLayout>
-      {/* HEADER */}
+      {/* =========================================================
+          HEADER
+      ========================================================= */}
       <div
         className="p-4 mb-4"
         style={{
-          background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4C1D95 100%)',
+          background:
+            'linear-gradient(135deg, #1E1B4B 0%, #312E81 55%, #4C1D95 100%)',
           borderRadius: '18px',
-          color: '#ffffff',
-          boxShadow: '0 10px 30px -5px rgba(76, 29, 149, 0.3)',
-          border: '1px solid rgba(139, 92, 246, 0.25)'
+          color: '#fff',
+          boxShadow: '0 12px 30px rgba(76, 29, 149, 0.18)',
         }}
       >
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
           <div>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <span className="fs-3">📖</span>
-              <h3 className="fw-extrabold mb-0 text-white" style={{ fontSize: '1.75rem' }}>
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <FaBookOpen className="fs-3" />
+
+              <h3
+                className="fw-bold mb-0 text-white"
+                style={{ fontSize: '1.7rem' }}
+              >
                 Question Bank
               </h3>
-              <span className="badge bg-white bg-opacity-20 text-white border border-white border-opacity-25 px-2.5 py-1">
-                Read • Revise • Download PDF Checkpoints
+
+              <span
+                className="badge text-white"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                }}
+              >
+                Read • Revise • Download
               </span>
             </div>
+
             <p className="mb-0 text-white-50 small">
-              Read & revise 100 curated questions + answers. Professional PDF Downloads trigger at Checkpoints Q20, Q40, Q60, Q80, and Q100.
+              Master 100 curated questions for your target job with answers,
+              explanations and PDF checkpoints.
             </p>
           </div>
 
           {isReadingMode && (
             <button
-              className="btn btn-light btn-sm fw-bold text-dark d-flex align-items-center gap-2 shadow-sm"
+              type="button"
+              className="btn btn-light btn-sm fw-bold d-flex align-items-center gap-2"
               onClick={() => setIsReadingMode(false)}
               style={{ borderRadius: '10px' }}
             >
-              <FaArrowLeft /> Back to Target Jobs
+              <FaArrowLeft />
+              Back to Target Jobs
             </button>
           )}
         </div>
       </div>
 
-      {/* NOTIFICATION TOAST */}
+      {/* =========================================================
+          DOWNLOAD NOTIFICATION
+      ========================================================= */}
       {downloadNotification && (
         <div
-          className="alert alert-success d-flex align-items-center gap-2 shadow-lg mb-4 text-white border-0"
+          className="d-flex align-items-center gap-2 p-3 mb-4 shadow-sm"
           style={{
-            background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+            backgroundColor: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            color: '#065F46',
             borderRadius: '12px',
-            fontSize: '0.925rem'
           }}
         >
-          <FaCheckCircle className="fs-5 flex-shrink-0" />
-          <span className="fw-bold">{downloadNotification}</span>
+          <FaCheckCircle className="text-success fs-5" />
+          <span className="fw-semibold">{downloadNotification}</span>
         </div>
       )}
 
-      {/* LOADING STATE */}
+      {/* =========================================================
+          LOADING
+      ========================================================= */}
       {loadingTargetJobs ? (
-        <div className="card card-custom p-5 text-center bg-white border-0 shadow-sm" style={{ borderRadius: '18px' }}>
-          <FaSpinner className="spinner-border text-primary fs-2 mx-auto mb-3" />
-          <h5 className="fw-bold">Loading Your Saved Target Jobs...</h5>
+        <div
+          className="card border-0 shadow-sm text-center p-5"
+          style={{ borderRadius: '18px' }}
+        >
+          <FaSpinner className="text-primary fs-2 mb-3" />
+
+          <h5 className="fw-bold mb-1">
+            Loading Your Target Jobs...
+          </h5>
+
+          <p className="text-muted mb-0 small">
+            Preparing your personalized question bank.
+          </p>
         </div>
       ) : targetJobs.length === 0 ? (
-        /* EMPTY STATE: NO TARGET JOBS SAVED */
-        <div className="card card-custom p-5 text-center bg-white border-0 shadow-sm" style={{ borderRadius: '18px' }}>
+        /* =======================================================
+           EMPTY STATE
+        ======================================================= */
+        <div
+          className="card border-0 shadow-sm text-center p-5"
+          style={{ borderRadius: '18px' }}
+        >
           <div
-            className="rounded-circle bg-warning bg-opacity-10 text-warning d-inline-flex align-items-center justify-content-center mx-auto mb-3"
-            style={{ width: '64px', height: '64px' }}
+            className="mx-auto mb-3 d-flex align-items-center justify-content-center"
+            style={{
+              width: '70px',
+              height: '70px',
+              borderRadius: '18px',
+              backgroundColor: '#EEF2FF',
+              color: '#4F46E5',
+            }}
           >
             <FaFolderOpen className="fs-2" />
           </div>
-          <h4 className="fw-bold text-dark mb-2">No Target Jobs Found</h4>
-          <p className="text-muted small mb-4 mx-auto" style={{ maxWidth: '480px' }}>
-            You haven't added any saved Target Jobs yet. Save your target job roles, skills, and target companies under <strong>My Target Jobs</strong> to generate your personalized 100-Question Bank.
+
+          <h4 className="fw-bold text-dark mb-2">
+            No Target Jobs Found
+          </h4>
+
+          <p
+            className="text-muted small mx-auto mb-4"
+            style={{ maxWidth: '500px' }}
+          >
+            You haven't added any saved Target Jobs yet. Add a target
+            role and company to generate your personalized 100-question
+            study bank.
           </p>
-          <div>
-            <Link
-              to="/student/target-jobs"
-              className="btn btn-primary fw-bold px-4 py-2.5 shadow-sm d-inline-flex align-items-center gap-2"
-              style={{ borderRadius: '12px' }}
-            >
-              <FaPlusCircle /> Add Target Job
-            </Link>
-          </div>
+
+          <Link
+            to="/student/target-jobs"
+            className="btn btn-primary fw-bold d-inline-flex align-items-center gap-2 px-4 py-2"
+            style={{ borderRadius: '10px' }}
+          >
+            <FaPlusCircle />
+            Add Target Job
+          </Link>
         </div>
       ) : !isReadingMode ? (
-        /* VIEW 1: SELECTABLE TARGET JOBS CARDS GRID */
+        /* =======================================================
+           TARGET JOB SELECTION
+        ======================================================= */
         <div className="d-flex flex-column gap-4">
-          {/* DYNAMIC TARGET JOBS BANNER */}
+
+          {/* INFO BANNER */}
           <div
-            className="p-3.5 rounded-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3"
+            className="p-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
             style={{
-              background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
-              border: '1px solid #BFDBFE'
+              background:
+                'linear-gradient(135deg, #EFF6FF 0%, #EEF2FF 100%)',
+              border: '1px solid #DBEAFE',
+              borderRadius: '16px',
             }}
           >
-            <div className="d-flex align-items-center gap-2">
-              <FaStar className="text-primary fs-5 flex-shrink-0" />
+            <div className="d-flex align-items-start gap-3">
+              <div
+                className="d-flex align-items-center justify-content-center flex-shrink-0"
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  backgroundColor: '#4F46E5',
+                  color: '#fff',
+                }}
+              >
+                <FaStar />
+              </div>
+
               <div>
-                <h6 className="fw-bold text-dark mb-0" style={{ fontSize: '0.925rem' }}>
-                  Your Saved Target Jobs ({targetJobs.length})
+                <h6 className="fw-bold text-dark mb-1">
+                  Your Saved Target Jobs
                 </h6>
-                <small className="text-muted">
-                  Select a target job card below to open its 100-question study bank with PDF checkpoint downloads at Q20, Q40, Q60, Q80 & Q100.
-                </small>
+
+                <p className="text-muted small mb-0">
+                  {targetJobs.length} target job
+                  {targetJobs.length !== 1 ? 's' : ''} available.
+                  Select one to start your 100-question study guide.
+                </p>
               </div>
             </div>
-            <Link to="/student/target-jobs" className="btn btn-outline-primary btn-sm fw-bold text-nowrap">
+
+            <Link
+              to="/student/target-jobs"
+              className="btn btn-outline-primary btn-sm fw-bold"
+              style={{ borderRadius: '9px' }}
+            >
               Manage Target Jobs
             </Link>
           </div>
 
-          {/* TARGET JOBS CARDS GRID */}
+          {/* TARGET JOB CARDS */}
           <div className="row g-4">
             {targetJobs.map((job, idx) => {
-              const roleTitle = job.target_job_role || job.targetJobRole || job.jobRole || job.title || `Target Job #${idx + 1}`;
-              const companyName = job.target_company || job.targetCompany || job.companyName || job.company || 'Not Specified';
-              const skills = job.required_skills || job.requiredSkills || job.skills || [];
-              const isSelected = selectedJob && (selectedJob._id ? selectedJob._id === job._id : selectedJob === job);
+              const roleTitle =
+                job.target_job_role ||
+                job.targetJobRole ||
+                job.jobRole ||
+                job.title ||
+                `Target Job #${idx + 1}`;
 
-              // Saved progress from localStorage
+              const companyName =
+                job.target_company ||
+                job.targetCompany ||
+                job.companyName ||
+                job.company ||
+                'Not Specified';
+
+              const skills =
+                job.required_skills ||
+                job.requiredSkills ||
+                job.skills ||
+                [];
+
+              const isSelected =
+                selectedJob &&
+                (selectedJob._id
+                  ? selectedJob._id === job._id
+                  : selectedJob === job);
+
               const savedProg = loadProgressFromStorage(job);
-              const hasSavedProgress = savedProg && savedProg.lastReadIndex > 0;
-              const savedQuestionNum = hasSavedProgress ? savedProg.lastReadIndex + 1 : 1;
+
+              const hasSavedProgress =
+                savedProg && savedProg.lastReadIndex > 0;
+
+              const savedQuestionNum = hasSavedProgress
+                ? savedProg.lastReadIndex + 1
+                : 1;
 
               return (
-                <div key={job._id || idx} className="col-lg-6 col-xl-4">
+                <div
+                  key={job._id || idx}
+                  className="col-12 col-md-6 col-xl-4"
+                >
                   <div
-                    className={`card h-100 transition-all p-4 border-2 position-relative cursor-pointer ${
-                      isSelected
-                        ? 'border-primary bg-primary bg-opacity-10 shadow-lg'
-                        : 'border-light bg-white shadow-sm hover-shadow'
-                    }`}
-                    style={{
-                      borderRadius: '16px',
-                      cursor: 'pointer',
-                      borderColor: isSelected ? '#4F46E5' : '#E2E8F0',
-                      backgroundColor: isSelected ? '#EEF2FF' : '#FFFFFF',
-                      transition: 'all 0.25s ease-in-out'
-                    }}
+                    className="card h-100 border-0 shadow-sm"
                     onClick={() => setSelectedJob(job)}
+                    style={{
+                      borderRadius: '18px',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s ease',
+                      border: isSelected
+                        ? '2px solid #4F46E5'
+                        : '2px solid transparent',
+                      backgroundColor: isSelected
+                        ? '#F5F3FF'
+                        : '#FFFFFF',
+                    }}
                   >
-                    {/* CHECKMARK SELECTION BADGE */}
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <div
-                        className={`p-2.5 rounded-3 d-flex align-items-center justify-content-center ${
-                          isSelected ? 'bg-primary text-white' : 'bg-light text-primary'
-                        }`}
-                        style={{ width: '42px', height: '42px' }}
-                      >
-                        <FaBriefcase className="fs-5" />
-                      </div>
+                    <div className="p-4">
 
-                      {isSelected ? (
+                      {/* CARD TOP */}
+                      <div className="d-flex justify-content-between align-items-start mb-4">
                         <div
-                          className="d-flex align-items-center gap-1 px-2.5 py-1 rounded-pill bg-primary text-white fw-bold extra-small shadow-sm"
-                          style={{ fontSize: '0.75rem' }}
+                          className="d-flex align-items-center justify-content-center"
+                          style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '14px',
+                            backgroundColor: isSelected
+                              ? '#4F46E5'
+                              : '#EEF2FF',
+                            color: isSelected
+                              ? '#FFFFFF'
+                              : '#4F46E5',
+                          }}
                         >
-                          <FaCheckCircle /> Selected
+                          <FaBriefcase className="fs-5" />
                         </div>
-                      ) : (
-                        <span className="text-muted extra-small fw-semibold">Click to Select</span>
-                      )}
-                    </div>
 
-                    {/* ROLE TITLE */}
-                    <h5 className="fw-extrabold text-dark mb-1" style={{ fontSize: '1.2rem', letterSpacing: '-0.01em' }}>
-                      {roleTitle}
-                    </h5>
-
-                    {/* TARGET COMPANY */}
-                    <div className="d-flex align-items-center gap-1.5 text-muted small mb-3">
-                      <FaBuilding className="text-primary flex-shrink-0" />
-                      <span className="fw-semibold text-secondary">{companyName}</span>
-                    </div>
-
-                    {/* SAVED PROGRESS BADGE */}
-                    {hasSavedProgress && (
-                      <div
-                        className="p-2 mb-3 rounded-3 bg-indigo bg-opacity-10 border border-indigo border-opacity-25 d-flex align-items-center justify-content-between"
-                        style={{ backgroundColor: '#F3E8FF', borderColor: '#D8B4FE' }}
-                      >
-                        <span className="extra-small fw-bold text-purple d-flex align-items-center gap-1" style={{ color: '#7E22CE' }}>
-                          <FaHistory /> Saved Reading Progress
-                        </span>
-                        <span className="badge bg-purple text-white fw-bold extra-small" style={{ backgroundColor: '#7E22CE' }}>
-                          Q{savedQuestionNum} / 100
-                        </span>
-                      </div>
-                    )}
-
-                    {/* SKILLS BADGES */}
-                    <div className="mt-auto pt-3 border-top">
-                      <div className="d-flex align-items-center gap-1 text-muted extra-small fw-bold mb-2">
-                        <FaCode className="text-indigo" />
-                        <span>REQUIRED SKILLS ({skills.length})</span>
-                      </div>
-                      <div className="d-flex flex-wrap gap-1.5">
-                        {skills.length > 0 ? (
-                          skills.slice(0, 4).map((skill, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className="badge bg-white text-indigo border border-indigo border-opacity-25 px-2 py-1 fw-semibold extra-small"
-                              style={{ borderRadius: '6px', color: '#4F46E5', backgroundColor: '#F5F3FF' }}
-                            >
-                              {skill}
-                            </span>
-                          ))
+                        {isSelected ? (
+                          <span
+                            className="badge bg-primary d-flex align-items-center gap-1"
+                            style={{ borderRadius: '20px' }}
+                          >
+                            <FaCheckCircle />
+                            Selected
+                          </span>
                         ) : (
-                          <span className="text-muted extra-small fst-italic">Core Industry Skills</span>
-                        )}
-                        {skills.length > 4 && (
-                          <span className="badge bg-light text-muted border px-2 py-1 extra-small">
-                            +{skills.length - 4} more
+                          <span className="text-muted small fw-semibold">
+                            Select
                           </span>
                         )}
+                      </div>
+
+                      {/* ROLE */}
+                      <h5 className="fw-bold text-dark mb-2">
+                        {roleTitle}
+                      </h5>
+
+                      {/* COMPANY */}
+                      <div className="d-flex align-items-center gap-2 text-muted small mb-4">
+                        <FaBuilding className="text-primary" />
+                        <span>{companyName}</span>
+                      </div>
+
+                      {/* PROGRESS */}
+                      {hasSavedProgress && (
+                        <div
+                          className="p-3 mb-4"
+                          style={{
+                            backgroundColor: '#F5F3FF',
+                            border: '1px solid #DDD6FE',
+                            borderRadius: '12px',
+                          }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center">
+                            <span
+                              className="small fw-bold"
+                              style={{ color: '#7E22CE' }}
+                            >
+                              <FaHistory className="me-1" />
+                              Reading Progress
+                            </span>
+
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: '#7E22CE',
+                                color: '#fff',
+                              }}
+                            >
+                              Q{savedQuestionNum} / 100
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* SKILLS */}
+                      <div className="pt-3 border-top">
+                        <div className="d-flex align-items-center gap-2 mb-2">
+                          <FaCode className="text-primary" />
+                          <span className="small fw-bold text-muted">
+                            REQUIRED SKILLS
+                          </span>
+                        </div>
+
+                        <div className="d-flex flex-wrap gap-2">
+                          {skills.length > 0 ? (
+                            skills.slice(0, 4).map((skill, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="badge"
+                                style={{
+                                  backgroundColor: '#F5F3FF',
+                                  color: '#4F46E5',
+                                  border: '1px solid #DDD6FE',
+                                  borderRadius: '7px',
+                                }}
+                              >
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-muted small">
+                              Core Industry Skills
+                            </span>
+                          )}
+
+                          {skills.length > 4 && (
+                            <span className="badge bg-light text-muted border">
+                              +{skills.length - 4} more
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1411,294 +1559,526 @@ const QuestionBankReader = () => {
             })}
           </div>
 
-          {/* BOTTOM PRIMARY LAUNCH ACTION BAR */}
-          <div className="d-flex flex-column flex-sm-row justify-content-end align-items-sm-center gap-2 pt-3 border-top">
+          {/* LAUNCH BAR */}
+          <div
+            className="p-3 mt-2 d-flex flex-column flex-sm-row justify-content-end align-items-sm-center gap-2"
+            style={{
+              backgroundColor: '#F8FAFC',
+              borderRadius: '14px',
+              border: '1px solid #E2E8F0',
+            }}
+          >
             {selectedJob ? (
               (() => {
                 const savedProg = loadProgressFromStorage(selectedJob);
-                const hasSavedProgress = savedProg && savedProg.lastReadIndex > 0;
-                const savedQuestionNum = hasSavedProgress ? savedProg.lastReadIndex + 1 : 1;
+
+                const hasSavedProgress =
+                  savedProg && savedProg.lastReadIndex > 0;
+
+                const savedQuestionNum = hasSavedProgress
+                  ? savedProg.lastReadIndex + 1
+                  : 1;
 
                 return (
                   <>
                     {hasSavedProgress && (
                       <button
-                        className="btn btn-outline-primary fw-bold px-4 py-2.5 d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                        style={{ borderRadius: '12px', fontSize: '0.95rem' }}
-                        onClick={() => handleStartReading(selectedJob, savedProg.lastReadIndex)}
+                        type="button"
+                        className="btn btn-outline-primary fw-bold d-flex align-items-center justify-content-center gap-2"
+                        onClick={() =>
+                          handleStartReading(
+                            selectedJob,
+                            savedProg.lastReadIndex
+                          )
+                        }
+                        style={{ borderRadius: '10px' }}
                       >
-                        <FaHistory /> Continue from Question {savedQuestionNum}
+                        <FaHistory />
+                        Continue from Q{savedQuestionNum}
                       </button>
                     )}
 
                     <button
-                      className="btn btn-primary fw-bold px-4 py-2.5 d-flex align-items-center justify-content-center gap-2 shadow"
-                      style={{ borderRadius: '12px', fontSize: '0.95rem' }}
-                      onClick={() => handleStartReading(selectedJob, hasSavedProgress ? savedProg.lastReadIndex : 0)}
+                      type="button"
+                      className="btn btn-primary fw-bold d-flex align-items-center justify-content-center gap-2"
+                      onClick={() =>
+                        handleStartReading(
+                          selectedJob,
+                          hasSavedProgress
+                            ? savedProg.lastReadIndex
+                            : 0
+                        )
+                      }
+                      style={{ borderRadius: '10px' }}
                     >
-                      Open Question Bank for "{selectedJob.target_job_role || selectedJob.targetJobRole || selectedJob.jobRole || selectedJob.title}" <FaArrowRight />
+                      Open Question Bank
+                      <FaArrowRight />
                     </button>
                   </>
                 );
               })()
             ) : (
               <button
-                className="btn btn-secondary fw-bold px-4 py-2.5 d-flex align-items-center gap-2 opacity-75"
-                style={{ borderRadius: '12px', fontSize: '0.95rem', cursor: 'not-allowed' }}
+                type="button"
+                className="btn btn-secondary fw-bold d-flex align-items-center gap-2"
                 disabled
+                style={{
+                  borderRadius: '10px',
+                  cursor: 'not-allowed',
+                }}
               >
-                Select a Target Job Card Above to Open Question Bank <FaArrowRight />
+                Select a Target Job
+                <FaArrowRight />
               </button>
             )}
           </div>
         </div>
       ) : (
-        /* VIEW 2: BOOK-STYLE 100-QUESTION READER UI */
+        /* =======================================================
+           READING MODE
+        ======================================================= */
         <div className="d-flex flex-column gap-4">
-          {/* READER CONTROL HEADER */}
+
+          {/* READER HEADER */}
           <div
-            className="card card-custom p-3 bg-white border shadow-sm d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3"
-            style={{ borderRadius: '14px' }}
+            className="card border-0 shadow-sm p-3"
+            style={{ borderRadius: '16px' }}
           >
-            <div className="d-flex align-items-center gap-3">
-              <span
-                className="badge px-3 py-2 fw-bold text-white d-flex align-items-center gap-1"
-                style={{ background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)', borderRadius: '8px' }}
-              >
-                <FaBookOpen /> Reading Mode
-              </span>
-              <div>
-                <h6 className="fw-extrabold text-dark mb-0">
-                  {activeRoleTitle} {activeCompanyName ? `at ${activeCompanyName}` : ''}
-                </h6>
-                <small className="text-muted">
-                  Question {currentIndex + 1} of {questions.length} • 100 Target Job Study Guide
-                </small>
-              </div>
-            </div>
+            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
 
-            {/* ACTION CONTROLS & PROGRESS */}
-            <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-              {/* DOWNLOAD PDF BUTTON ONLY AT STRICT CHECKPOINTS (Q20, Q40, Q60, Q80, Q100) */}
-              {isStrictCheckpoint && hasUnDownloadedBatch && (
-                <button
-                  className="btn btn-emerald text-white fw-bold px-3 py-2 btn-sm d-flex align-items-center justify-content-center gap-2 shadow"
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="d-flex align-items-center justify-content-center flex-shrink-0"
                   style={{
-                    backgroundColor: '#059669',
-                    borderRadius: '10px',
-                    fontSize: '0.875rem'
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    background:
+                      'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                    color: '#fff',
                   }}
-                  onClick={() => handleDownloadCheckpoint(currentIndex)}
-                  title={`Download PDF for Questions Q${downloadStartQNum} to Q${downloadEndQNum}`}
                 >
-                  <FaDownload />
-                  <span>
-                    Download PDF (Q{downloadStartQNum}–Q{downloadEndQNum})
-                  </span>
-                </button>
-              )}
-
-              {/* PROGRESS BAR */}
-              <div className="w-100 max-w-xs" style={{ minWidth: '180px', maxWidth: '220px' }}>
-                <div className="d-flex justify-content-between extra-small fw-bold text-muted mb-1">
-                  <span>Progress</span>
-                  <span>{currentIndex + 1} / {questions.length}</span>
+                  <FaBookOpen />
                 </div>
-                <div className="progress" style={{ height: '8px', borderRadius: '4px' }}>
+
+                <div>
+                  <div className="small text-muted fw-semibold">
+                    READING MODE
+                  </div>
+
+                  <h6 className="fw-bold text-dark mb-0">
+                    {activeRoleTitle}
+                    {activeCompanyName
+                      ? ` at ${activeCompanyName}`
+                      : ''}
+                  </h6>
+
+                  <small className="text-muted">
+                    Question {currentIndex + 1} of {questions.length}
+                  </small>
+                </div>
+              </div>
+
+              <div className="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+
+                {/* CHECKPOINT DOWNLOAD */}
+                {isStrictCheckpoint && hasUnDownloadedBatch && (
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm fw-bold d-flex align-items-center justify-content-center gap-2"
+                    onClick={() =>
+                      handleDownloadCheckpoint(currentIndex)
+                    }
+                    style={{ borderRadius: '9px' }}
+                  >
+                    <FaDownload />
+                    Download Q{downloadStartQNum}–Q{downloadEndQNum}
+                  </button>
+                )}
+
+                {/* PROGRESS */}
+                <div style={{ minWidth: '190px' }}>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="small text-muted fw-semibold">
+                      Progress
+                    </span>
+
+                    <span className="small text-muted fw-bold">
+                      {currentIndex + 1} / {questions.length}
+                    </span>
+                  </div>
+
                   <div
-                    className="progress-bar progress-bar-striped progress-bar-animated"
-                    role="progressbar"
+                    className="progress"
                     style={{
-                      width: `${((currentIndex + 1) / (questions.length || 1)) * 100}%`,
-                      backgroundColor: '#4F46E5'
+                      height: '8px',
+                      borderRadius: '10px',
                     }}
-                  />
+                  >
+                    <div
+                      className="progress-bar"
+                      role="progressbar"
+                      style={{
+                        width: `${
+                          ((currentIndex + 1) /
+                            (questions.length || 1)) *
+                          100
+                        }%`,
+                        backgroundColor: '#4F46E5',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 20-QUESTION CHECKPOINT BANNER NOTIFICATION (SHOWN ONLY AT STRICT CHECKPOINTS Q20, Q40, Q60, Q80, Q100) */}
+          {/* CHECKPOINT BANNER */}
           {isStrictCheckpoint && (
             <div
-              className="p-3.5 rounded-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 shadow-sm"
+              className="p-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
               style={{
-                background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
-                border: '1px solid #A7F3D0'
+                background:
+                  'linear-gradient(135deg, #ECFDF5, #D1FAE5)',
+                border: '1px solid #A7F3D0',
+                borderRadius: '14px',
               }}
             >
-              <div className="d-flex align-items-center gap-2.5">
-                <div className="p-2 rounded-circle bg-emerald text-white bg-opacity-90 flex-shrink-0" style={{ backgroundColor: '#059669' }}>
+              <div className="d-flex align-items-start gap-3">
+                <div
+                  className="d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#059669',
+                    color: '#fff',
+                  }}
+                >
                   <FaBookmark />
                 </div>
+
                 <div>
-                  <h6 className="fw-bold text-emerald-dark mb-0" style={{ color: '#065F46', fontSize: '0.95rem' }}>
-                    🎉 Checkpoint Reached: Question {currentQNum} of 100
+                  <h6
+                    className="fw-bold mb-1"
+                    style={{ color: '#065F46' }}
+                  >
+                    Checkpoint Reached — Q{currentQNum}
                   </h6>
-                  <small className="text-emerald-emphasis" style={{ color: '#047857' }}>
+
+                  <p
+                    className="small mb-0"
+                    style={{ color: '#047857' }}
+                  >
                     {hasUnDownloadedBatch
-                      ? `Download your formatted PDF for Questions Q${downloadStartQNum}–Q${downloadEndQNum} with answers & explanations, then continue reading to Question ${currentQNum + 1}.`
-                      : `You have downloaded up to Question ${lastDownloadedIndex + 1}. Continue reading to reach the next checkpoint!`}
-                  </small>
+                      ? `Download Questions Q${downloadStartQNum}–Q${downloadEndQNum} as a PDF before continuing.`
+                      : `You have already downloaded up to Q${
+                          lastDownloadedIndex + 1
+                        }. Continue reading.`}
+                  </p>
                 </div>
               </div>
 
               {hasUnDownloadedBatch && (
                 <button
-                  className="btn btn-success fw-bold px-4 py-2 btn-sm d-flex align-items-center justify-content-center gap-2 shadow"
-                  style={{ borderRadius: '10px', backgroundColor: '#059669', borderColor: '#059669' }}
-                  onClick={() => handleDownloadCheckpoint(currentIndex)}
+                  type="button"
+                  className="btn btn-success btn-sm fw-bold d-flex align-items-center gap-2"
+                  onClick={() =>
+                    handleDownloadCheckpoint(currentIndex)
+                  }
+                  style={{ borderRadius: '9px' }}
                 >
-                  <FaDownload /> Download PDF (Q{downloadStartQNum}–Q{downloadEndQNum})
+                  <FaDownload />
+                  Download PDF
                 </button>
               )}
             </div>
           )}
 
-          {/* QUESTION BOOK DISPLAY CARD */}
+          {/* =====================================================
+              QUESTION CARD
+          ===================================================== */}
           {fetchingQuestions ? (
-            <div className="card card-custom p-5 text-center bg-white border-0 shadow-sm" style={{ borderRadius: '18px' }}>
-              <FaSpinner className="spinner-border text-primary fs-2 mx-auto mb-3" />
-              <h5 className="fw-bold">Generating 100 Questions for {activeRoleTitle}...</h5>
+            <div
+              className="card border-0 shadow-sm text-center p-5"
+              style={{ borderRadius: '18px' }}
+            >
+              <FaSpinner className="text-primary fs-2 mb-3" />
+
+              <h5 className="fw-bold mb-2">
+                Generating Your Question Bank...
+              </h5>
+
+              <p className="text-muted small mb-0">
+                Preparing 100 questions for {activeRoleTitle}.
+              </p>
             </div>
           ) : (
             <div
-              className="card card-custom p-4 p-md-5 bg-white border shadow-sm position-relative"
-              style={{ borderRadius: '20px', borderLeft: '6px solid #4F46E5' }}
+              className="card border-0 shadow-sm"
+              style={{
+                borderRadius: '20px',
+                overflow: 'hidden',
+              }}
             >
-              {/* CATEGORY & DIFFICULTY BADGES */}
-              <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-                <span
-                  className="badge px-3 py-1.5 fw-bold text-uppercase"
-                  style={{
-                    backgroundColor: '#EEF2FF',
-                    color: '#4F46E5',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    letterSpacing: '0.05em'
-                  }}
-                >
-                  {currentQ.category || 'TECHNICAL'}
-                </span>
-
-                <div className="d-flex align-items-center gap-2">
-                  <span className="text-muted extra-small fw-semibold">Difficulty:</span>
-                  <span
-                    className={`badge px-2.5 py-1 fw-semibold extra-small ${
-                      currentQ.difficulty === 'Basic'
-                        ? 'bg-success bg-opacity-10 text-success'
-                        : currentQ.difficulty === 'Advanced'
-                        ? 'bg-danger bg-opacity-10 text-danger'
-                        : 'bg-warning bg-opacity-10 text-warning'
-                    }`}
-                    style={{ borderRadius: '6px' }}
-                  >
-                    {currentQ.difficulty || 'Intermediate'}
-                  </span>
-                  <span className="badge bg-light text-dark border px-2.5 py-1 extra-small fw-bold">
-                    Q{currentIndex + 1} of 100
-                  </span>
-                </div>
-              </div>
-
-              {/* QUESTION TEXT */}
-              <h4 className="fw-extrabold text-dark mb-4" style={{ fontSize: '1.35rem', lineHeight: '1.5' }}>
-                {currentQ.question}
-              </h4>
-
-              {/* DETAILED ANSWER / EXPLANATION BOX */}
+              {/* TOP ACCENT */}
               <div
-                className="p-4 rounded-4 mb-4"
                 style={{
-                  backgroundColor: '#F8FAFC',
-                  border: '1px solid #E2E8F0'
+                  height: '5px',
+                  background:
+                    'linear-gradient(90deg, #4F46E5, #7C3AED)',
                 }}
-              >
-                <div className="d-flex align-items-center gap-2 mb-2 text-primary fw-bold">
-                  <FaBookOpen />
-                  <span style={{ letterSpacing: '0.02em', fontSize: '0.95rem' }}>Detailed Answer & Explanation</span>
-                </div>
-                <p className="text-dark mb-0" style={{ fontSize: '0.975rem', lineHeight: '1.65', whiteSpace: 'pre-line' }}>
-                  {currentQ.answer}
-                </p>
-              </div>
+              />
 
-              {/* KEY TAKEAWAYS BULLETS */}
-              {currentQ.keyTakeaways && currentQ.keyTakeaways.length > 0 && (
-                <div className="mb-4">
-                  <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-2" style={{ fontSize: '0.9rem' }}>
-                    <FaCheckCircle className="text-success" /> Key Technical Takeaways:
-                  </h6>
-                  <ul className="mb-0 ps-3 text-secondary small d-flex flex-column gap-1.5">
-                    {currentQ.keyTakeaways.map((point, pIdx) => (
-                      <li key={pIdx} style={{ lineHeight: '1.5' }}>
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="p-4 p-md-5">
 
-              {/* INTERVIEW TIP */}
-              {currentQ.tip && (
-                <div
-                  className="p-3 rounded-3 mb-4 d-flex align-items-start gap-2.5"
-                  style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}
-                >
-                  <FaLightbulb className="text-warning fs-5 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-warning-emphasis extra-small d-block text-uppercase fw-bold mb-0.5">
-                      Pro Interview Tip for {activeCompanyName}:
-                    </strong>
-                    <span className="text-dark small">{currentQ.tip}</span>
+                {/* QUESTION META */}
+                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+
+                  <span
+                    className="badge px-3 py-2"
+                    style={{
+                      backgroundColor: '#EEF2FF',
+                      color: '#4F46E5',
+                      borderRadius: '8px',
+                    }}
+                  >
+                    {currentQ.category || 'TECHNICAL'}
+                  </span>
+
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="small text-muted">
+                      Difficulty
+                    </span>
+
+                    <span
+                      className={`badge ${
+                        currentQ.difficulty === 'Basic'
+                          ? 'bg-success'
+                          : currentQ.difficulty === 'Advanced'
+                          ? 'bg-danger'
+                          : 'bg-warning text-dark'
+                      }`}
+                      style={{ borderRadius: '7px' }}
+                    >
+                      {currentQ.difficulty || 'Intermediate'}
+                    </span>
+
+                    <span
+                      className="badge bg-light text-dark border"
+                      style={{ borderRadius: '7px' }}
+                    >
+                      Q{currentIndex + 1} / 100
+                    </span>
                   </div>
                 </div>
-              )}
 
-              {/* NAVIGATION & DOWNLOAD CONTROLS */}
-              <div className="d-flex flex-column flex-sm-row align-items-center justify-content-between pt-3 border-top mt-2 gap-3">
-                <button
-                  className="btn btn-outline-secondary fw-bold px-4 py-2 d-flex align-items-center gap-2 w-100 w-sm-auto justify-content-center"
-                  onClick={handlePrev}
-                  disabled={currentIndex === 0}
-                  style={{ borderRadius: '10px' }}
-                >
-                  <FaArrowLeft /> Previous
-                </button>
+                {/* QUESTION */}
+                <div className="mb-4">
+                  <div className="small text-primary fw-bold mb-2">
+                    QUESTION {currentIndex + 1}
+                  </div>
 
-                <div className="d-flex align-items-center gap-2">
-                  {/* Strict Checkpoint Download button in footer controls */}
-                  {isStrictCheckpoint && hasUnDownloadedBatch && (
-                    <button
-                      className="btn btn-emerald text-white fw-bold px-3 py-2 btn-sm d-flex align-items-center gap-2 shadow"
-                      style={{ borderRadius: '10px', backgroundColor: '#059669', borderColor: '#059669' }}
-                      onClick={() => handleDownloadCheckpoint(currentIndex)}
-                    >
-                      <FaDownload /> Download PDF (Q{downloadStartQNum}–Q{downloadEndQNum})
-                    </button>
-                  )}
-                  <span className="text-muted extra-small fw-bold d-none d-md-inline">
-                    Q{currentIndex + 1} of 100
-                  </span>
+                  <h4
+                    className="fw-bold text-dark mb-0"
+                    style={{
+                      fontSize: '1.4rem',
+                      lineHeight: '1.55',
+                    }}
+                  >
+                    {currentQ.question}
+                  </h4>
                 </div>
 
-                {currentIndex < questions.length - 1 ? (
-                  <button
-                    className="btn btn-primary fw-bold px-4 py-2 d-flex align-items-center gap-2 shadow-sm w-100 w-sm-auto justify-content-center"
-                    onClick={handleNext}
-                    style={{ borderRadius: '10px' }}
+                {/* ANSWER */}
+                <div
+                  className="p-4 mb-4"
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '14px',
+                  }}
+                >
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <div
+                      className="d-flex align-items-center justify-content-center"
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: '9px',
+                        backgroundColor: '#EEF2FF',
+                        color: '#4F46E5',
+                      }}
+                    >
+                      <FaBookOpen />
+                    </div>
+
+                    <h6 className="fw-bold text-dark mb-0">
+                      Detailed Answer & Explanation
+                    </h6>
+                  </div>
+
+                  <p
+                    className="text-secondary mb-0"
+                    style={{
+                      fontSize: '1rem',
+                      lineHeight: '1.7',
+                      whiteSpace: 'pre-line',
+                    }}
                   >
-                    Next Question <FaArrowRight />
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-success fw-bold px-4 py-2 d-flex align-items-center gap-2 shadow-sm w-100 w-sm-auto justify-content-center"
-                    onClick={() => setIsReadingMode(false)}
-                    style={{ borderRadius: '10px' }}
+                    {currentQ.answer}
+                  </p>
+                </div>
+
+                {/* KEY TAKEAWAYS */}
+                {currentQ.keyTakeaways &&
+                  currentQ.keyTakeaways.length > 0 && (
+                    <div className="mb-4">
+                      <h6 className="fw-bold text-dark mb-3">
+                        <FaCheckCircle className="text-success me-2" />
+                        Key Technical Takeaways
+                      </h6>
+
+                      <div className="d-flex flex-column gap-2">
+                        {currentQ.keyTakeaways.map(
+                          (point, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="d-flex align-items-start gap-2"
+                            >
+                              <span
+                                className="d-flex align-items-center justify-content-center flex-shrink-0"
+                                style={{
+                                  width: '22px',
+                                  height: '22px',
+                                  borderRadius: '50%',
+                                  backgroundColor: '#ECFDF5',
+                                  color: '#059669',
+                                  fontSize: '12px',
+                                }}
+                              >
+                                <FaCheckCircle />
+                              </span>
+
+                              <span
+                                className="text-secondary small"
+                                style={{ lineHeight: '1.6' }}
+                              >
+                                {point}
+                              </span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {/* INTERVIEW TIP */}
+                {currentQ.tip && (
+                  <div
+                    className="p-3 mb-4 d-flex align-items-start gap-3"
+                    style={{
+                      backgroundColor: '#FFFBEB',
+                      border: '1px solid #FDE68A',
+                      borderRadius: '12px',
+                    }}
                   >
-                    <FaCheckCircle /> Finish Reading
-                  </button>
+                    <FaLightbulb
+                      className="text-warning fs-5 flex-shrink-0"
+                    />
+
+                    <div>
+                      <div
+                        className="small fw-bold mb-1"
+                        style={{ color: '#92400E' }}
+                      >
+                        PRO INTERVIEW TIP
+                        {activeCompanyName
+                          ? ` • ${activeCompanyName}`
+                          : ''}
+                      </div>
+
+                      <div
+                        className="small text-dark"
+                        style={{ lineHeight: '1.6' }}
+                      >
+                        {currentQ.tip}
+                      </div>
+                    </div>
+                  </div>
                 )}
+
+                {/* =================================================
+                    NAVIGATION
+                ================================================= */}
+                <div
+                  className="pt-4 mt-3 border-top d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3"
+                >
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary fw-bold d-flex align-items-center justify-content-center gap-2"
+                    onClick={handlePrev}
+                    disabled={currentIndex === 0}
+                    style={{
+                      borderRadius: '10px',
+                      minWidth: '130px',
+                    }}
+                  >
+                    <FaArrowLeft />
+                    Previous
+                  </button>
+
+                  <div className="d-flex align-items-center gap-2">
+                    {isStrictCheckpoint &&
+                      hasUnDownloadedBatch && (
+                        <button
+                          type="button"
+                          className="btn btn-success fw-bold d-flex align-items-center gap-2"
+                          onClick={() =>
+                            handleDownloadCheckpoint(
+                              currentIndex
+                            )
+                          }
+                          style={{ borderRadius: '10px' }}
+                        >
+                          <FaDownload />
+                          Download PDF
+                        </button>
+                      )}
+
+                    <span className="small text-muted fw-bold d-none d-md-inline">
+                      {currentIndex + 1} / {questions.length}
+                    </span>
+                  </div>
+
+                  {currentIndex < questions.length - 1 ? (
+                    <button
+                      type="button"
+                      className="btn btn-primary fw-bold d-flex align-items-center justify-content-center gap-2"
+                      onClick={handleNext}
+                      style={{
+                        borderRadius: '10px',
+                        minWidth: '160px',
+                      }}
+                    >
+                      Next Question
+                      <FaArrowRight />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-success fw-bold d-flex align-items-center justify-content-center gap-2"
+                      onClick={() => setIsReadingMode(false)}
+                      style={{
+                        borderRadius: '10px',
+                        minWidth: '160px',
+                      }}
+                    >
+                      <FaCheckCircle />
+                      Finish Reading
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
