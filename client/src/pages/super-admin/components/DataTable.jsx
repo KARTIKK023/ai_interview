@@ -147,18 +147,50 @@ const ReusableDataTable = ({
     window.print();
   };
 
-  const defaultOptions = {
-    paging: true,
-    pageLength: 10,
-    lengthMenu: [10, 25, 50, 100],
-    searching: true,
-    ordering: true,
-    responsive: true,
-    autoWidth: false,
-    destroy: true,
-    dom: '<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-bottom"<"dt-length"l><"dt-search"f>>rt<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-top"<"dt-info"i><"dt-paging"p>>',
-    ...options
-  };
+  const changePaginationTextColor = () => {
+  setTimeout(() => {
+    document.querySelectorAll('.dt-paging button').forEach((button) => {
+      if (
+        button.classList.contains('current') ||
+        button.getAttribute('aria-current') === 'page'
+      ) {
+        button.style.setProperty(
+          'color',
+          '#FFFFFF',
+          'important'
+        );
+
+        button.style.setProperty(
+          '-webkit-text-fill-color',
+          '#FFFFFF',
+          'important'
+        );
+      }
+    });
+  }, 300);
+};
+ const defaultOptions = {
+  paging: true,
+  pageLength: 10,
+  lengthMenu: [10, 25, 50, 100],
+  searching: true,
+  ordering: true,
+  responsive: true,
+  autoWidth: false,
+  destroy: true,
+
+  dom: '<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-bottom"<"dt-length"l><"dt-search"f>>rt<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-top"<"dt-info"i><"dt-paging"p>>',
+
+  ...options,
+
+  initComplete: function () {
+    changePaginationTextColor();
+  },
+
+  drawCallback: function () {
+    changePaginationTextColor();
+  }
+};
 
   return (
     <>
