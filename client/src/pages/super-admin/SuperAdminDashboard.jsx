@@ -29,6 +29,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import SuperAdminSidebar from './SuperAdminSidebar';
+;
 
 const kpiIconMap = {
   'total-users': FaUsers,
@@ -50,6 +51,8 @@ const SuperAdminDashboard = () => {
   const [themeMode, setThemeMode] = useState('light'); // 'light' or 'dark'
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTimeframe, setSelectedTimeframe] = useState('7d');
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Real Database State
   const [loading, setLoading] = useState(true);
@@ -102,11 +105,17 @@ const SuperAdminDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('superAdminToken');
-    localStorage.removeItem('superAdminUser');
-    toast.success('Super Admin session ended successfully.');
-    navigate('/super-admin/login', { replace: true });
-  };
+  setShowLogoutModal(false);
+
+  localStorage.removeItem('superAdminToken');
+  localStorage.removeItem('superAdminUser');
+
+  toast.success('Logged out successfully.');
+
+  navigate('/super-admin/login', {
+    replace: true
+  });
+};
 
   const markAllNotificationsRead = () => {
     setNotificationsList(notificationsList.map(n => ({ ...n, read: true })));
@@ -321,6 +330,7 @@ const SuperAdminDashboard = () => {
             )}
           </div>
 
+
           {/* Interactive Dark/Light Theme Toggle Icon */}
           <button
             className="btn btn-link text-white-50 p-1.5 border-0 shadow-none ms-1"
@@ -380,14 +390,17 @@ const SuperAdminDashboard = () => {
                   <span className="text-white-50" style={{ fontSize: '0.68rem' }}>superadmin@hiresmart.ai</span>
                 </div>
               
-                <div className="pt-1 border-top border-secondary border-opacity-30">
-                  <button
-                    className="btn btn-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-2 fw-bold"
-                    onClick={handleLogout}
-                  >
-                    <FaSignOutAlt size={12} /> Log Out Admin
-                  </button>
-                </div>
+               <div className="pt-1 border-top border-secondary border-opacity-30">
+                <button
+                 type="button"
+                  className="btn w-100 text-start text-danger d-flex align-items-center gap-2 p-2"
+                   onClick={() => {
+                    setShowLogoutModal(true);
+                    setShowProfileMenu(false); }} >                 
+                      <FaSignOutAlt />
+                         Logout
+              </button>
+            </div>
               </div>
             )}
           </div>
@@ -402,7 +415,7 @@ const SuperAdminDashboard = () => {
         <SuperAdminSidebar
           activeSidebarTab={activeSidebarTab}
           setActiveSidebarTab={setActiveSidebarTab}
-          onLogout={handleLogout}
+          onLogout={() => setShowLogoutModal(true)}
         />
 
         {/* MAIN COLUMN (SCROLLABLE CONTENT + FIXED FOOTER) */}
@@ -758,6 +771,8 @@ const SuperAdminDashboard = () => {
         </div>
       )}
 
+      
+
       {/* Custom Styles for 5-column grid & animations */}
       <style>{`
         @media (min-width: 1200px) {
@@ -781,6 +796,109 @@ const SuperAdminDashboard = () => {
           border-color: rgba(255, 255, 255, 0.45) !important;
         }
       `}</style>
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+{showLogoutModal && (
+  <div
+    className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+    style={{
+      background: 'rgba(0, 0, 0, 0.55)',
+      zIndex: 9999,
+      backdropFilter: 'blur(4px)'
+    }}
+  >
+    <div
+      className="bg-white shadow-lg"
+      style={{
+        width: '460px',
+        maxWidth: '90%',
+        borderRadius: '20px',
+        padding: '28px',
+        textAlign: 'center'
+      }}
+    >
+      {/* Logout Icon */}
+      <div
+        className="d-flex align-items-center justify-content-center mx-auto mb-3"
+        style={{
+          width: '72px',
+          height: '72px',
+          borderRadius: '50%',
+          background: '#FEE2E2'
+        }}
+      >
+        <FaSignOutAlt
+          size={30}
+          style={{ color: '#DC3545' }}
+        />
+      </div>
+
+      {/* Title */}
+      <h3
+        className="mb-2"
+        style={{
+          fontWeight: '600',
+          color: '#2D3748'
+        }}
+      >
+        Logout?
+      </h3>
+
+      {/* Message */}
+      <p
+        className="mb-2"
+        style={{
+          color: '#6B7280',
+          fontSize: '16px'
+        }}
+      >
+        Are you sure you want to logout from your Super Admin account?
+      </p>
+
+      <p
+        className="mb-4"
+        style={{
+          color: '#DC3545',
+          fontWeight: '600'
+        }}
+      >
+        You will need to login again to continue.
+      </p>
+
+      {/* Buttons */}
+      <div className="d-flex justify-content-center gap-3">
+        
+        <button
+          type="button"
+          className="btn btn-outline-secondary px-4 py-2"
+          onClick={() => setShowLogoutModal(false)}
+          style={{
+            minWidth: '120px',
+            borderRadius: '10px',
+            fontWeight: '600'
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-danger px-4 py-2 d-flex align-items-center justify-content-center gap-2"
+          onClick={handleLogout}
+          style={{
+            minWidth: '140px',
+            borderRadius: '10px',
+            fontWeight: '600'
+          }}
+        >
+          <FaSignOutAlt />
+          Logout
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
