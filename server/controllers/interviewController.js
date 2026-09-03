@@ -252,6 +252,17 @@ const startInterview = async (req, res, next) => {
     }
 
     const interview = await Interview.findById(req.params.id);
+    const interviewResponse = interview.toObject();
+    interviewResponse.questions =
+      interviewResponse.questions.map((question) => {
+        const {
+          correctAnswer,
+          ...questionWithoutAnswer
+        } = question;
+
+        return questionWithoutAnswer;
+      });
+
     if (!interview) return res.status(404).json({ success: false, message: 'Interview not found' });
 
     // Clean any legacy duplicate / repeating questions automatically
@@ -272,7 +283,114 @@ const startInterview = async (req, res, next) => {
     }
 
     await interview.save();
-    res.json({ success: true, interview });
+    res.json({ success: true, interview:interviewResponse});
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get interview questions with correct answers for Student Questions page
+// @route   GET /api/interviews/:id/questions-with-answers
+// @access  Private
+
+const getInterviewQuestionsWithAnswers = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        message: 'Interview not found',
+      });
+    }
+
+    const interview = await Interview.findById(req.params.id)
+      .populate('createdBy', 'name email companyName')
+      .populate('candidateId', 'name email')
+      .populate('jobId', 'roleName name category description');
+
+    if (!interview) {
+      return res.status(404).json({
+        success: false,
+        message: 'Interview not found',
+      });
+    }
+
+    // ------------------------------------------------------------
+    // Verify that the logged-in student owns this interview
+    // ------------------------------------------------------------
+
+    const userId = req.user?._id?.toString();
+    const candidateId = interview.candidateId?._id
+      ? interview.candidateId._id.toString()
+      : interview.candidateId?.toString();
+
+    const isStudent =
+      req.user?.role &&
+      String(req.user.role).toLowerCase() === 'student';
+
+    const isCandidate =
+      candidateId &&
+      userId &&
+      candidateId === userId;
+
+    if (isStudent && !isCandidate) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to view these interview questions.',
+      });
+    }
+
+    // ------------------------------------------------------------
+    // Return questions INCLUDING correctAnswer
+    // ------------------------------------------------------------
+
+    const questions = Array.isArray(interview.questions)
+      ? interview.questions.map((question) => ({
+          _id: question._id,
+          questionText: question.questionText || '',
+          questionType: question.questionType || 'General',
+          difficulty: question.difficulty || interview.difficulty || 'Intermediate',
+          evaluationCriteria: Array.isArray(question.evaluationCriteria)
+            ? question.evaluationCriteria
+            : [],
+          expectedCompetencies: Array.isArray(question.expectedCompetencies)
+            ? question.expectedCompetencies
+            : [],
+          correctAnswer: question.correctAnswer || '',
+          followUpTo: question.followUpTo || null,
+        }))
+      : [];
+
+    const answers = await Answer.find({
+      interviewId: interview._id,
+    }).sort({
+      questionIndex: 1,
+    });
+
+    const evaluation = await Evaluation.findOne({
+      interviewId: interview._id,
+    });
+
+    return res.json({
+      success: true,
+
+      interview: {
+        _id: interview._id,
+        title: interview.title,
+        category: interview.category,
+        jobRole: interview.jobRole,
+        purpose: interview.purpose,
+        mode: interview.mode,
+        difficulty: interview.difficulty,
+        duration: interview.duration,
+        status: interview.status,
+        total_questions:
+          interview.total_questions || questions.length,
+        questions,
+      },
+
+      answers,
+      evaluation,
+    });
   } catch (err) {
     next(err);
   }
@@ -1399,18 +1517,32 @@ const getInterviews = async (req, res, next) => {
 const getInterviewById = async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(404).json({ success: false, message: 'Interview not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Interview not found',
+      });
     }
 
     const interview = await Interview.findById(req.params.id)
       .populate('createdBy', 'name email companyName')
-      .populate('candidateId', 'name email')
+      .populate('candidateId', 'name email studentId')
       .populate('jobId', 'roleName name category description');
 
-    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found' });
+    if (!interview) {
+      return res.status(404).json({
+        success: false,
+        message: 'Interview not found',
+      });
+    }
 
-    // Clean any legacy duplicate / repeating questions automatically
-    if (interview.questions && Array.isArray(interview.questions)) {
+    // ============================================================
+    // CLEAN LEGACY / DUPLICATE QUESTIONS
+    // ============================================================
+
+    if (
+      interview.questions &&
+      Array.isArray(interview.questions)
+    ) {
       const cleaned = cleanAndDeduplicateQuestions(
         interview.questions,
         interview.category || 'Technical',
@@ -1418,9 +1550,17 @@ const getInterviewById = async (req, res, next) => {
         interview.difficulty || 'Intermediate',
         interview.questions.length
       );
+
       if (cleaned && cleaned.length > 0) {
-        const hasChanged = cleaned.length !== interview.questions.length ||
-          cleaned.some((q, idx) => !interview.questions[idx] || q.questionText !== interview.questions[idx].questionText);
+        const hasChanged =
+          cleaned.length !== interview.questions.length ||
+          cleaned.some(
+            (q, idx) =>
+              !interview.questions[idx] ||
+              q.questionText !==
+                interview.questions[idx].questionText
+          );
+
         if (hasChanged) {
           interview.questions = cleaned;
           await interview.save();
@@ -1428,14 +1568,121 @@ const getInterviewById = async (req, res, next) => {
       }
     }
 
-    const answers = await Answer.find({ interviewId: interview._id }).sort({ questionIndex: 1 });
-    const evaluation = await Evaluation.findOne({ interviewId: interview._id });
+    // ============================================================
+    // GET STUDENT ANSWERS
+    // ============================================================
 
-    res.json({
+    const answers = await Answer.find({
+      interviewId: interview._id,
+    }).sort({
+      questionIndex: 1,
+    });
+
+    const evaluation = await Evaluation.findOne({
+      interviewId: interview._id,
+    });
+
+    // ============================================================
+    // CHECK WHETHER CORRECT ANSWERS SHOULD BE INCLUDED
+    // ============================================================
+
+    const includeCorrectAnswers =
+      req.query.includeCorrectAnswers === 'true';
+
+    let interviewResponse = interview.toObject();
+
+    // ============================================================
+    // ONLY ALLOW CORRECT ANSWERS FOR STUDENT QUESTIONS PAGE
+    // ============================================================
+
+    if (includeCorrectAnswers) {
+      const userId = req.user?._id
+        ? req.user._id.toString()
+        : null;
+
+      const candidateId = interview.candidateId?._id
+        ? interview.candidateId._id.toString()
+        : interview.candidateId
+          ? interview.candidateId.toString()
+          : null;
+
+      const userRole = String(
+        req.user?.role || ''
+      ).toLowerCase();
+
+      const isStudent =
+        userRole === 'student';
+
+      const isCandidate =
+        userId &&
+        candidateId &&
+        userId === candidateId;
+
+      // Student can only see answers for their own interview.
+      if (isStudent && !isCandidate) {
+        return res.status(403).json({
+          success: false,
+          message:
+            'You are not authorized to view the correct answers for this interview.',
+        });
+      }
+
+      // Include correct answers.
+      interviewResponse.questions =
+        interviewResponse.questions.map((question) => ({
+          _id: question._id,
+          questionText: question.questionText || '',
+          questionType:
+            question.questionType || 'General',
+          difficulty:
+            question.difficulty ||
+            interview.difficulty ||
+            'Intermediate',
+
+          evaluationCriteria:
+            Array.isArray(question.evaluationCriteria)
+              ? question.evaluationCriteria
+              : [],
+
+          expectedCompetencies:
+            Array.isArray(question.expectedCompetencies)
+              ? question.expectedCompetencies
+              : [],
+
+          correctAnswer:
+            question.correctAnswer || '',
+
+          followUpTo:
+            question.followUpTo || null,
+        }));
+    } else {
+      // ==========================================================
+      // NORMAL INTERVIEW RESPONSE
+      // NEVER SEND correctAnswer
+      // ==========================================================
+
+      interviewResponse.questions =
+        interviewResponse.questions.map(
+          (question) => {
+            const {
+              correctAnswer,
+              ...questionWithoutAnswer
+            } = question;
+
+            return questionWithoutAnswer;
+          }
+        );
+    }
+
+    // ============================================================
+    // RESPONSE
+    // ============================================================
+
+    return res.json({
       success: true,
-      interview,
+      interview: interviewResponse,
       answers,
-      evaluation
+      evaluation,
     });
   } catch (err) {
     next(err);
@@ -1575,6 +1822,7 @@ module.exports = {
   stopInterview,
   getInterviews,
   getInterviewById,
+  getInterviewQuestionsWithAnswers,
   deleteInterview,
   getStudentCertificates,
   getStudentCertificateById

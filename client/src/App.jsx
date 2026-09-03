@@ -10,6 +10,7 @@ import Register from './pages/Register';
 // Student Pages
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentInterviews from './pages/student/StudentInterviews';
+import StudentInterviewQuestions from './pages/student/StudentInterviewQuestions';
 import TextInterview from './pages/student/TextInterview';
 import VideoInterview from './pages/student/VideoInterview';
 import InterviewReport from './pages/student/InterviewReport';
@@ -108,6 +109,16 @@ function App() {
           </ProtectedRoute>
         }
       />
+      
+      <Route
+        path="/student/interviews/:id/questions"
+        element={
+          <ProtectedRoute allowedRoles={['STUDENT']}>
+            <StudentInterviewQuestions />
+          </ProtectedRoute>
+        }
+      />
+    
       <Route
         path="/student/interview-text/:id"
         element={

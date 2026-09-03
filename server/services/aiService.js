@@ -607,24 +607,71 @@ CRITICAL MANDATORY INSTRUCTIONS:
 6. FRESHNESS & UNIQNESS: Every question must be completely unique, distinct, and fresh.
 ${historyExclusionPrompt}
 
-Return ONLY a raw JSON array containing EXACTLY ${numQuestions} question objects matching this exact schema:
+Return ONLY a raw JSON array containing EXACTLY ${numQuestions} question objects.
+
+Each object MUST contain a high-quality correctAnswer generated specifically for that question.
+
+The correctAnswer is NOT the candidate's answer.
+
+It is the ideal/reference answer that an expert interviewer would expect from a strong candidate.
+
+IMPORTANT:
+- The correctAnswer MUST directly answer the question.
+- It MUST be factually accurate.
+- It MUST match the Target Job Role.
+- It MUST match the requested difficulty and interview level.
+- For technical questions, include the important technical concepts, reasoning, and practical considerations.
+- For behavioral questions, provide an ideal structured answer demonstrating the expected competency.
+- For situational questions, explain the ideal approach and decision-making.
+- For practical questions, provide a realistic step-by-step approach where appropriate.
+- For strategic questions, include relevant trade-offs, reasoning, and expected outcomes.
+- Do NOT simply repeat the question.
+- Do NOT write "the candidate should..." in the correctAnswer.
+- Write the answer as if an expert candidate is answering the question.
+- Keep answers concise but sufficiently detailed for interview preparation.
+- The answer should normally be 2-6 paragraphs or equivalent structured content.
+
+Return EXACTLY this schema:
 
 [
   {
     "questionText": "Detailed clear question string...",
     "questionType": "Technical | Behavioral | Situational | Practical | Strategic",
     "difficulty": "${safeDifficulty}",
-    "evaluationCriteria": ["Criterion 1", "Criterion 2"],
-    "expectedCompetencies": ["Competency 1", "Competency 2"]
+    "evaluationCriteria": [
+      "Criterion 1",
+      "Criterion 2"
+    ],
+    "expectedCompetencies": [
+      "Competency 1",
+      "Competency 2"
+    ],
+    "correctAnswer": "Detailed ideal answer that correctly answers the question..."
   }
 ]
+
 No extra markdown explanations or commentary outside the raw JSON array.`;
 
       // const result = await model.generateContent(prompt);
       // const responseText = result?.response?.text ? result.response.text() : '';
       const responseText = await generateWithAI(prompt);
+      console.log(
+        '\n================ QUESTION AI RESPONSE ================'
+      );
+
+      console.log(
+        responseText
+      );
+
+      console.log(
+        '=======================================================\n'
+      );
 
       const parsed = cleanJson(responseText);
+      console.log(
+        '[QUESTION AI] Parsed:',
+        JSON.stringify(parsed, null, 2)
+      );
       if (parsed && Array.isArray(parsed) && parsed.length > 0) {
         rawQuestions = parsed;
       }
@@ -777,7 +824,8 @@ const generateFallbackQuestions = (
         questionType: (idx + vIdx) % 2 === 0 ? 'Behavioral' : 'Situational',
         difficulty: safeDifficulty,
         evaluationCriteria: ['Role Knowledge', 'Problem Solving'],
-        expectedCompetencies: ['Operational Excellence']
+        expectedCompetencies: ['Operational Excellence'],
+        correctAnswer: ''
       });
     });
   });
@@ -832,8 +880,12 @@ const cleanAndDeduplicateQuestions = (
         evaluationCriteria: Array.isArray(qObj.evaluationCriteria) && qObj.evaluationCriteria.length > 0
           ? qObj.evaluationCriteria
           : safeCriteria,
-        expectedCompetencies: Array.isArray(qObj.expectedCompetencies) ? qObj.expectedCompetencies : []
-      });
+        expectedCompetencies: Array.isArray(qObj.expectedCompetencies) ? qObj.expectedCompetencies : [],
+        correctAnswer:
+          typeof qObj.correctAnswer === 'string'
+            ? qObj.correctAnswer.trim()
+            : ''
+          });
     }
   }
 

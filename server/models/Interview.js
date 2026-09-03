@@ -71,6 +71,7 @@ const interviewSchema = new mongoose.Schema(
         difficulty: { type: String, default: 'Intermediate' },
         evaluationCriteria: [{ type: String }],
         expectedCompetencies: [{ type: String }],
+        correctAnswer: { type: String, default: ''},
         followUpTo: { type: String, default: null }
       }
     ],

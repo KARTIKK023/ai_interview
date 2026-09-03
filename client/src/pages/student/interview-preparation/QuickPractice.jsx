@@ -316,7 +316,7 @@ const QuickPractice = () => {
             <form onSubmit={handleStartQuickSession} className="text-start">
 
               {/* Category */}
-              <div className="mb-4">
+              {/* <div className="mb-4">
                 <label className="form-label fw-bold small text-muted text-uppercase">
                   Interview Category
                 </label>
@@ -352,7 +352,7 @@ const QuickPractice = () => {
                     💼 Non-Technical
                   </button>
                 </div>
-              </div>
+              </div> */}
 
               {/* Target Job */}
               <div className="mb-4">

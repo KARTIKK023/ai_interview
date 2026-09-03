@@ -1,17 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+
+import { Link, useNavigate } from 'react-router-dom';
+
 import StudentLayout from '../../components/StudentLayout';
+
 import API from '../../services/api';
+
 import DataTable from '../super-admin/components/DataTable';
+
 import { FaTrash } from 'react-icons/fa';
+
 import toast from 'react-hot-toast';
 
 const StudentInterviews = () => {
+  const navigate = useNavigate();
+
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [selectedInterviewToDelete, setSelectedInterviewToDelete] =
     useState(null);
+
   const [deleting, setDeleting] = useState(false);
+
+  // ============================================================
+  // FILTER STATE
+  // ============================================================
+
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // ============================================================
   // FETCH INTERVIEWS
@@ -51,8 +69,8 @@ const StudentInterviews = () => {
       Example:
       duration = 5
       total_questions = 20
-
       Source = 5 min
+
       NOT L3
     */
 
@@ -73,7 +91,142 @@ const StudentInterviews = () => {
       55: 'L10',
     };
 
-    return levelMap[Number(interview?.total_questions)] || 'N/A';
+    return (
+      levelMap[Number(interview?.total_questions)] ||
+      'N/A'
+    );
+  };
+
+  // ============================================================
+  // QUESTION COUNTS
+  // ============================================================
+
+  const getAttemptedQuestions = (interview) => {
+    return Math.max(
+      Number(interview?.answered_questions || 0),
+      0
+    );
+  };
+
+  const getUnattendedQuestions = (interview) => {
+    const totalQuestions = Number(
+      interview?.total_questions ||
+        interview?.questions?.length ||
+        0
+    );
+
+    const attemptedQuestions =
+      getAttemptedQuestions(interview);
+
+    return Math.max(
+      totalQuestions - attemptedQuestions,
+      0
+    );
+  };
+
+  // ============================================================
+  // FILTER LOGIC
+  // ============================================================
+
+  const filteredInterviews = interviews.filter((interview) => {
+    const rawDate =
+      interview?.createdAt ||
+      interview?.completedAt ||
+      interview?.startedAt;
+
+    if (!rawDate) {
+      return false;
+    }
+
+    const interviewDate = new Date(rawDate);
+
+    if (Number.isNaN(interviewDate.getTime())) {
+      return false;
+    }
+
+    // ----------------------------------------------------------
+    // MONTH FILTER
+    // ----------------------------------------------------------
+
+    if (selectedMonth) {
+      const interviewMonth = `${interviewDate.getFullYear()}-${String(
+        interviewDate.getMonth() + 1
+      ).padStart(2, '0')}`;
+
+      if (interviewMonth !== selectedMonth) {
+        return false;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // START DATE FILTER
+    // ----------------------------------------------------------
+
+    if (startDate) {
+      const start = new Date(`${startDate}T00:00:00`);
+
+      if (interviewDate < start) {
+        return false;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // END DATE FILTER
+    // ----------------------------------------------------------
+
+    if (endDate) {
+      const end = new Date(`${endDate}T23:59:59.999`);
+
+      if (interviewDate > end) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // ============================================================
+  // FILTER HANDLERS
+  // ============================================================
+
+  const handleMonthChange = (e) => {
+    const value = e.target.value;
+
+    setSelectedMonth(value);
+
+    // Month and date range are mutually exclusive
+    setStartDate('');
+    setEndDate('');
+  };
+
+  const handleStartDateChange = (e) => {
+    const value = e.target.value;
+
+    setStartDate(value);
+
+    // Date range and month are mutually exclusive
+    setSelectedMonth('');
+
+    // If new From Date is after current To Date,
+    // clear the To Date.
+    if (endDate && value > endDate) {
+      setEndDate('');
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    const value = e.target.value;
+
+    setEndDate(value);
+
+    // Date range and month are mutually exclusive
+    setSelectedMonth('');
+  };
+
+  const clearFilters = () => {
+    setSelectedMonth('');
+    setStartDate('');
+    setEndDate('');
   };
 
   // ============================================================
@@ -105,7 +258,10 @@ const StudentInterviews = () => {
 
       setSelectedInterviewToDelete(null);
     } catch (err) {
-      console.error('Failed to delete interview:', err);
+      console.error(
+        'Failed to delete interview:',
+        err
+      );
 
       toast.error(
         err.response?.data?.message ||
@@ -121,6 +277,36 @@ const StudentInterviews = () => {
   // ============================================================
 
   const handleTableClick = (event) => {
+    // ----------------------------------------------------------
+    // QUESTION COUNT CLICK
+    // ----------------------------------------------------------
+
+    const questionLink = event.target.closest(
+      '.question-count-link'
+    );
+
+    if (questionLink) {
+      event.preventDefault();
+
+      const interviewId =
+        questionLink.getAttribute('data-id');
+
+      const questionType =
+        questionLink.getAttribute('data-type');
+
+      if (interviewId && questionType) {
+        navigate(
+          `/student/interviews/${interviewId}/questions?type=${questionType}`
+        );
+      }
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // DELETE CLICK
+    // ----------------------------------------------------------
+
     const deleteButton = event.target.closest(
       '.delete-interview-btn'
     );
@@ -198,44 +384,6 @@ const StudentInterviews = () => {
     },
 
     // ----------------------------------------------------------
-    // CATEGORY
-    // ----------------------------------------------------------
-
-    {
-      title: 'Category',
-      data: 'category',
-
-      render: (data) => {
-        const isTechnical = data === 'Technical';
-
-        return `
-          <span
-            class="badge px-2.5 py-1"
-            style="
-              background-color: ${
-                isTechnical
-                  ? '#eff6ff'
-                  : '#f8fafc'
-              };
-              color: ${
-                isTechnical
-                  ? '#2563eb'
-                  : '#475569'
-              };
-              border: 1px solid ${
-                isTechnical
-                  ? '#bfdbfe'
-                  : '#e2e8f0'
-              };
-            "
-          >
-            ${data || 'N/A'}
-          </span>
-        `;
-      },
-    },
-
-    // ----------------------------------------------------------
     // PURPOSE
     // ----------------------------------------------------------
 
@@ -300,7 +448,7 @@ const StudentInterviews = () => {
     },
 
     // ----------------------------------------------------------
-    // SOURCE - NEW
+    // SOURCE
     // ----------------------------------------------------------
 
     {
@@ -308,7 +456,8 @@ const StudentInterviews = () => {
       data: 'total_questions',
 
       render: (data, type, row) => {
-        const source = getInterviewSource(row);
+        const source =
+          getInterviewSource(row);
 
         const isFiveMinute =
           source === '5 min';
@@ -337,6 +486,74 @@ const StudentInterviews = () => {
           >
             ${source}
           </span>
+        `;
+      },
+    },
+
+    // ----------------------------------------------------------
+    // ATTEMPTED QUESTIONS
+    // ----------------------------------------------------------
+
+    {
+      title: 'Attempted Questions',
+      data: 'answered_questions',
+
+      render: (data, type, row) => {
+        const attempted =
+          getAttemptedQuestions(row);
+
+        if (type === 'export') {
+          return attempted;
+        }
+
+        return `
+          <a
+            href="/student/interviews/${row?._id}/questions?type=attempted"
+            class="question-count-link fw-bold text-primary"
+            data-id="${row?._id || ''}"
+            data-type="attempted"
+            style="
+              text-decoration: none;
+              cursor: pointer;
+            "
+            title="View attempted questions"
+          >
+            ${attempted}
+          </a>
+        `;
+      },
+    },
+
+    // ----------------------------------------------------------
+    // UNATTENDED QUESTIONS
+    // ----------------------------------------------------------
+
+    {
+      title: 'Unattended Questions',
+      data: 'total_questions',
+
+      render: (data, type, row) => {
+        const unattended =
+          getUnattendedQuestions(row);
+
+        if (type === 'export') {
+          return unattended;
+        }
+
+        return `
+          <a
+            href="/student/interviews/${row?._id}/questions?type=unattended"
+            class="question-count-link fw-bold text-danger"
+            data-id="${row?._id || ''}"
+            data-type="unattended"
+            style="
+              text-decoration: none;
+              cursor: pointer;
+            "
+            title="View unattended questions"
+          >
+            ${unattended}
+          </a>
         `;
       },
     },
@@ -443,7 +660,10 @@ const StudentInterviews = () => {
           return '';
         }
 
+        // ------------------------------------------------------
         // COMPLETED
+        // ------------------------------------------------------
+
         if (row?.status === 'Completed') {
           return `
             <div class="d-flex align-items-center gap-2">
@@ -476,7 +696,10 @@ const StudentInterviews = () => {
           `;
         }
 
+        // ------------------------------------------------------
         // INCOMPLETE
+        // ------------------------------------------------------
+
         const interviewUrl =
           row?.mode === 'Video'
             ? `/student/interview-video/${id}`
@@ -528,7 +751,6 @@ const StudentInterviews = () => {
     paging: true,
     pageLength: 10,
     lengthMenu: [10, 25, 50, 100],
-
     searching: true,
     ordering: true,
     responsive: true,
@@ -599,6 +821,100 @@ const StudentInterviews = () => {
       </div>
 
       {/* ======================================================
+          FILTER SECTION
+      ====================================================== */}
+
+      <div className="card card-custom shadow-sm border-0 mb-4">
+
+        <div className="card-body p-4">
+
+          <div className="row g-3 align-items-end">
+
+            {/* MONTH */}
+
+            <div className="col-md-3">
+
+              <label className="form-label fw-semibold">
+                Select Month
+              </label>
+
+              <input
+                type="month"
+                className="form-control"
+                value={selectedMonth}
+                onChange={handleMonthChange}
+              />
+
+            </div>
+
+            {/* FROM DATE */}
+
+            <div className="col-md-3">
+
+              <label className="form-label fw-semibold">
+                From Date
+              </label>
+
+              <input
+                type="date"
+                className="form-control"
+                value={startDate}
+                onChange={handleStartDateChange}
+              />
+
+            </div>
+
+            {/* TO DATE */}
+
+            <div className="col-md-3">
+
+              <label className="form-label fw-semibold">
+                To Date
+              </label>
+
+              <input
+                type="date"
+                className="form-control"
+                value={endDate}
+                min={startDate || undefined}
+                onChange={handleEndDateChange}
+              />
+
+            </div>
+
+            {/* CLEAR */}
+
+            <div className="col-md-3">
+
+              <button
+                type="button"
+                className="btn btn-outline-secondary w-100 fw-semibold"
+                onClick={clearFilters}
+              >
+                Clear Filters
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* RECORD COUNT */}
+
+          <div className="mt-3">
+
+            <span className="text-muted small">
+              Records:{' '}
+              <strong className="text-dark">
+                {filteredInterviews.length}
+              </strong>
+            </span>
+
+          </div>
+
+        </div>
+      </div>
+
+      {/* ======================================================
           TABLE CARD
       ====================================================== */}
 
@@ -611,7 +927,7 @@ const StudentInterviews = () => {
 
           <DataTable
             title="Interview History"
-            data={interviews}
+            data={filteredInterviews}
             columns={columns}
             loading={loading}
             options={tableOptions}
@@ -619,7 +935,6 @@ const StudentInterviews = () => {
           />
 
         </div>
-
       </div>
 
       {/* ======================================================
@@ -627,6 +942,7 @@ const StudentInterviews = () => {
       ====================================================== */}
 
       {selectedInterviewToDelete && (
+
         <div
           className="
             modal
@@ -739,6 +1055,7 @@ const StudentInterviews = () => {
                     onClick={confirmDeleteInterview}
                     disabled={deleting}
                   >
+
                     {deleting ? (
                       <>
                         Deleting...
@@ -749,19 +1066,18 @@ const StudentInterviews = () => {
                         Delete
                       </>
                     )}
+
                   </button>
 
                 </div>
 
               </div>
+
             </div>
           </div>
+
         </div>
       )}
-
-     
-
-     
 
     </StudentLayout>
   );

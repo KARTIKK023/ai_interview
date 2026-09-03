@@ -12,6 +12,7 @@ const {
   stopInterview,
   getInterviews,
   getInterviewById,
+  getInterviewQuestionsWithAnswers,
   deleteInterview,
   getStudentCertificates,
   getStudentCertificateById
@@ -39,6 +40,11 @@ router.get('/student/certificates/:id', getStudentCertificateById);
 router.route('/')
   .post(createInterview)
   .get(getInterviews);
+
+router.get(
+  '/:id/questions-with-answers',
+  getInterviewQuestionsWithAnswers
+);
 
 router.route('/:id')
   .get(getInterviewById)
