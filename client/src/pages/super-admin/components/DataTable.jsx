@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import DataTable from 'datatables.net-react';
 import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
@@ -14,6 +14,9 @@ const ReusableDataTable = ({
   data = [],
   loading = false,
   title = 'Data Records',
+  selectedStudentIds = [],
+  onStudentSelect = null,
+  onSelectAllStudents = null,
   onRowSelect = null,
   onReportClick = null,
   onResumeClick = null,
@@ -22,11 +25,30 @@ const ReusableDataTable = ({
   onGenerateClick = null,
   options = {}
 }) => {
-  const [selectedIds, setSelectedIds] = useState([]);
-
+  // Sync checkbox DOM elements whenever selectedStudentIds or data updates
   useEffect(() => {
-    setSelectedIds([]);
-  }, [data]);
+    const currentSelectedStr = (selectedStudentIds || []).map(String);
+
+    // Sync individual row checkboxes
+    document.querySelectorAll('.student-notification-checkbox').forEach((checkbox) => {
+      const id = checkbox.getAttribute('data-id');
+      if (id) {
+        checkbox.checked = currentSelectedStr.includes(String(id));
+      }
+    });
+
+    // Sync Select All header checkbox
+    const selectAllCb = document.querySelector('#select-all-students, .select-all-students-checkbox');
+    if (selectAllCb) {
+      const allCheckboxes = document.querySelectorAll('.student-notification-checkbox');
+      if (allCheckboxes.length > 0) {
+        const allChecked = Array.from(allCheckboxes).every((cb) => cb.checked);
+        selectAllCb.checked = allChecked;
+      } else {
+        selectAllCb.checked = false;
+      }
+    }
+  }, [selectedStudentIds, data]);
 
   // Export handlers
   const exportToCSV = () => {
@@ -148,49 +170,68 @@ const ReusableDataTable = ({
   };
 
   const changePaginationTextColor = () => {
-  setTimeout(() => {
-    document.querySelectorAll('.dt-paging button').forEach((button) => {
-      if (
-        button.classList.contains('current') ||
-        button.getAttribute('aria-current') === 'page'
-      ) {
-        button.style.setProperty(
-          'color',
-          '#FFFFFF',
-          'important'
-        );
+    setTimeout(() => {
+      document.querySelectorAll('.dt-paging button').forEach((button) => {
+        if (
+          button.classList.contains('current') ||
+          button.getAttribute('aria-current') === 'page'
+        ) {
+          button.style.setProperty(
+            'color',
+            '#FFFFFF',
+            'important'
+          );
 
-        button.style.setProperty(
-          '-webkit-text-fill-color',
-          '#FFFFFF',
-          'important'
-        );
+          button.style.setProperty(
+            '-webkit-text-fill-color',
+            '#FFFFFF',
+            'important'
+          );
+        }
+      });
+    }, 300);
+  };
+
+  const defaultOptions = {
+    paging: true,
+    pageLength: 10,
+    lengthMenu: [10, 25, 50, 100],
+    searching: true,
+    ordering: true,
+    responsive: true,
+    autoWidth: false,
+    destroy: true,
+
+    dom: '<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-bottom"<"dt-length"l><"dt-search"f>>rt<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-top"<"dt-info"i><"dt-paging"p>>',
+
+    ...options,
+
+    initComplete: function () {
+      changePaginationTextColor();
+    },
+
+    drawCallback: function () {
+      changePaginationTextColor();
+
+      // Synchronize DOM checkbox states on table draw (pagination, sorting, searching)
+      const currentSelectedStr = (selectedStudentIds || []).map(String);
+      document.querySelectorAll('.student-notification-checkbox').forEach((checkbox) => {
+        const id = checkbox.getAttribute('data-id');
+        if (id) {
+          checkbox.checked = currentSelectedStr.includes(String(id));
+        }
+      });
+
+      const selectAllCb = document.querySelector('#select-all-students, .select-all-students-checkbox');
+      if (selectAllCb) {
+        const allCheckboxes = document.querySelectorAll('.student-notification-checkbox');
+        if (allCheckboxes.length > 0) {
+          const allChecked = Array.from(allCheckboxes).every((cb) => cb.checked);
+          selectAllCb.checked = allChecked;
+        }
       }
-    });
-  }, 300);
-};
- const defaultOptions = {
-  paging: true,
-  pageLength: 10,
-  lengthMenu: [10, 25, 50, 100],
-  searching: true,
-  ordering: true,
-  responsive: true,
-  autoWidth: false,
-  destroy: true,
-
-  dom: '<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-bottom"<"dt-length"l><"dt-search"f>>rt<"d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 p-3 bg-light border-top"<"dt-info"i><"dt-paging"p>>',
-
-  ...options,
-
-  initComplete: function () {
-    changePaginationTextColor();
-  },
-
-  drawCallback: function () {
-    changePaginationTextColor();
-  }
-};
+    }
+  };
 
   return (
     <>
@@ -279,6 +320,21 @@ const ReusableDataTable = ({
           <div
             className="table-responsive p-1"
             onClick={(e) => {
+              const selectAllBtn = e.target.closest('#select-all-students, .select-all-students-checkbox');
+              if (selectAllBtn) {
+                if (onSelectAllStudents) {
+                  onSelectAllStudents();
+                }
+                return;
+              }
+              const studentCb = e.target.closest('.student-notification-checkbox');
+              if (studentCb) {
+                const id = studentCb.getAttribute('data-id');
+                if (id && onStudentSelect) {
+                  onStudentSelect(String(id));
+                }
+                return;
+              }
               const statusBtn = e.target.closest('.toggle-status-btn');
               if (statusBtn) {
                 e.preventDefault();
