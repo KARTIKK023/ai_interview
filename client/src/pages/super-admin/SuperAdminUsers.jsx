@@ -28,8 +28,11 @@ const SuperAdminUsers = () => {
       setLoading(false);
     }
   };
+  const students = users.filter(
+  (user) => user.role?.toLowerCase() === 'student'
+);
 
-  const filtered = users.filter(u => {
+  const filtered = students.filter(u => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (u.name || u.fullName || '').toLowerCase().includes(q) ||
@@ -50,7 +53,9 @@ const SuperAdminUsers = () => {
           </button>
           <div className="d-flex align-items-center gap-2">
             <FaUsers className="text-primary" size={20} />
-            <h5 className="fw-bold mb-0">Total Registered Users ({users.length})</h5>
+            <h5 className="fw-bold mb-0">
+                Total Students ({students.length})
+            </h5>
           </div>
         </div>
       </header>
@@ -72,7 +77,7 @@ const SuperAdminUsers = () => {
               </div>
             </div>
             <div className="col-md-6 text-md-end text-muted small">
-              Showing {filtered.length} of {users.length} total users
+              Showing {filtered.length} of {students.length} total students
             </div>
           </div>
         </div>

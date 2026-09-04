@@ -24,8 +24,8 @@ const SuperAdminRegistrations = () => {
       const res = await API.get('/admin/registrations');
       if (res.data && res.data.success) {
 
-        const registrationsWithSerialNumber = (
-        res.data.registrations || []
+      const registrationsWithSerialNumber = (
+      res.data.registrations || []
       ).map((registration, index) => ({
         ...registration,
         serialNumber: index + 1

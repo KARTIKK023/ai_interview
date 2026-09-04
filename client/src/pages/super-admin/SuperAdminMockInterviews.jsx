@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import API from '../../services/api';
 import { FaBrain } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -7,6 +8,7 @@ import InterviewReportContent from '../../components/InterviewReportContent';
 import SuperAdminStudentProfileView from './components/SuperAdminStudentProfileView';
 
 const SuperAdminMockInterviews = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
@@ -14,6 +16,7 @@ const SuperAdminMockInterviews = () => {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || '');
 
   // Performance Report Modal States
   const [selectedReportId, setSelectedReportId] = useState(null);
@@ -23,6 +26,11 @@ const SuperAdminMockInterviews = () => {
   useEffect(() => {
     fetchInterviews();
   }, []);
+
+  useEffect(() => {
+    const statusFromUrl = searchParams.get('status') || '';
+    setSelectedStatus(statusFromUrl);
+  }, [searchParams]);
 
  const fetchInterviews = async () => {
   try {
@@ -93,47 +101,54 @@ const SuperAdminMockInterviews = () => {
   };
 
   const filteredInterviews = interviews.filter((interview) => {
-  if (!interview.createdAt) return false;
-
-  const interviewDate = new Date(interview.createdAt);
-
-  if (isNaN(interviewDate.getTime())) return false;
-
-  // MONTH FILTER
-  if (selectedMonth) {
-    const year = interviewDate.getFullYear();
-
-    const month = String(
-      interviewDate.getMonth() + 1
-    ).padStart(2, '0');
-
-    const interviewMonth = `${year}-${month}`;
-
-    if (interviewMonth !== selectedMonth) {
-      return false;
+    // STATUS FILTER
+    if (selectedStatus) {
+      const st = selectedStatus.toLowerCase();
+      const invStatus = (interview.status || 'Pending').toLowerCase();
+      if (st === 'completed') {
+        if (invStatus !== 'completed') return false;
+      } else if (st === 'pending') {
+        if (invStatus === 'completed') return false;
+      } else {
+        if (invStatus !== st) return false;
+      }
     }
-  }
 
-  // FROM DATE FILTER
-  if (startDate) {
-    const start = new Date(`${startDate}T00:00:00`);
+    // DATE FILTERS (only run when a date/month filter is actively set)
+    if (selectedMonth || startDate || endDate) {
+      if (!interview.createdAt) return false;
+      const interviewDate = new Date(interview.createdAt);
+      if (isNaN(interviewDate.getTime())) return false;
 
-    if (interviewDate < start) {
-      return false;
+      // MONTH FILTER
+      if (selectedMonth) {
+        const year = interviewDate.getFullYear();
+        const month = String(interviewDate.getMonth() + 1).padStart(2, '0');
+        const interviewMonth = `${year}-${month}`;
+        if (interviewMonth !== selectedMonth) {
+          return false;
+        }
+      }
+
+      // FROM DATE FILTER
+      if (startDate) {
+        const start = new Date(`${startDate}T00:00:00`);
+        if (interviewDate < start) {
+          return false;
+        }
+      }
+
+      // TO DATE FILTER
+      if (endDate) {
+        const end = new Date(`${endDate}T23:59:59.999`);
+        if (interviewDate > end) {
+          return false;
+        }
+      }
     }
-  }
 
-  // TO DATE FILTER
-  if (endDate) {
-    const end = new Date(`${endDate}T23:59:59.999`);
-
-    if (interviewDate > end) {
-      return false;
-    }
-  }
-
-  return true;
-});
+    return true;
+  });
 
   const columns = [
        {
@@ -240,26 +255,47 @@ const SuperAdminMockInterviews = () => {
         </div>
       </div>
 
-      {/* ================= MOCK INTERVIEW DATE FILTER ================= */}
+      {/* ================= MOCK INTERVIEW FILTER BAR ================= */}
 <div className="card border-0 shadow-sm mb-3 rounded-3">
   <div className="card-body py-3">
 
-    <div className="row g-3 align-items-end">
+    <div className="row g-2 align-items-end">
+
+      {/* Filter by Status */}
+      <div className="col-12 col-md-2">
+        <label className="form-label fw-semibold mb-1" style={{ fontSize: '0.8rem' }}>
+          Filter Status
+        </label>
+        <select
+          className="form-select form-select-sm"
+          value={selectedStatus}
+          onChange={(e) => {
+            const val = e.target.value;
+            setSelectedStatus(val);
+            if (val) {
+              setSearchParams({ status: val });
+            } else {
+              setSearchParams({});
+            }
+          }}
+        >
+          <option value="">All Statuses</option>
+          <option value="Completed">Completed Only</option>
+          <option value="Pending">Pending Only</option>
+        </select>
+      </div>
 
       {/* Search by Month */}
-      <div className="col-md-3">
-        <label className="form-label fw-semibold">
+      <div className="col-12 col-md-2">
+        <label className="form-label fw-semibold mb-1" style={{ fontSize: '0.8rem' }}>
           Search by Month
         </label>
-
         <input
           type="month"
-          className="form-control"
+          className="form-control form-control-sm"
           value={selectedMonth}
           onChange={(e) => {
             setSelectedMonth(e.target.value);
-
-            // Clear date range
             setStartDate('');
             setEndDate('');
           }}
@@ -267,22 +303,17 @@ const SuperAdminMockInterviews = () => {
       </div>
 
       {/* From Date */}
-      <div className="col-md-3">
-        <label className="form-label fw-semibold">
+      <div className="col-12 col-md-2">
+        <label className="form-label fw-semibold mb-1" style={{ fontSize: '0.8rem' }}>
           From Date
         </label>
-
         <input
           type="date"
-          className="form-control"
+          className="form-control form-control-sm"
           value={startDate}
           onChange={(e) => {
             setStartDate(e.target.value);
-
-            // Clear month filter
             setSelectedMonth('');
-
-            // Prevent invalid date range
             if (endDate && e.target.value > endDate) {
               setEndDate('');
             }
@@ -291,34 +322,33 @@ const SuperAdminMockInterviews = () => {
       </div>
 
       {/* To Date */}
-      <div className="col-md-3">
-        <label className="form-label fw-semibold">
+      <div className="col-12 col-md-2">
+        <label className="form-label fw-semibold mb-1" style={{ fontSize: '0.8rem' }}>
           To Date
         </label>
-
         <input
           type="date"
-          className="form-control"
+          className="form-control form-control-sm"
           value={endDate}
           min={startDate}
           onChange={(e) => {
             setEndDate(e.target.value);
-
-            // Clear month filter
             setSelectedMonth('');
           }}
         />
       </div>
 
       {/* Clear Filters */}
-      <div className="col-md-2">
+      <div className="col-12 col-md-2">
         <button
           type="button"
-          className="btn btn-outline-secondary w-100"
+          className="btn btn-sm btn-outline-secondary w-100"
           onClick={() => {
             setSelectedMonth('');
             setStartDate('');
             setEndDate('');
+            setSelectedStatus('');
+            setSearchParams({});
           }}
         >
           Clear Filters
@@ -326,12 +356,11 @@ const SuperAdminMockInterviews = () => {
       </div>
 
       {/* Interview Records Count */}
-      <div className="col-md-1">
-        <div className="text-muted small">
-          Records
+      <div className="col-12 col-md-2 text-md-end">
+        <div className="text-muted small" style={{ fontSize: '0.75rem' }}>
+          Records Found
         </div>
-
-        <div className="fw-bold fs-5 text-primary">
+        <div className="fw-bold fs-6 text-primary">
           {filteredInterviews.length}
         </div>
       </div>

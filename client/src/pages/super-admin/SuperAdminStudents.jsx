@@ -291,6 +291,95 @@ const SuperAdminStudents = () => {
   },
 
   {
+  title: 'Subscription Amount',
+  data: 'subscriptionAmount',
+  render: (data, _type, row) => {
+
+    const amount = data ?? row.subscriptionAmount;
+
+    // Default button when no amount exists
+    if (
+      amount === null ||
+      amount === undefined ||
+      amount === ''
+    ) {
+      return `
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-secondary"
+          style="
+            font-size: 10px;
+            font-weight: 400;
+            border-radius: 4px;
+            padding: 3px 8px;
+            background-color:
+          "
+        >
+          No Amount
+        </button>
+      `;
+    }
+
+    // When amount exists
+    return `
+      <button
+        type="button"
+        class="btn btn-sm btn-success"
+        style="
+          font-size: 10px;
+          font-weight: 400;
+          border-radius: 4px;
+          padding: 3px 8px;
+        "
+      >
+        ₹${Number(amount).toLocaleString('en-IN')}
+      </button>
+    `;
+  }
+},
+
+  {
+  title: 'Subscription',
+  data: 'subscriptionStatus',
+  render: (data, _type, row) => {
+    // Default subscription status is UNPAID
+    const subscriptionStatus = (
+      data ||
+      row.subscriptionStatus ||
+      'UNPAID'
+    ).toLowerCase();
+
+    let badgeClass = '';
+
+    if (subscriptionStatus === 'PAID') {
+      badgeClass =
+        'bg-success bg-opacity-10 text-success border border-success border-opacity-25';
+    } 
+    else if (subscriptionStatus === 'TRIAL') {
+      badgeClass =
+        'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25';
+    } 
+    else {
+      // Default UNPAID
+      badgeClass =
+        'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25';
+    }
+
+    return `
+      <span
+        class="badge ${badgeClass} px-2 py-1 fw-bold"
+        style="
+          font-size: 0.70rem;
+          min-width: 55px;
+        "
+      >
+        ${subscriptionStatus}
+      </span>
+    `;
+  }
+},
+
+  {
     title: 'Status',
     data: 'serviceStatus',
     render: (data, _type, row) => {

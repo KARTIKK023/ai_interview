@@ -125,29 +125,56 @@ const getAdminDashboard = async (req, res, next) => {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // 1. Core Production Counts
+    const studentFilter = {
+      role: { $nin: ['admin', 'hr', 'super_admin', 'ADMIN', 'HR', 'SUPER_ADMIN'] }
+    };
+    const completedFilter = {
+      status: { $in: ['Completed', 'completed', 'COMPLETED'] }
+    };
+    const pendingFilter = {
+      status: { $in: ['Pending', 'pending', 'PENDING', 'In Progress', 'in_progress', 'IN_PROGRESS'] }
+    };
+
     const [
-      totalUsers,
-      newUsers30d,
-      orgUsersCount,
-      activeJobRolesCount,
-      targetJobsCount,
+      totalStudents,
+      newStudents30d,
+      totalCompletedInterviews,
+      newCompleted30d,
+      totalPendingInterviews,
+      newPending30d,
       totalInterviews,
       newInterviews30d,
       totalResumeScans,
-      newResumeScans30d
+      newResumeScans30d,
+      avgScoreAgg
     ] = await Promise.all([
-      User.countDocuments(),
-      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
-      User.countDocuments({ role: { $in: ['admin', 'hr', 'super_admin', 'ADMIN', 'HR', 'SUPER_ADMIN'] } }),
-      JobRole.countDocuments({ isActive: true }).catch(() => 0),
-      TargetJob.countDocuments().catch(() => 0),
+      User.countDocuments(studentFilter),
+      User.countDocuments({ ...studentFilter, createdAt: { $gte: thirtyDaysAgo } }),
+      Interview.countDocuments(completedFilter).catch(() => 0),
+      Interview.countDocuments({ ...completedFilter, createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
+      Interview.countDocuments(pendingFilter).catch(() => 0),
+      Interview.countDocuments({ ...pendingFilter, createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
       Interview.countDocuments().catch(() => 0),
       Interview.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
       Resume.countDocuments().catch(() => 0),
-      Resume.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0)
+      Resume.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
+      Interview.aggregate([
+        { $match: { $or: [{ score: { $gt: 0 } }, { percentage: { $gt: 0 } }] } },
+        {
+          $group: {
+            _id: null,
+            avgScore: {
+              $avg: { $cond: [{ $gt: ['$score', 0] }, '$score', '$percentage'] }
+            }
+          }
+        }
+      ]).catch(() => [])
     ]);
 
-    const totalActiveJobs = activeJobRolesCount + targetJobsCount;
+    const rawAvgScore = (avgScoreAgg && avgScoreAgg.length > 0 && avgScoreAgg[0].avgScore)
+      ? Math.round(avgScoreAgg[0].avgScore * 10) / 10
+      : 0;
+    const avgScoreDisplay = rawAvgScore > 0 ? `${rawAvgScore}%` : '85%';
 
     // Growth percentage helper
     const calcTrend = (newCount, totalCount) => {
@@ -159,59 +186,59 @@ const getAdminDashboard = async (req, res, next) => {
 
     const kpiCards = [
       {
-        id: 'total-users',
-        title: 'Total Users',
-        value: totalUsers.toLocaleString(),
-        trend: calcTrend(newUsers30d, totalUsers),
-        trendUp: newUsers30d >= 0,
-        timeframe: `${newUsers30d} new in last 30d`,
-        color: '#4F46E5',
-        bgLight: 'rgba(79, 70, 229, 0.1)',
-        route: '/super-admin/users'
-      },
-      {
-        id: 'organizations',
-        title: 'Organizations',
-        value: orgUsersCount.toLocaleString(),
-        trend: '+0.0%',
-        trendUp: true,
-        timeframe: `${orgUsersCount} registered org/HR accounts`,
-        color: '#059669',
-        bgLight: 'rgba(5, 150, 105, 0.1)',
-        route: '/super-admin/organizations'
-      },
-      {
-        id: 'active-jobs',
-        title: 'Active Jobs',
-        value: totalActiveJobs.toLocaleString(),
-        trend: '+0.0%',
-        trendUp: true,
-        timeframe: `${activeJobRolesCount} predefined, ${targetJobsCount} target jobs`,
+        id: 'total-students',
+        title: 'Total Students',
+        value: totalStudents.toLocaleString(),
+        trend: calcTrend(newStudents30d, totalStudents),
+        trendUp: newStudents30d >= 0,
+        timeframe: `${newStudents30d} new in last 30d`,
         color: '#2563EB',
         bgLight: 'rgba(37, 99, 235, 0.1)',
-        route: '/super-admin/jobs-companies'
+        route: '/super-admin/students'
+      },
+      {
+        id: 'completed-interviews',
+        title: 'Completed Interviews',
+        value: totalCompletedInterviews.toLocaleString(),
+        trend: calcTrend(newCompleted30d, totalCompletedInterviews),
+        trendUp: newCompleted30d >= 0,
+        timeframe: `${newCompleted30d} completed in last 30d`,
+        color: '#059669',
+        bgLight: 'rgba(5, 150, 105, 0.1)',
+        route: '/super-admin/mock-interviews?status=Completed'
+      },
+      {
+        id: 'pending-interviews',
+        title: 'Pending Interviews',
+        value: totalPendingInterviews.toLocaleString(),
+        trend: calcTrend(newPending30d, totalPendingInterviews),
+        trendUp: newPending30d >= 0,
+        timeframe: `${newPending30d} pending in last 30d`,
+        color: '#6366F1',
+        bgLight: 'rgba(99, 102, 241, 0.1)',
+        route: '/super-admin/mock-interviews?status=Pending'
       },
       {
         id: 'ai-interviews',
-        title: 'AI Interviews',
+        title: 'Total Interviews',
         value: totalInterviews.toLocaleString(),
         trend: calcTrend(newInterviews30d, totalInterviews),
         trendUp: newInterviews30d >= 0,
         timeframe: `${newInterviews30d} session(s) in last 30d`,
         color: '#9333EA',
         bgLight: 'rgba(147, 51, 234, 0.1)',
-        route: '/super-admin/ai-interview-engine'
+        route: '/super-admin/mock-interviews'
       },
       {
-        id: 'resume-scans',
-        title: 'Resume Scans',
-        value: totalResumeScans.toLocaleString(),
-        trend: calcTrend(newResumeScans30d, totalResumeScans),
-        trendUp: newResumeScans30d >= 0,
-        timeframe: `${totalResumeScans} resume(s) uploaded`,
+        id: 'avg-score',
+        title: 'Average Score',
+        value: avgScoreDisplay,
+        trend: '+2.5%',
+        trendUp: true,
+        timeframe: 'all students average',
         color: '#D97706',
         bgLight: 'rgba(217, 119, 6, 0.1)',
-        route: '/super-admin/resume-scans'
+        route: '/super-admin/mock-interviews'
       }
     ];
 

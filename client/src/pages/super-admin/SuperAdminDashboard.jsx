@@ -25,17 +25,22 @@ import {
   FaChartLine,
   FaExclamationTriangle,
   FaUserGraduate,
-  FaUserPlus
+  FaUserPlus,
+  FaAward
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import SuperAdminSidebar from './SuperAdminSidebar';
 ;
 
 const kpiIconMap = {
-  'total-users': FaUsers,
-  'organizations': FaBuilding,
-  'active-jobs': FaBriefcase,
+  'total-students': FaUserGraduate,
+  'total-users': FaUserGraduate,
+  'completed-interviews': FaCheckCircle,
+  'organizations': FaCheckCircle,
+  'pending-interviews': FaClock,
+  'active-jobs': FaClock,
   'ai-interviews': FaBrain,
+  'avg-score': FaAward,
   'resume-scans': FaFileAlt
 };
 
@@ -105,17 +110,17 @@ const SuperAdminDashboard = () => {
   };
 
   const handleLogout = () => {
-  setShowLogoutModal(false);
+    setShowLogoutModal(false);
 
-  localStorage.removeItem('superAdminToken');
-  localStorage.removeItem('superAdminUser');
+    localStorage.removeItem('superAdminToken');
+    localStorage.removeItem('superAdminUser');
 
-  toast.success('Logged out successfully.');
+    toast.success('Logged out successfully.');
 
-  navigate('/super-admin/login', {
-    replace: true
-  });
-};
+    navigate('/super-admin/login', {
+      replace: true
+    });
+  };
 
   const markAllNotificationsRead = () => {
     setNotificationsList(notificationsList.map(n => ({ ...n, read: true })));
@@ -123,21 +128,37 @@ const SuperAdminDashboard = () => {
   };
 
   const routeMap = {
-    'total-users': '/super-admin/users',
-    'organizations': '/super-admin/organizations',
-    'active-jobs': '/super-admin/jobs-companies',
-    'ai-interviews': '/super-admin/ai-interview-engine',
-    'resume-scans': '/super-admin/resume-scans'
+    'total-students': '/super-admin/students',
+    'total-users': '/super-admin/students',
+    'completed-interviews': '/super-admin/mock-interviews?status=Completed',
+    'organizations': '/super-admin/mock-interviews?status=Completed',
+    'pending-interviews': '/super-admin/mock-interviews?status=Pending',
+    'active-jobs': '/super-admin/mock-interviews?status=Pending',
+    'ai-interviews': '/super-admin/mock-interviews',
+    'avg-score': '/super-admin/mock-interviews',
+    'resume-scans': '/super-admin/resumes'
   };
 
   const kpiStyleMap = {
+    'total-students': {
+      bg: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 60%, #1D4ED8 100%)',
+      shadow: '0 6px 18px -3px rgba(37, 99, 235, 0.35)'
+    },
     'total-users': {
       bg: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 60%, #1D4ED8 100%)',
       shadow: '0 6px 18px -3px rgba(37, 99, 235, 0.35)'
     },
+    'completed-interviews': {
+      bg: 'linear-gradient(135deg, #10B981 0%, #059669 60%, #047857 100%)',
+      shadow: '0 6px 18px -3px rgba(5, 150, 105, 0.35)'
+    },
     'organizations': {
       bg: 'linear-gradient(135deg, #10B981 0%, #059669 60%, #047857 100%)',
       shadow: '0 6px 18px -3px rgba(5, 150, 105, 0.35)'
+    },
+    'pending-interviews': {
+      bg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 60%, #4338CA 100%)',
+      shadow: '0 6px 18px -3px rgba(79, 70, 229, 0.35)'
     },
     'active-jobs': {
       bg: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 60%, #4338CA 100%)',
@@ -146,6 +167,10 @@ const SuperAdminDashboard = () => {
     'ai-interviews': {
       bg: 'linear-gradient(135deg, #A855F7 0%, #9333EA 60%, #7E22CE 100%)',
       shadow: '0 6px 18px -3px rgba(147, 51, 234, 0.35)'
+    },
+    'avg-score': {
+      bg: 'linear-gradient(135deg, #F59E0B 0%, #D97706 60%, #B45309 100%)',
+      shadow: '0 6px 18px -3px rgba(217, 119, 6, 0.35)'
     },
     'resume-scans': {
       bg: 'linear-gradient(135deg, #F97316 0%, #EA580C 60%, #C2410C 100%)',
@@ -157,12 +182,12 @@ const SuperAdminDashboard = () => {
   const rawKpiCards = dashboardData.kpiCards && dashboardData.kpiCards.length > 0
     ? dashboardData.kpiCards
     : [
-        { id: 'total-users', title: 'Total Users', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'vs last month', color: '#2563EB', bgLight: 'rgba(37, 99, 235, 0.1)', route: '/super-admin/users' },
-        { id: 'organizations', title: 'Organizations', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'registered org/HR accounts', color: '#059669', bgLight: 'rgba(5, 150, 105, 0.1)', route: '/super-admin/organizations' },
-        { id: 'active-jobs', title: 'Active Jobs', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'predefined & target jobs', color: '#4F46E5', bgLight: 'rgba(79, 70, 229, 0.1)', route: '/super-admin/jobs-companies' },
-        { id: 'ai-interviews', title: 'AI Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'evaluated by AI', color: '#9333EA', bgLight: 'rgba(147, 51, 234, 0.1)', route: '/super-admin/ai-interview-engine' },
-        { id: 'resume-scans', title: 'Resume Scans', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'resumes analyzed', color: '#EA580C', bgLight: 'rgba(234, 88, 12, 0.1)', route: '/super-admin/resume-scans' }
-      ];
+      { id: 'total-students', title: 'Total Students', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'registered students', color: '#2563EB', bgLight: 'rgba(37, 99, 235, 0.1)', route: '/super-admin/students' },
+      { id: 'completed-interviews', title: 'Completed Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'completed sessions', color: '#059669', bgLight: 'rgba(5, 150, 105, 0.1)', route: '/super-admin/mock-interviews?status=Completed' },
+      { id: 'pending-interviews', title: 'Pending Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'pending sessions', color: '#6366F1', bgLight: 'rgba(99, 102, 241, 0.1)', route: '/super-admin/mock-interviews?status=Pending' },
+      { id: 'ai-interviews', title: 'AI Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'evaluated by AI', color: '#9333EA', bgLight: 'rgba(147, 51, 234, 0.1)', route: '/super-admin/mock-interviews' },
+      { id: 'avg-score', title: 'Average Score', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' }
+    ];
 
   const interviewActivityData = dashboardData.interviewActivityData || [];
   const popularTargetJobs = dashboardData.popularTargetJobs || [];
@@ -389,18 +414,19 @@ const SuperAdminDashboard = () => {
                   <span className="d-block fw-bold text-white small">Master Administrator</span>
                   <span className="text-white-50" style={{ fontSize: '0.68rem' }}>superadmin@hiresmart.ai</span>
                 </div>
-              
-               <div className="pt-1 border-top border-secondary border-opacity-30">
-                <button
-                 type="button"
-                  className="btn w-100 text-start text-danger d-flex align-items-center gap-2 p-2"
-                   onClick={() => {
-                    setShowLogoutModal(true);
-                    setShowProfileMenu(false); }} >                 
-                      <FaSignOutAlt />
-                         Logout
-              </button>
-            </div>
+
+                <div className="pt-1 border-top border-secondary border-opacity-30">
+                  <button
+                    type="button"
+                    className="btn w-100 text-start text-danger d-flex align-items-center gap-2 p-2"
+                    onClick={() => {
+                      setShowLogoutModal(true);
+                      setShowProfileMenu(false);
+                    }} >
+                    <FaSignOutAlt />
+                    Logout
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -771,7 +797,7 @@ const SuperAdminDashboard = () => {
         </div>
       )}
 
-      
+
 
       {/* Custom Styles for 5-column grid & animations */}
       <style>{`
@@ -798,107 +824,107 @@ const SuperAdminDashboard = () => {
       `}</style>
 
       {/* LOGOUT CONFIRMATION MODAL */}
-{showLogoutModal && (
-  <div
-    className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-    style={{
-      background: 'rgba(0, 0, 0, 0.55)',
-      zIndex: 9999,
-      backdropFilter: 'blur(4px)'
-    }}
-  >
-    <div
-      className="bg-white shadow-lg"
-      style={{
-        width: '460px',
-        maxWidth: '90%',
-        borderRadius: '20px',
-        padding: '28px',
-        textAlign: 'center'
-      }}
-    >
-      {/* Logout Icon */}
-      <div
-        className="d-flex align-items-center justify-content-center mx-auto mb-3"
-        style={{
-          width: '72px',
-          height: '72px',
-          borderRadius: '50%',
-          background: '#FEE2E2'
-        }}
-      >
-        <FaSignOutAlt
-          size={30}
-          style={{ color: '#DC3545' }}
-        />
-      </div>
-
-      {/* Title */}
-      <h3
-        className="mb-2"
-        style={{
-          fontWeight: '600',
-          color: '#2D3748'
-        }}
-      >
-        Logout?
-      </h3>
-
-      {/* Message */}
-      <p
-        className="mb-2"
-        style={{
-          color: '#6B7280',
-          fontSize: '16px'
-        }}
-      >
-        Are you sure you want to logout from your Super Admin account?
-      </p>
-
-      <p
-        className="mb-4"
-        style={{
-          color: '#DC3545',
-          fontWeight: '600'
-        }}
-      >
-        You will need to login again to continue.
-      </p>
-
-      {/* Buttons */}
-      <div className="d-flex justify-content-center gap-3">
-        
-        <button
-          type="button"
-          className="btn btn-outline-secondary px-4 py-2"
-          onClick={() => setShowLogoutModal(false)}
+      {showLogoutModal && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
           style={{
-            minWidth: '120px',
-            borderRadius: '10px',
-            fontWeight: '600'
+            background: 'rgba(0, 0, 0, 0.55)',
+            zIndex: 9999,
+            backdropFilter: 'blur(4px)'
           }}
         >
-          Cancel
-        </button>
+          <div
+            className="bg-white shadow-lg"
+            style={{
+              width: '460px',
+              maxWidth: '90%',
+              borderRadius: '20px',
+              padding: '28px',
+              textAlign: 'center'
+            }}
+          >
+            {/* Logout Icon */}
+            <div
+              className="d-flex align-items-center justify-content-center mx-auto mb-3"
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                background: '#FEE2E2'
+              }}
+            >
+              <FaSignOutAlt
+                size={30}
+                style={{ color: '#DC3545' }}
+              />
+            </div>
 
-        <button
-          type="button"
-          className="btn btn-danger px-4 py-2 d-flex align-items-center justify-content-center gap-2"
-          onClick={handleLogout}
-          style={{
-            minWidth: '140px',
-            borderRadius: '10px',
-            fontWeight: '600'
-          }}
-        >
-          <FaSignOutAlt />
-          Logout
-        </button>
+            {/* Title */}
+            <h3
+              className="mb-2"
+              style={{
+                fontWeight: '600',
+                color: '#2D3748'
+              }}
+            >
+              Logout?
+            </h3>
 
-      </div>
-    </div>
-  </div>
-)}
+            {/* Message */}
+            <p
+              className="mb-2"
+              style={{
+                color: '#6B7280',
+                fontSize: '16px'
+              }}
+            >
+              Are you sure you want to logout from your Super Admin account?
+            </p>
+
+            <p
+              className="mb-4"
+              style={{
+                color: '#DC3545',
+                fontWeight: '600'
+              }}
+            >
+              You will need to login again to continue.
+            </p>
+
+            {/* Buttons */}
+            <div className="d-flex justify-content-center gap-3">
+
+              <button
+                type="button"
+                className="btn btn-outline-secondary px-4 py-2"
+                onClick={() => setShowLogoutModal(false)}
+                style={{
+                  minWidth: '120px',
+                  borderRadius: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-danger px-4 py-2 d-flex align-items-center justify-content-center gap-2"
+                onClick={handleLogout}
+                style={{
+                  minWidth: '140px',
+                  borderRadius: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                <FaSignOutAlt />
+                Logout
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
