@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import API from '../../services/api';
-import { FaBrain } from 'react-icons/fa';
+import { FaBrain, FaPaperPlane } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 import DataTable from './components/DataTable';
 import InterviewReportContent from '../../components/InterviewReportContent';
 import SuperAdminStudentProfileView from './components/SuperAdminStudentProfileView';
@@ -12,6 +13,10 @@ const SuperAdminMockInterviews = () => {
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
+
+  const [selectedInterviewIds, setSelectedInterviewIds] = useState([]);
+  const [sendingNotification, setSendingNotification] =
+  useState(false);
 
   const [selectedMonth, setSelectedMonth] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -150,9 +155,274 @@ const SuperAdminMockInterviews = () => {
     return true;
   });
 
+  // ==========================================
+  // SELECT ALL INTERVIEWS IN FILTERED SET
+  // ==========================================
+  const handleSelectAllInterviews = () => {
+    const allFilteredIds = filteredInterviews
+      .map((inv) => String(inv._id))
+      .filter(Boolean);
+
+    const currentSelectedStr = selectedInterviewIds.map(String);
+
+    const allSelected =
+      allFilteredIds.length > 0 &&
+      allFilteredIds.every((id) => currentSelectedStr.includes(id));
+
+    if (allSelected) {
+      setSelectedInterviewIds((previousIds) =>
+        previousIds.map(String).filter((id) => !allFilteredIds.includes(id))
+      );
+    } else {
+      setSelectedInterviewIds((previousIds) => [
+        ...new Set([...previousIds.map(String), ...allFilteredIds])
+      ]);
+    }
+  };
+
+  const handleSelectInterview = (id) => {
+    if (!id) return;
+    const targetId = String(id);
+    setSelectedInterviewIds((previousIds) => {
+      const stringIds = (previousIds || []).map(String);
+      if (stringIds.includes(targetId)) {
+        return stringIds.filter((item) => item !== targetId);
+      }
+      return [...stringIds, targetId];
+    });
+  };
+
+  // ==========================================
+  // SYNC DOM CHECKBOXES & HEADER INDETERMINATE STATE
+  // ==========================================
+  useEffect(() => {
+    const currentStr = selectedInterviewIds.map(String);
+    const filteredIds = filteredInterviews.map((inv) => String(inv._id)).filter(Boolean);
+    const selectedCount = filteredIds.filter((id) => currentStr.includes(id)).length;
+
+    const isAllSelected = filteredIds.length > 0 && selectedCount === filteredIds.length;
+    const isPartiallySelected = selectedCount > 0 && !isAllSelected;
+
+    // Sync row checkboxes
+    document.querySelectorAll('.student-notification-checkbox, .select-interview-checkbox').forEach((cb) => {
+      const id = cb.getAttribute('data-id');
+      if (id) {
+        cb.checked = currentStr.includes(String(id));
+      }
+    });
+
+    // Sync header select-all checkbox
+    const headerCb = document.querySelector('#select-all-students, #select-all-interviews, .select-all-students-checkbox, .select-all-interviews');
+    if (headerCb) {
+      headerCb.checked = isAllSelected;
+      headerCb.indeterminate = isPartiallySelected;
+    }
+  }, [selectedInterviewIds, filteredInterviews]);
+const getScoreBasedTemplate = (scoreVal) => {
+  const numericScore = Number(scoreVal) || 0;
+  if (numericScore === 0) {
+    return {
+      subject : 'Your Interview Comeback Starts Today! 🔥',
+      message: 'Don’t let one result stop you. Practice with AI-powered interviews and improve your skills with every attempt.\n\n🎁 Special Offer: Get 20% OFF'
+    };
+  } else if (numericScore < 50) {
+    return {
+      subject: 'Your Next Score Can Be Better! 🚀',
+      message: 'You’ve started your journey — now it’s time to level up. Practice more AI interviews and turn your weak areas into strengths.\n\n🎁 Get 15% OFF Your Subscription'
+    };
+  } else if (numericScore < 90) {
+    return {
+      subject: 'You’re Getting Closer! 💪',
+      message: 'Your performance is improving. Take your preparation to the next level with advanced AI interviews and personalized feedback.\n\n🎁 Get 10% OFF'
+    };
+  } else {
+    return {
+      subject: '90%+ Accuracy! You’re Interview Ready! 🏆',
+      message: 'Your performance is outstanding! Now challenge yourself with advanced interviews and get closer to your dream job.\n\n🔥 Unlock Elite Preparation & Get 15% OFF'
+    };
+  }
+};
+
+//send mail with score-based dynamic template
+const handleSendScoreNotification = async (targetIds = null) => {
+  const idsToSend = Array.isArray(targetIds) && targetIds.length > 0
+    ? targetIds
+    : selectedInterviewIds;
+
+  if (idsToSend.length === 0) {
+    toast.error('Please select at least one mock interview to send a message.');
+    return;
+  }
+
+  const selectedList = interviews.filter(inv => idsToSend.includes(String(inv._id)));
+  let formValues = null;
+
+  if (idsToSend.length === 1 && selectedList.length === 1) {
+    const singleInv = selectedList[0];
+    const candidateName = singleInv.candidateId?.fullName || singleInv.candidateId?.name || singleInv.candidateName || 'Candidate';
+    const scoreVal = Number(singleInv.score ?? singleInv.percentage ?? 0);
+    const template = getScoreBasedTemplate(scoreVal);
+    const badgeColor = scoreVal >= 90 ? '#10B981' : scoreVal >= 50 ? '#3B82F6' : scoreVal > 0 ? '#F59E0B' : '#EF4444';
+
+    const { value } = await Swal.fire({
+      title: `<span style="color:#4C1D95; font-weight:700;">Send Score-Based Email Message</span>`,
+      html: `
+        <div style="text-align:left;">
+          <div style="background:#F3E8FF; border:1px solid #E9D5FF; border-radius:8px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <strong style="color:#4C1D95; font-size:0.95rem;">${candidateName}</strong>
+              <div style="font-size:0.775rem; color:#6B7280;">Mock Interview Performance Score</div>
+            </div>
+            <span class="badge" style="background-color:${badgeColor}; font-size:0.9rem; padding:6px 12px; font-weight:700; border-radius:6px; color:#ffffff;">
+              ${scoreVal}%
+            </span>
+          </div>
+
+          <label style="font-weight:600; font-size:0.875rem; margin-bottom:4px; display:block;">Email Subject</label>
+          <input id="swal-subject" class="swal2-input" style="width:100%; margin:0 0 14px 0; font-size:0.9rem;" value="${template.subject}" placeholder="Enter email subject..." />
+
+          <label style="font-weight:600; font-size:0.875rem; margin-bottom:4px; display:block;">Email Message</label>
+          <textarea id="swal-message" class="swal2-textarea" style="width:100%; margin:0 0 10px 0; font-size:0.9rem; min-height:100px;" placeholder="Enter email message content...">${template.message}</textarea>
+          
+          <div style="font-size:0.775rem; color:#6B7280; font-style:italic; margin-top:6px;">
+            💡 Note: Template content is auto-filled based on candidate's score bracket (${scoreVal}%). You can customize subject or message above.
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonColor: '#6D28D9',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: `Send Performance Email`,
+      cancelButtonText: 'Cancel',
+      preConfirm: () => {
+        const subject = document.getElementById('swal-subject').value.trim();
+        const message = document.getElementById('swal-message').value.trim();
+        if (!subject || !message) {
+          Swal.showValidationMessage('Please provide both subject and message.');
+          return false;
+        }
+        return { subject, message };
+      }
+    });
+
+    if (!value) return;
+    formValues = value;
+  } else {
+    // Bulk distribution summary
+    const scoreCounts = { zero: 0, low: 0, mid: 0, high: 0 };
+    selectedList.forEach(inv => {
+      const s = Number(inv.score ?? inv.percentage ?? 0);
+      if (s === 0) scoreCounts.zero++;
+      else if (s < 50) scoreCounts.low++;
+      else if (s < 90) scoreCounts.mid++;
+      else scoreCounts.high++;
+    });
+
+    const { value } = await Swal.fire({
+      title: `<span style="color:#4C1D95; font-weight:700;">Send Score-Based Email Messages</span>`,
+      html: `
+        <p class="text-muted small mb-3">Sending score-personalized performance emails to <strong>${idsToSend.length}</strong> selected candidate(s).</p>
+        <div style="text-align:left;">
+          <div style="background:#F9FAFB; padding:12px; border-radius:8px; border:1px solid #E5E7EB; margin-bottom:14px;">
+            <div style="font-weight:600; font-size:0.85rem; margin-bottom:8px; color:#374151;">Score Distribution Breakdown:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              <span class="badge bg-danger" style="padding:6px 10px; font-size:0.8rem;">🔴 0%: ${scoreCounts.zero}</span>
+              <span class="badge bg-warning text-dark" style="padding:6px 10px; font-size:0.8rem;">🟠 1-49%: ${scoreCounts.low}</span>
+              <span class="badge bg-primary" style="padding:6px 10px; font-size:0.8rem;">🟢 50-89%: ${scoreCounts.mid}</span>
+              <span class="badge bg-success" style="padding:6px 10px; font-size:0.8rem;">🏆 90%+: ${scoreCounts.high}</span>
+            </div>
+          </div>
+          <p style="font-size:0.825rem; color:#4B5563; line-height:1.5; margin:0;">
+            ✨ Each candidate will automatically receive a customized email notification tailored specifically to their individual mock interview score.
+          </p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: '#6D28D9',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: `Send Personalized Emails (${idsToSend.length})`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!value) return;
+  }
+
+  try {
+    setSendingNotification(true);
+    const payload = { interviewIds: idsToSend };
+    if (formValues) {
+      payload.subject = formValues.subject;
+      payload.message = formValues.message;
+    }
+
+    const res = await API.post('/notifications/send-score-notification', payload);
+
+    if (res.data?.success) {
+      Swal.fire({
+        title: 'Emails Sent!',
+        text: res.data.message || `Performance message sent successfully to ${res.data.successCount} student(s).`,
+        icon: 'success',
+        confirmButtonColor: '#6D28D9'
+      });
+      setSelectedInterviewIds([]);
+    } else {
+      toast.error(res.data?.message || 'Failed to send performance notification.');
+    }
+  } catch (error) {
+    console.error('Score notification error:', error);
+    toast.error(error.response?.data?.message || 'Failed to send performance notification email.');
+  } finally {
+    setSendingNotification(false);
+  }
+};
+
+  const allFilteredIds = filteredInterviews
+    .map((inv) => String(inv._id))
+    .filter(Boolean);
+
+  const currentSelectedStr = (selectedInterviewIds || []).map(String);
+  const selectedInFilteredCount = allFilteredIds.filter((id) => currentSelectedStr.includes(id)).length;
+  const isAllSelected = allFilteredIds.length > 0 && selectedInFilteredCount === allFilteredIds.length;
+
   const columns = [
-       {
-  title: '<span style="display:block; width:70px; text-align:center;">S.No.</span>',
+    //checkbox
+   {
+  title: `
+    <div style="text-align:center;">
+      <input
+        type="checkbox"
+        id="select-all-students"
+        class="select-all-students-checkbox select-all-interviews"
+        ${isAllSelected ? 'checked' : ''}
+      />
+    </div>
+  `,
+  data: '_id',
+  orderable: false,
+  searchable: false,
+
+  render: (data, _type, row) => {
+    const rowId = String(row._id || data);
+    const checked = currentSelectedStr.includes(rowId)
+      ? 'checked'
+      : '';
+
+    return `
+      <div style="text-align:center;">
+        <input
+          type="checkbox"
+          class="student-notification-checkbox select-interview-checkbox"
+          data-id="${rowId}"
+          ${checked}
+        />
+      </div>
+    `;
+  }
+},
+ //serial number
+ {
+  title: 'S.No.',
   data: 'serialNumber',
   orderable: false,
   searchable: false,
@@ -166,7 +436,7 @@ const SuperAdminMockInterviews = () => {
     </span>
   `
 },
-     
+//candiName     
     {
       title: 'Candidate Name',
       data: 'candidateId',
@@ -180,21 +450,25 @@ const SuperAdminMockInterviews = () => {
         `;
       }
     },
+    //Job Role
     {
       title: 'Job Role / Title',
       data: 'jobRole',
       render: (data, _type, row) => data || row.title || 'Scenario Evaluation'
     },
-    {
-      title: 'Category',
-      data: 'category',
-      render: (data) => `<span class="badge bg-secondary">${data || 'Technical'}</span>`
-    },
+    // Category
+    // {
+    //   title: 'Category',
+    //   data: 'category',
+    //   render: (data) => `<span class="badge bg-secondary">${data || 'Technical'}</span>`
+    // },
+    // Mode
     {
       title: 'Mode',
       data: 'mode',
       render: (data) => `<span class="badge bg-info">${data || 'Text'}</span>`
     },
+    //Status
     {
       title: 'Status',
       data: 'status',
@@ -203,6 +477,7 @@ const SuperAdminMockInterviews = () => {
         return `<span class="badge ${badgeClass}">${data || 'Pending'}</span>`;
       }
     },
+    //Ai Score
     {
       title: 'AI Score',
       data: 'score',
@@ -211,11 +486,13 @@ const SuperAdminMockInterviews = () => {
         return `<strong class="text-success">${val}%</strong>`;
       }
     },
+    //Date
     {
       title: 'Date',
       data: 'createdAt',
       render: (data) => `<span class="text-nowrap font-monospace small">${formatDateTime(data)}</span>`
     },
+    // Performance
     {
       title: 'Performance Report',
       data: '_id',
@@ -244,14 +521,37 @@ const SuperAdminMockInterviews = () => {
   return (
     <div className="p-3.5">
       <div className="card border-0 shadow-sm p-3 mb-3 rounded-3 text-white" style={{ background: '#4C1D95' }}>
-        <div className="d-flex align-items-center justify-content-between">
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div className="d-flex align-items-center gap-2">
             <FaBrain className="text-white" size={22} />
             <h5 className="fw-bold mb-0 text-white">Mock Interviews ({interviews.length})</h5>
           </div>
-          <span className="badge rounded-pill px-3 py-1" style={{ background: '#8B5CF6', color: '#FFFFFF' }}>
-            Gemini AI Evaluations
-          </span>
+
+          <div className="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-light fw-bold d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill shadow-sm"
+              style={{ color: '#4C1D95', opacity: selectedInterviewIds.length === 0 ? 0.7 : 1 }}
+              disabled={selectedInterviewIds.length === 0 || sendingNotification}
+              onClick={() => handleSendScoreNotification()}
+            >
+              {sendingNotification ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <FaPaperPlane size={14} style={{ color: '#4C1D95' }} />
+                  Send Message {selectedInterviewIds.length > 0 && `(${selectedInterviewIds.length})`}
+                </>
+              )}
+            </button>
+
+            <span className="badge rounded-pill px-3 py-1" style={{ background: '#8B5CF6', color: '#FFFFFF' }}>
+              Gemini AI Evaluations
+            </span>
+          </div>
         </div>
       </div>
 
@@ -377,6 +677,9 @@ const SuperAdminMockInterviews = () => {
         loading={loading}
         onReportClick={handleOpenReport}
         onStudentClick={(id) => setSelectedStudentId(id)}
+        selectedStudentIds={selectedInterviewIds}
+        onStudentSelect={handleSelectInterview}
+        onSelectAllStudents={handleSelectAllInterviews}
       />
 
       {/* PERFORMANCE REPORT MODAL */}

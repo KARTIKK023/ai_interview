@@ -95,79 +95,545 @@ const ReusableDataTable = ({
     toast.success(`Exported ${data.length} records to CSV`);
   };
 
-  const exportToExcel = () => {
-    if (!data || data.length === 0) {
-      toast.error('No data available to export');
-      return;
+const exportToExcel = () => {
+  if (!data || data.length === 0) {
+    toast.error('No data available to export');
+    return;
+  }
+
+  // =========================================================
+  // 1. FIND ONLY COLUMNS THAT SHOULD BE EXPORTED
+  // =========================================================
+  const exportColumns = columns.filter((column) => {
+    const rawTitle = String(column.title || '');
+    const plainTitle = rawTitle
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    // -------------------------------------------------------
+    // REMOVE CHECKBOX / SELECT COLUMN
+    // -------------------------------------------------------
+    const hasCheckbox =
+      rawTitle.includes('type="checkbox"') ||
+      rawTitle.includes("type='checkbox'") ||
+      rawTitle.includes('checkbox') ||
+      rawTitle.includes('select-all') ||
+      rawTitle.includes('select all') ||
+      plainTitle === 'select';
+
+    if (hasCheckbox) {
+      return false;
     }
 
-    const formattedData = data.map((row) => {
-      const rowObj = {};
-      columns.forEach((c) => {
-        const header = c.title || c.data;
-        let val;
-        if (typeof c.render === 'function') {
-          try {
-            val = c.render(row[c.data], 'export', row);
-          } catch (err) {
-            val = row[c.data];
+    // -------------------------------------------------------
+    // REMOVE PERFORMANCE REPORT / VIEW COLUMN
+    // -------------------------------------------------------
+    if (
+      plainTitle === 'performance report' ||
+      plainTitle === 'performance report view' ||
+      plainTitle === 'view' ||
+      plainTitle.includes('performance report')
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // =========================================================
+  // 2. CONVERT HTML TO CLEAN TEXT
+  // =========================================================
+  const cleanText = (value) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return '';
+    }
+
+    const temp =
+      document.createElement('div');
+
+    temp.innerHTML = String(value);
+
+    // Remove checkboxes and form controls
+    temp
+      .querySelectorAll(
+        'input, select, textarea'
+      )
+      .forEach((element) => {
+        element.remove();
+      });
+
+    // Keep only button text
+    temp
+      .querySelectorAll('button')
+      .forEach((button) => {
+        button.replaceWith(
+          document.createTextNode(
+            button.textContent || ''
+          )
+        );
+      });
+
+    // Keep only link text
+    temp
+      .querySelectorAll('a')
+      .forEach((link) => {
+        link.replaceWith(
+          document.createTextNode(
+            link.textContent || ''
+          )
+        );
+      });
+
+    return temp.textContent
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // =========================================================
+  // 3. CREATE EXCEL ROW DATA
+  // =========================================================
+  const formattedData = data.map(
+    (row, rowIndex) => {
+
+      const rowObject = {};
+
+      exportColumns.forEach(
+        (column) => {
+
+          const header =
+            cleanText(
+              column.title ||
+              column.data
+            );
+
+          let value;
+
+          // -------------------------------------------------
+          // S.NO.
+          // -------------------------------------------------
+          if (
+            column.data ===
+            'serialNumber'
+          ) {
+            value =
+              row.serialNumber ??
+              rowIndex + 1;
           }
-        } else {
-          val = row[c.data];
+
+          // -------------------------------------------------
+          // SUBSCRIPTION AMOUNT
+          // -------------------------------------------------
+          else if (
+            column.data ===
+            'subscriptionAmount'
+          ) {
+            const amount =
+              row.subscriptionAmount;
+
+            if (
+              amount === null ||
+              amount === undefined ||
+              amount === ''
+            ) {
+              value =
+                'Not Amount';
+            } else {
+              value =
+                `₹${Number(
+                  amount
+                ).toLocaleString(
+                  'en-IN'
+                )}`;
+            }
+          }
+
+          // -------------------------------------------------
+          // SUBSCRIPTION STATUS
+          // -------------------------------------------------
+          else if (
+            column.data ===
+            'subscriptionStatus'
+          ) {
+            value = (
+              row.subscriptionStatus ||
+              'UNPAID'
+            ).toLowerCase();
+          }
+
+          // -------------------------------------------------
+          // NORMAL RENDERED COLUMN
+          // -------------------------------------------------
+          else if (
+            typeof column.render ===
+            'function'
+          ) {
+            try {
+              value =
+                column.render(
+                  row[column.data],
+                  'display',
+                  row
+                );
+            } catch (error) {
+              value =
+                row[column.data];
+            }
+          }
+
+          // -------------------------------------------------
+          // NORMAL DATA
+          // -------------------------------------------------
+          else {
+            value =
+              row[column.data];
+          }
+
+          rowObject[header] =
+            cleanText(value);
         }
+      );
 
-        if (val === undefined || val === null) {
-          val = '';
-        }
-
-        if (typeof val === 'string') {
-          val = val
-            .replace(/<[^>]*>?/gm, '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .trim();
-        }
-
-        rowObj[header] = val;
-      });
-      return rowObj;
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(formattedData);
-
-    // Dynamic column width calculation for clean formatting in Excel
-    const colWidths = columns.map((c) => {
-      const header = c.title || c.data;
-      let maxLen = header.length;
-      formattedData.forEach((row) => {
-        const cellVal = String(row[header] || '');
-        if (cellVal.length > maxLen) {
-          maxLen = cellVal.length;
-        }
-      });
-      return { wch: Math.min(Math.max(maxLen + 3, 12), 40) };
-    });
-    worksheet['!cols'] = colWidths;
-
-    const workbook = XLSX.utils.book_new();
-    const sheetName = title ? title.substring(0, 31).replace(/[\/*?:\[\]]/g, '') : 'Sheet1';
-    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-
-    const fileName = `${title.toLowerCase().replace(/\s+/g, '_')}_export.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-
-    toast.success(`Exported ${data.length} records to Excel (.xlsx)`);
-  };
-
-  const handlePrint = () => {
-    if (!data || data.length === 0) {
-      toast.error('No data available to print');
-      return;
+      return rowObject;
     }
-    window.print();
+  );
+
+  // =========================================================
+  // 4. CREATE WORKSHEET
+  // =========================================================
+  const worksheet =
+    XLSX.utils.json_to_sheet(
+      formattedData
+    );
+
+  // =========================================================
+  // 5. AUTO COLUMN WIDTH
+  // =========================================================
+  worksheet['!cols'] =
+    exportColumns.map(
+      (column) => {
+
+        const header =
+          cleanText(
+            column.title ||
+            column.data
+          );
+
+        let maxLength =
+          header.length;
+
+        formattedData.forEach(
+          (row) => {
+
+            const value =
+              String(
+                row[header] || ''
+              );
+
+            if (
+              value.length >
+              maxLength
+            ) {
+              maxLength =
+                value.length;
+            }
+          }
+        );
+
+        return {
+          wch: Math.min(
+            Math.max(
+              maxLength + 3,
+              12
+            ),
+            40
+          )
+        };
+      }
+    );
+
+  // =========================================================
+  // 6. CREATE WORKBOOK
+  // =========================================================
+  const workbook =
+    XLSX.utils.book_new();
+
+  const sheetName =
+    title
+      ? title
+          .substring(0, 31)
+          .replace(
+            /[\/*?:\[\]]/g,
+            ''
+          )
+      : 'Sheet1';
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    sheetName
+  );
+
+  // =========================================================
+  // 7. DOWNLOAD EXCEL
+  // =========================================================
+  const fileName =
+    `${title
+      .toLowerCase()
+      .replace(
+        /\s+/g,
+        '_'
+      )}_export.xlsx`;
+
+  XLSX.writeFile(
+    workbook,
+    fileName
+  );
+
+  toast.success(
+    `Exported ${data.length} records to Excel (.xlsx)`
+  );
+};
+
+ const handlePrint = () => {
+  if (!data || data.length === 0) {
+    toast.error('No data available to print');
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+
+  if (!printWindow) {
+    toast.error('Please allow popups to print.');
+    return;
+  }
+
+  // Remove columns that should not appear in print
+  const printableColumns = columns.filter((column) => {
+    const title = String(column.title || '');
+
+    // Remove checkbox / Select All column
+    if (
+      title.includes('select-all-students') ||
+      title.includes('select-all-interviews')
+    ) {
+      return false;
+    }
+
+    // Remove Performance Report / View column
+    if (
+      title.toLowerCase().includes('performance report') ||
+      title.toLowerCase().includes('view report')
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Convert HTML generated by render() into plain text
+  const cleanText = (value) => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    const temp = document.createElement('div');
+    temp.innerHTML = String(value);
+
+    // Remove buttons, inputs and other controls
+    temp.querySelectorAll('button, input, select, textarea').forEach((el) => {
+      el.remove();
+    });
+
+    return temp.textContent
+      .replace(/\s+/g, ' ')
+      .trim();
   };
+
+  // Create table headers
+  const headers = printableColumns
+    .map((column) => {
+      const temp = document.createElement('div');
+      temp.innerHTML = String(column.title || column.data || '');
+
+      // Remove HTML controls
+      temp.querySelectorAll('button, input, select, textarea').forEach((el) => {
+        el.remove();
+      });
+
+      return temp.textContent.replace(/\s+/g, ' ').trim();
+    })
+    .map((header) => `<th>${header}</th>`)
+    .join('');
+
+  // Create table rows
+  const tableRows = data
+    .map((row, rowIndex) => {
+      const cells = printableColumns
+        .map((column) => {
+          let value;
+
+         if (column.data === 'subscriptionAmount') {
+  const amount = row.subscriptionAmount;
+
+  if (
+    amount === null ||
+    amount === undefined ||
+    amount === ''
+  ) {
+    value = 'Not Amount';
+  } else {
+    value = `₹${Number(amount).toLocaleString('en-IN')}`;
+  }
+
+} else if (column.data === 'subscriptionStatus') {
+  value = (
+    row.subscriptionStatus ||
+    'UNPAID'
+  ).toLowerCase();
+
+} else if (typeof column.render === 'function') {
+  try {
+    value = column.render(
+      row[column.data],
+      'display',
+      row
+    );
+  } catch (error) {
+    value = row[column.data];
+  }
+} else {
+  value = row[column.data];
+}
+
+          const text = cleanText(value);
+
+          return `<td>${text || ''}</td>`;
+        })
+        .join('');
+
+      return `<tr>${cells}</tr>`;
+    })
+    .join('');
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title}</title>
+
+        <style>
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 30px;
+            color: #111827;
+            background: #ffffff;
+          }
+
+          .print-header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 10px;
+          }
+
+          .print-header h1 {
+            margin: 0 0 6px;
+            font-size: 22px;
+          }
+
+          .print-header p {
+            margin: 0;
+            font-size: 12px;
+            color: #4B5563;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+          }
+
+          th {
+            background: #F3F4F6;
+            color: #111827;
+            font-weight: 700;
+            text-align: left;
+            padding: 9px 10px;
+            border: 1px solid #CBD5E1;
+            font-size: 11px;
+          }
+
+          td {
+            padding: 8px 10px;
+            border: 1px solid #E2E8F0;
+            color: #1E293B;
+            font-size: 11px;
+            vertical-align: middle;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+
+          @media print {
+            body {
+              padding: 15px;
+            }
+
+            @page {
+              size: landscape;
+              margin: 10mm;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+
+        <div class="print-header">
+          <h1>${title}</h1>
+
+          <p>
+            Total Records: ${data.length}
+            |
+            Printed: ${new Date().toLocaleString()}
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              ${headers}
+            </tr>
+          </thead>
+
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+
+        <script>
+          window.onload = function () {
+            window.focus();
+            window.print();
+          };
+        <\/script>
+
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+};
 
   const changePaginationTextColor = () => {
     setTimeout(() => {

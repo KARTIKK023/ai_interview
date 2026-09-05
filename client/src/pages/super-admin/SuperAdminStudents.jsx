@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import DataTable from './components/DataTable';
 import SuperAdminStudentProfileView from './components/SuperAdminStudentProfileView';
+import { FaWhatsapp } from 'react-icons/fa';
 
 const SuperAdminStudents = () => {
   const [students, setStudents] = useState([]);
@@ -208,9 +209,47 @@ const SuperAdminStudents = () => {
   return true;
 });
 
+useEffect(() => {
+  const handleWhatsAppClick = (event) => {
+    const button = event.target.closest('.whatsapp-message-btn');
+
+    if (!button) return;
+
+    const phone = button.dataset.phone;
+    const studentName = button.dataset.name;
+
+    const cleanNumber = phone.replace(/\D/g, '');
+
+    const whatsappNumber =
+      cleanNumber.length === 10
+        ? `91${cleanNumber}`
+        : cleanNumber;
+
+    const message = `Hello ${studentName}, 👋
+
+This is a message from HireSmart AI.
+
+We are happy to have you with us. You can access your AI-powered interview preparation and continue improving your interview skills.
+
+Best regards,
+HireSmart AI Team 🚀`;
+
+    const whatsappUrl =
+      `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
+  document.addEventListener('click', handleWhatsAppClick);
+
+  return () => {
+    document.removeEventListener('click', handleWhatsAppClick);
+  };
+}, []);
+
   const columns = [
-  {
-  title: '<span style="display:block; width:70px; text-align:center;">S.No.</span>',
+ {
+  title: 'S.No.',
   data: 'serialNumber',
   orderable: false,
   searchable: false,
@@ -265,6 +304,49 @@ const SuperAdminStudents = () => {
     }
   },
 
+ {
+  title: 'WhatsApp',
+  data: null,
+  orderable: false,
+  searchable: false,
+  render: (_data, _type, row) => {
+
+    const phone =
+      row.mobileNumber ||
+      row.profile?.phone ||
+      row.phone ||
+      row.phoneNumber;
+
+    if (!phone) {
+      return '<span class="text-muted">No Number</span>';
+    }
+
+    return `
+      <button
+        type="button"
+        class="whatsapp-message-btn"
+        data-phone="${phone}"
+        data-name="${row.fullName || row.name || 'Student'}"
+        title="Send WhatsApp Message"
+        style="
+          border: none;
+          background: transparent;
+          padding: 4px;
+          cursor: pointer;
+        "
+      >
+        <img
+          src="https://cdn.simpleicons.org/whatsapp/25D366"
+          alt="WhatsApp"
+          width="25"
+          height="25"
+          style="display:block;"
+        />
+      </button>
+    `;
+  }
+},
+
   {
     title: 'Role',
     data: 'role',
@@ -290,14 +372,14 @@ const SuperAdminStudents = () => {
       `<span class="text-nowrap font-monospace small">${formatDateTime(data)}</span>`
   },
 
-  {
+ {
   title: 'Subscription Amount',
   data: 'subscriptionAmount',
-  render: (data, _type, row) => {
 
+  render: (data, _type, row) => {
     const amount = data ?? row.subscriptionAmount;
 
-    // Default button when no amount exists
+    // No amount
     if (
       amount === null ||
       amount === undefined ||
@@ -306,30 +388,35 @@ const SuperAdminStudents = () => {
       return `
         <button
           type="button"
-          class="btn btn-sm btn-outline-secondary"
+          class="btn btn-sm"
           style="
             font-size: 10px;
-            font-weight: 400;
-            border-radius: 4px;
-            padding: 3px 8px;
-            background-color:
+            font-weight: 600;
+            border-radius: 5px;
+            padding: 4px 10px;
+            background-color: #FEF2F2;
+            color: #DC2626;
+            border: 1px solid #EF4444;
           "
         >
-          No Amount
+          Not Amount
         </button>
       `;
     }
 
-    // When amount exists
+    // Amount exists
     return `
       <button
         type="button"
-        class="btn btn-sm btn-success"
+        class="btn btn-sm"
         style="
           font-size: 10px;
-          font-weight: 400;
-          border-radius: 4px;
-          padding: 3px 8px;
+          font-weight: 600;
+          border-radius: 5px;
+          padding: 4px 10px;
+          background-color: #FEF2F2;
+          color: #DC2626;
+          border: 1px solid #EF4444;
         "
       >
         ₹${Number(amount).toLocaleString('en-IN')}
