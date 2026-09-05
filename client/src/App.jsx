@@ -23,6 +23,7 @@ import AtsScanner from './pages/student/AtsScanner';
 import StudentAchievements from './pages/student/StudentAchievements';
 import PlacementOpportunities from './pages/student/PlacementOpportunities';
 import HelpSupport from './pages/student/HelpSupport';
+import Ask from './pages/student/Ask';
 
 // Interview Preparation Pages
 import AIMockInterviewLevels from './pages/student/interview-preparation/AIMockInterviewLevels';
@@ -252,6 +253,15 @@ function App() {
       <Route
         path="/student/question-bank"
         element={<Navigate to="/student/question-bank-reader" replace />}
+      />
+
+      <Route
+        path="/student/ask"
+        element={
+          <ProtectedRoute allowedRoles={['STUDENT']}>
+            <Ask />
+          </ProtectedRoute>
+        }
       />
 
 

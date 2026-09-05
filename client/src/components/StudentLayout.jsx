@@ -2,6 +2,7 @@ import React from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import AICompanion from "../components/student/AICompanion";
 
 const StudentLayout = ({ children }) => {
   return (
@@ -41,6 +42,7 @@ const StudentLayout = ({ children }) => {
             {children}
           </main>
           <Footer />
+          <AICompanion />
         </div>
       </div>
     </div>

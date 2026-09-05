@@ -49,6 +49,7 @@ const placementRoutes = require('./routes/placementRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const askRoutes = require('./routes/askRoutes');
 
 // Mount Routers
 app.use('/api/auth', authRoutes);
@@ -63,6 +64,7 @@ app.use('/api/job-roles', jobRoleRoutes);
 app.use('/api/target-jobs', targetJobRoutes);
 app.use('/api/placement-opportunities', placementRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/ask', askRoutes);
 app.use(
   '/api/notifications',
   notificationRoutes
