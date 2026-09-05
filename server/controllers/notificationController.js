@@ -1,5 +1,10 @@
 const User = require('../models/User');
-const { sendNotificationEmail } = require('../services/emailService');
+const MockInterview = require('../models/Interview');
+
+const {
+  sendNotificationEmail,
+  sendScoreBasedNotificationEmail
+} = require('../services/emailService');
 
 const sendNotification = async (req, res, next) => {
   try {
@@ -102,7 +107,126 @@ const sendNotification = async (req, res, next) => {
   }
 };
 
+const sendScoreBasedNotification = async (req, res, next) => {
+  try {
+
+    const { interviewIds, subject: customSubject, message: customMessage } = req.body;
+
+    // Check interviews selected
+    if (
+      !interviewIds ||
+      !Array.isArray(interviewIds) ||
+      interviewIds.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select at least one interview.'
+      });
+    }
+
+    // Find selected interviews
+    const interviews = await MockInterview
+      .find({
+        _id: { $in: interviewIds }
+      })
+      .populate(
+        'candidateId',
+        'fullName name email'
+      );
+
+    if (interviews.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No selected interviews found.'
+      });
+    }
+
+    const results = [];
+
+    // Send score-based email
+    for (const interview of interviews) {
+
+      const student = interview.candidateId;
+
+      if (!student || !student.email) {
+
+        results.push({
+          interviewId: interview._id,
+          success: false,
+          message: 'Student email not found.'
+        });
+
+        continue;
+      }
+
+      // IMPORTANT:
+      // Status is NOT considered.
+      // Only score is considered.
+      const score = Number(
+        interview.score ??
+        interview.percentage ??
+        0
+      );
+
+      const result =
+        await sendScoreBasedNotificationEmail(
+          student.email,
+          student.fullName ||
+          student.name ||
+          'Student',
+          score,
+          customSubject,
+          customMessage
+        );
+
+      results.push({
+        interviewId: interview._id,
+        studentId: student._id,
+        email: student.email,
+        score,
+        success: result.success,
+        messageId: result.messageId
+      });
+    }
+
+    const successCount =
+      results.filter(
+        result => result.success
+      ).length;
+
+    const failedCount =
+      results.length - successCount;
+
+    return res.status(200).json({
+
+      success: true,
+
+      message:
+        `Performance message sent to ${successCount} student(s).`,
+
+      totalSelected:
+        interviewIds.length,
+
+      successCount,
+
+      failedCount,
+
+      results
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      'SEND SCORE NOTIFICATION ERROR:',
+      error
+    );
+
+    next(error);
+  }
+};
 
 module.exports = {
-  sendNotification
+  sendNotification,
+  sendScoreBasedNotification
 };
