@@ -245,18 +245,7 @@ const AIMockInterview = () => {
                             <div className="text-muted extra-small">Job Type</div>
                             <div className="fw-semibold text-dark">{selectedTargetJob.job_type || 'Full Time'}</div>
                           </div>
-                          {selectedTargetJob.required_skills && selectedTargetJob.required_skills.length > 0 && (
-                            <div className="col-12 border-top pt-2">
-                              <div className="text-muted extra-small mb-1">Required Skills for Questions:</div>
-                              <div className="d-flex flex-wrap gap-1">
-                                {selectedTargetJob.required_skills.map((skill, idx) => (
-                                  <span key={idx} className="badge bg-secondary extra-small">
-                                    {skill}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          
                         </div>
                       </div>
                     )}

@@ -1,60 +1,56 @@
-import React, {
-  useState,
-  useContext,
-  useEffect,
-  useRef
-} from 'react';
-
+import React, { useContext, useEffect, useState } from 'react';
 import StudentLayout from '../../components/StudentLayout';
 import { AuthContext } from '../../context/AuthContext';
 
 import {
-  FaQuestionCircle,
   FaHeadset,
   FaEnvelope,
   FaPaperPlane,
   FaCheckCircle,
   FaChevronDown,
   FaChevronUp,
-  FaRobot,
   FaShieldAlt,
   FaBriefcase,
   FaAward,
-  FaTimes,
-  FaRedo,
-  FaArrowRight
+  FaWhatsapp,
+  FaMapMarkerAlt,
+  FaClock,
+  FaGlobe,
+  FaHistory,
+  FaExternalLinkAlt,
 } from 'react-icons/fa';
 
 import toast from 'react-hot-toast';
 
 const HelpSupport = () => {
-
-  const { user } = useContext(AuthContext);
-
-  // ============================================================
-  // SUPPORT FORM
-  // ============================================================
+  const { user, token } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     subject: '',
-    category: 'Technical',
-    message: ''
+    message: '',
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [supportHistory, setSupportHistory] = useState([]);
   const [openFaq, setOpenFaq] = useState(null);
 
   // ============================================================
-  // AI CHATBOT
+  // AUTH HEADERS
   // ============================================================
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatTyping, setChatTyping] = useState(false);
+  const getAuthHeaders = () => {
+    const authToken =
+      token ||
+      localStorage.getItem('studentToken') ||
+      localStorage.getItem('token');
 
-  const chatBodyRef = useRef(null);
-  const chatInputRef = useRef(null);
+    return authToken
+      ? {
+          Authorization: `Bearer ${authToken}`,
+        }
+      : {};
+  };
 
   // ============================================================
   // FAQ DATA
@@ -65,401 +61,168 @@ const HelpSupport = () => {
       id: 1,
       question: 'How does the AI Mock Interview evaluate my responses?',
       answer:
-        'Our AI engine analyzes your responses against key competency criteria for your target job role. It evaluates technical accuracy, logical structure, clarity, and completeness, providing instant scores out of 100 alongside tailored strengths and improvement feedback.',
-      icon: FaRobot
+        'The AI Mock Interview evaluates your responses based on the requirements of your selected job role. It considers factors such as relevance, clarity, technical understanding, communication and completeness.',
+      icon: FaBriefcase,
     },
     {
       id: 2,
-      question: 'What format and size limits apply to Resume uploads?',
+      question: 'What format should I use for my Resume?',
       answer:
-        'Resumes must be in PDF format with a maximum file size of 16MB. Our system extracts candidate text for ATS scoring and stores your document securely directly in our encrypted BSON storage.',
-      icon: FaShieldAlt
+        'We recommend uploading your resume in PDF format. Make sure your resume contains accurate education, skills, experience and professional information.',
+      icon: FaShieldAlt,
     },
     {
       id: 3,
-      question: 'How are Placement Opportunities matched to my profile?',
+      question: 'How are Placement Opportunities matched?',
       answer:
-        'Placement Opportunities are personalized strictly according to your saved Target Jobs and core competencies. The system queries live job feeds and matches roles, required skills, and location preferences directly for your career targets.',
-      icon: FaBriefcase
+        'Placement opportunities are matched using information such as your target job preferences, skills, experience and other profile information available on the platform.',
+      icon: FaBriefcase,
     },
     {
       id: 4,
-      question: 'How can I view or download my Verified Certificates?',
+      question: 'Where can I find my certificates?',
       answer:
-        'Navigate to the Certificates & Achievements section in your sidebar. Click "View Certificate" to open an interactive modal preview or click "Download PDF" to export your official HireSmart AI credential.',
-      icon: FaAward
-    }
+        'You can access your certificates from the Certificates section available in your student dashboard.',
+      icon: FaAward,
+    },
   ];
 
   // ============================================================
-  // AI KNOWLEDGE BASE
+  // FETCH SUPPORT HISTORY
   // ============================================================
 
-  const aiKnowledge = [
-    {
-      keywords: [
-        'interview',
-        'mock interview',
-        'ai interview',
-        'evaluation',
-        'evaluate',
-        'score',
-        'scoring',
-        'answer'
-      ],
-      response:
-        'Your AI Mock Interview responses are evaluated against competency criteria for your target role. The system looks at relevance, accuracy, technical knowledge, problem solving, and overall answer quality. You receive a score along with strengths, weaknesses, and improvement suggestions.'
-    },
+  const fetchSupportHistory = async () => {
+    try {
+      setLoadingHistory(true);
 
-    {
-      keywords: [
-        'resume',
-        'cv',
-        'upload resume',
-        'upload cv',
-        'resume upload',
-        'pdf'
-      ],
-      response:
-        'You can upload your resume as a PDF file. The current maximum file size is 16MB. HireSmart AI extracts the resume content for ATS analysis and uses it to help evaluate your career profile.'
-    },
-
-    {
-      keywords: [
-        'ats',
-        'ats score',
-        'resume score',
-        'scanner',
-        'resume analysis'
-      ],
-      response:
-        'The ATS scanner analyzes your resume content against important job-related information. It helps identify how well your resume aligns with the skills and requirements relevant to your target career.'
-    },
-
-    {
-      keywords: [
-        'placement',
-        'placements',
-        'job',
-        'jobs',
-        'job opportunities',
-        'placement opportunities',
-        'job matching'
-      ],
-      response:
-        'Placement Opportunities are matched using your saved Target Jobs, core competencies, required skills, and location preferences. This helps surface opportunities that are more relevant to the career path you are targeting.'
-    },
-
-    {
-      keywords: [
-        'target job',
-        'target jobs',
-        'career target',
-        'career goal'
-      ],
-      response:
-        'Your Target Jobs help HireSmart AI understand the career direction you are preparing for. They are used to personalize interview preparation, competency matching, and relevant placement opportunities.'
-    },
-
-    {
-      keywords: [
-        'certificate',
-        'certificates',
-        'credential',
-        'achievement',
-        'download certificate'
-      ],
-      response:
-        'You can find your certificates under the Certificates & Achievements section in the sidebar. From there, you can view your certificate and download the PDF version when available.'
-    },
-
-    {
-      keywords: [
-        'profile',
-        'account',
-        'name',
-        'phone',
-        'profile information'
-      ],
-      response:
-        'You can manage your personal profile information from the Profile section. Keep your information and professional details updated so your HireSmart AI experience remains personalized.'
-    },
-
-    {
-      keywords: [
-        'help',
-        'support',
-        'contact',
-        'support team',
-        'ticket'
-      ],
-      response:
-        'Of course! 😊 You can use the "Send Us a Message" section on this page to submit a support request. Select a category, describe your issue, and our candidate support team can follow up with you.'
-    },
-
-    {
-      keywords: [
-        'hello',
-        'hi',
-        'hey',
-        'good morning',
-        'good afternoon',
-        'good evening'
-      ],
-      response:
-        'Hey there! 👋 I’m HireSmart AI. I can help you understand interviews, resumes, ATS scoring, placement opportunities, certificates, and other platform features.'
-    }
-  ];
-
-  // ============================================================
-  // AI RESPONSE
-  // ============================================================
-
-  const getAIResponse = (question) => {
-
-    const normalizedQuestion =
-      question.toLowerCase().trim();
-
-    const matchedTopic = aiKnowledge.find((topic) =>
-      topic.keywords.some((keyword) =>
-        normalizedQuestion.includes(keyword)
-      )
-    );
-
-    if (matchedTopic) {
-      return matchedTopic.response;
-    }
-
-    return (
-      'That’s a great question! 😊 I’m still learning the HireSmart AI knowledge base, ' +
-      'but I can currently help with AI Mock Interviews, resume uploads, ATS scoring, ' +
-      'placement opportunities, Target Jobs, certificates, profiles, and support requests.'
-    );
-  };
-
-  // ============================================================
-  // SUGGESTED QUESTIONS
-  // ============================================================
-
-  const suggestedQuestions = [
-    'How does AI evaluate my interview?',
-    'How do I upload my resume?',
-    'How are placement jobs matched?',
-    'Where can I find my certificates?'
-  ];
-
-  // ============================================================
-  // INITIAL CHAT
-  // ============================================================
-
-  useEffect(() => {
-
-    const displayName =
-      user?.fullName ||
-      user?.name ||
-      'there';
-
-    setChatMessages([
-      {
-        id: Date.now(),
-        sender: 'ai',
-        text:
-          `Hi ${displayName}! 👋 I’m HireSmart AI. ` +
-          `I’m here to help you with interviews, resumes, placements, certificates, ` +
-          `and anything else you need around the platform.`,
-        time: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      }
-    ]);
-
-  }, [user?.fullName, user?.name]);
-
-  // ============================================================
-  // AUTO SCROLL
-  // ============================================================
-
-  useEffect(() => {
-
-    if (chatBodyRef.current) {
-      chatBodyRef.current.scrollTop =
-        chatBodyRef.current.scrollHeight;
-    }
-
-  }, [chatMessages, chatTyping]);
-
-  // ============================================================
-  // FOCUS CHAT INPUT
-  // ============================================================
-
-  useEffect(() => {
-
-    if (chatOpen) {
-
-      setTimeout(() => {
-        chatInputRef.current?.focus();
-      }, 150);
-
-    }
-
-  }, [chatOpen]);
-
-  // ============================================================
-  // SEND CHAT MESSAGE
-  // ============================================================
-
-  const sendChatMessage = async (
-    messageToSend = chatInput
-  ) => {
-
-    const message =
-      messageToSend.trim();
-
-    if (!message || chatTyping) {
-      return;
-    }
-
-    const currentTime =
-      new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
+      const response = await fetch('/api/support/messages/my', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
       });
 
-    const userMessage = {
-      id: Date.now(),
-      sender: 'user',
-      text: message,
-      time: currentTime
-    };
+      const data = await response.json();
 
-    setChatMessages((previous) => [
-      ...previous,
-      userMessage
-    ]);
-
-    setChatInput('');
-    setChatTyping(true);
-
-    const delay =
-      Math.floor(Math.random() * 700) + 900;
-
-    setTimeout(() => {
-
-      const aiMessage = {
-        id: Date.now() + 1,
-        sender: 'ai',
-        text: getAIResponse(message),
-        time: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      };
-
-      setChatMessages((previous) => [
-        ...previous,
-        aiMessage
-      ]);
-
-      setChatTyping(false);
-
-    }, delay);
-  };
-
-  // ============================================================
-  // CHAT KEYBOARD
-  // ============================================================
-
-  const handleChatKeyDown = (e) => {
-
-    if (
-      e.key === 'Enter' &&
-      !e.shiftKey
-    ) {
-
-      e.preventDefault();
-
-      sendChatMessage();
-
-    }
-
-  };
-
-  // ============================================================
-  // RESET CHAT
-  // ============================================================
-
-  const resetChat = () => {
-
-    const displayName =
-      user?.fullName ||
-      user?.name ||
-      'there';
-
-    setChatMessages([
-      {
-        id: Date.now(),
-        sender: 'ai',
-        text:
-          `Hi ${displayName}! 👋 Welcome back. ` +
-          `What would you like help with?`,
-        time: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Failed to load support history'
+        );
       }
-    ]);
 
-    setChatInput('');
-    setChatTyping(false);
+      setSupportHistory(data.data || []);
+    } catch (error) {
+      console.error('Support history error:', error);
+
+      if (
+        error.message !== 'Not authorized, no token provided'
+      ) {
+        toast.error(
+          error.message || 'Failed to load support history'
+        );
+      }
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   // ============================================================
-  // SUPPORT FORM
+  // LOAD HISTORY
+  // ============================================================
+
+  useEffect(() => {
+    if (token || localStorage.getItem('token')) {
+      fetchSupportHistory();
+    } else {
+      setLoadingHistory(false);
+    }
+  }, [token]);
+
+  // ============================================================
+  // INPUT CHANGE
   // ============================================================
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
 
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   };
 
-  const handleSubmit = (e) => {
+  // ============================================================
+  // SUBMIT SUPPORT REQUEST
+  // ============================================================
 
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (
-      !formData.subject.trim() ||
-      !formData.message.trim()
-    ) {
+    const subject = formData.subject.trim();
+    const message = formData.message.trim();
 
-      toast.error(
-        'Please fill in all required fields.'
-      );
-
+    if (!subject) {
+      toast.error('Please enter a subject.');
       return;
     }
 
-    setSubmitting(true);
+    if (!message) {
+      toast.error('Please enter your message.');
+      return;
+    }
 
-    setTimeout(() => {
+    const authHeaders = getAuthHeaders();
+
+    if (!authHeaders.Authorization) {
+      toast.error('Your session has expired. Please login again.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const response = await fetch('/api/support/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          subject,
+          message,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || 'Failed to submit support request'
+        );
+      }
 
       toast.success(
-        'Your support request has been submitted! Our team will get back to you within 24 hours.'
+        'Support request submitted successfully!'
       );
 
       setFormData({
         subject: '',
-        category: 'Technical',
-        message: ''
+        message: '',
       });
 
-      setSubmitting(false);
+      // Refresh history
+      await fetchSupportHistory();
+    } catch (error) {
+      console.error('Support submit error:', error);
 
-    }, 800);
+      toast.error(
+        error.message ||
+          'Failed to submit support request'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // ============================================================
@@ -467,475 +230,445 @@ const HelpSupport = () => {
   // ============================================================
 
   const toggleFaq = (id) => {
-
-    setOpenFaq(
-      openFaq === id
-        ? null
-        : id
+    setOpenFaq((previous) =>
+      previous === id ? null : id
     );
-
   };
 
   // ============================================================
-  // RENDER
+  // WHATSAPP
+  // ============================================================
+
+  const openWhatsApp = () => {
+    const studentName =
+      user?.fullName ||
+      user?.name ||
+      'Student';
+
+    const message =
+      `Hello Web AI Tech Solution, I am ${studentName}. ` +
+      `I need help regarding HireSmart AI.`;
+
+    const whatsappUrl =
+      `https://wa.me/916306376352?text=${encodeURIComponent(
+        message
+      )}`;
+
+    window.open(
+      whatsappUrl,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
+  // ============================================================
+  // DATE FORMAT
+  // ============================================================
+
+  const formatDate = (date) => {
+    if (!date) return '';
+
+    return new Date(date).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // ============================================================
+  // STATUS CLASS
+  // ============================================================
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case 'Resolved':
+        return 'status-resolved';
+
+      case 'In Progress':
+        return 'status-progress';
+
+      default:
+        return 'status-pending';
+    }
+  };
+
+  // ============================================================
+  // UI
   // ============================================================
 
   return (
-
     <StudentLayout>
+      <div className="support-page">
 
-      <div className="hs-page">
+        {/* ======================================================
+            HEADER
+        ====================================================== */}
 
-        <div className="container-fluid">
-
-          {/* ==================================================
-              PAGE HEADER
-          ================================================== */}
-
-          <div className="hs-page-header">
-
-            <div>
-
-              <div className="hs-eyebrow">
-                <FaHeadset />
-                HELP & SUPPORT
-              </div>
-
-              <h1>
-                How can we help?
-              </h1>
-
-              <p>
-                Get answers, explore platform features,
-                or connect with our support team.
-              </p>
-
+        <div className="support-header">
+          <div>
+            <div className="support-small-title">
+              <FaHeadset />
+              HELP & SUPPORT
             </div>
 
-            <div className="hs-header-status">
+            <h1>
+              How can we help you?
+            </h1>
 
-              <span className="hs-header-status-dot" />
-
-              Support is available
-
-            </div>
-
+            <p>
+              Get assistance with HireSmart AI,
+              your account, interviews, resume,
+              placements and more.
+            </p>
           </div>
 
-          {/* ==================================================
-              AI HERO
-          ================================================== */}
+          <div className="support-header-icon">
+            <FaHeadset />
+          </div>
+        </div>
 
-          <section className="hs-ai-hero">
+        {/* ======================================================
+            COMPANY CONTACT CARDS
+        ====================================================== */}
 
-            <div className="hs-ai-circle" />
+        <div className="contact-grid">
 
-            <div className="hs-ai-hero-content">
+          {/* Email */}
 
-              <div className="hs-ai-hero-icon">
-                <FaRobot />
-              </div>
+          <div className="contact-card">
+            <div className="contact-icon">
+              <FaEnvelope />
+            </div>
 
-              <div className="hs-ai-badge">
-                AI ASSISTANT
-              </div>
+            <div>
+              <span>Email Support</span>
 
+              <a href="mailto:ns3445730@gmail.com">
+                ns3445730@gmail.com
+              </a>
+
+              <small>
+                Send us your query anytime
+              </small>
+            </div>
+          </div>
+
+          {/* WhatsApp */}
+
+          <button
+            type="button"
+            className="contact-card whatsapp-card"
+            onClick={openWhatsApp}
+          >
+            <div className="contact-icon whatsapp-icon">
+              <FaWhatsapp />
+            </div>
+
+            <div>
+              <span>WhatsApp Support</span>
+
+              <strong>
+                +91 6306 376 352
+              </strong>
+
+              <small>
+                Click to chat with our support team
+              </small>
+            </div>
+          </button>
+
+          {/* Website */}
+
+          <a
+            href="https://www.webaitechsolution.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="contact-card"
+          >
+            <div className="contact-icon">
+              <FaGlobe />
+            </div>
+
+            <div>
+              <span>Company Website</span>
+
+              <strong>
+                Web AI Tech Solution LLP
+              </strong>
+
+              <small>
+                Visit our official website
+                <FaExternalLinkAlt />
+              </small>
+            </div>
+          </a>
+
+        </div>
+
+        {/* ======================================================
+            COMPANY INFORMATION
+        ====================================================== */}
+
+        <div className="company-info-card">
+
+          <div className="company-info-left">
+
+            <div className="company-logo">
+              <FaHeadset />
+            </div>
+
+            <div>
               <h2>
-                Meet HireSmart AI
+                Web AI Tech Solution LLP
               </h2>
 
               <p>
-                Have a quick question? Ask our little AI
-                assistant. It can guide you through
-                interviews, resumes, ATS scoring,
-                placements and certificates.
+                Professional technology solutions
+                for web, software and digital services.
               </p>
-
-              <button
-                type="button"
-                className="hs-ai-hero-button"
-                onClick={() => setChatOpen(true)}
-              >
-
-                <FaRobot />
-
-                Ask HireSmart AI
-
-                <FaArrowRight className="hs-ai-button-arrow" />
-
-              </button>
-
-            </div>
-
-            <div className="hs-ai-hero-decoration">
-
-              <div className="hs-decoration-dot dot-one" />
-              <div className="hs-decoration-dot dot-two" />
-              <div className="hs-decoration-dot dot-three" />
-
-            </div>
-
-          </section>
-
-          {/* ==================================================
-              FAQ + SUPPORT
-          ================================================== */}
-
-          <div className="row g-4 mt-1">
-
-            {/* FAQ */}
-
-            <div className="col-xl-7">
-
-              <section className="hs-section-card">
-
-                <div className="hs-section-header">
-
-                  <div>
-
-                    <div className="hs-section-label">
-                      <FaQuestionCircle />
-                      COMMON QUESTIONS
-                    </div>
-
-                    <h3>
-                      Frequently Asked Questions
-                    </h3>
-
-                    <p>
-                      Quick answers to the things candidates
-                      ask us most often.
-                    </p>
-
-                  </div>
-
-                  <div className="hs-section-count">
-
-                    {faqs.length}
-
-                    <span>
-                      topics
-                    </span>
-
-                  </div>
-
-                </div>
-
-                <div className="hs-faq-list">
-
-                  {faqs.map((faq, index) => {
-
-                    const Icon = faq.icon;
-
-                    const isOpen =
-                      openFaq === faq.id;
-
-                    return (
-
-                      <div
-                        key={faq.id}
-                        className={`hs-faq-item ${
-                          isOpen
-                            ? 'hs-faq-open'
-                            : ''
-                        }`}
-                      >
-
-                        <button
-                          type="button"
-                          className="hs-faq-question"
-                          onClick={() =>
-                            toggleFaq(faq.id)
-                          }
-                        >
-
-                          <div className="hs-faq-left">
-
-                            <div className="hs-faq-icon">
-                              <Icon />
-                            </div>
-
-                            <div>
-
-                              <span className="hs-faq-number">
-                                0{index + 1}
-                              </span>
-
-                              <span className="hs-faq-title">
-                                {faq.question}
-                              </span>
-
-                            </div>
-
-                          </div>
-
-                          <div className="hs-faq-toggle">
-
-                            {isOpen
-                              ? <FaChevronUp />
-                              : <FaChevronDown />
-                            }
-
-                          </div>
-
-                        </button>
-
-                        {isOpen && (
-
-                          <div className="hs-faq-answer">
-
-                            <div className="hs-faq-answer-line" />
-
-                            <p>
-                              {faq.answer}
-                            </p>
-
-                          </div>
-
-                        )}
-
-                      </div>
-
-                    );
-
-                  })}
-
-                </div>
-
-              </section>
-
-            </div>
-
-            {/* SUPPORT */}
-
-            <div className="col-xl-5">
-
-              <section className="hs-section-card hs-support-card">
-
-                <div className="hs-section-label">
-                  <FaEnvelope />
-                  CONTACT SUPPORT
-                </div>
-
-                <h3>
-                  Send Us a Message
-                </h3>
-
-                <p className="hs-support-intro">
-                  Can't find what you're looking for?
-                  Send us a message and our support team
-                  will help you out.
-                </p>
-
-                <form onSubmit={handleSubmit}>
-
-                  <div className="hs-form-group">
-
-                    <label>
-                      Candidate Name
-                    </label>
-
-                    <input
-                      type="text"
-                      value={
-                        user?.fullName ||
-                        user?.name ||
-                        'Student'
-                      }
-                      disabled
-                    />
-
-                  </div>
-
-                  <div className="hs-form-group">
-
-                    <label>
-                      Category
-                    </label>
-
-                    <select
-                      name="category"
-                      value={formData.category}
-                      onChange={handleInputChange}
-                    >
-
-                      <option value="Technical">
-                        AI Mock Interview / Technical
-                      </option>
-
-                      <option value="Resume">
-                        Resume Upload & ATS Scanner
-                      </option>
-
-                      <option value="Placements">
-                        Placement Opportunities
-                      </option>
-
-                      <option value="Account">
-                        Account & Profile
-                      </option>
-
-                      <option value="Other">
-                        General Inquiry
-                      </option>
-
-                    </select>
-
-                  </div>
-
-                  <div className="hs-form-group">
-
-                    <label>
-                      Subject <span>*</span>
-                    </label>
-
-                    <input
-                      type="text"
-                      name="subject"
-                      placeholder="What can we help with?"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      required
-                    />
-
-                  </div>
-
-                  <div className="hs-form-group">
-
-                    <label>
-                      Message <span>*</span>
-                    </label>
-
-                    <textarea
-                      name="message"
-                      rows="5"
-                      placeholder="Tell us a little more about your question..."
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      required
-                    />
-
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="hs-submit-button"
-                    disabled={submitting}
-                  >
-
-                    {submitting ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <FaPaperPlane />
-                        Send Support Request
-                      </>
-                    )}
-
-                  </button>
-
-                  <div className="hs-response-note">
-
-                    <FaCheckCircle />
-
-                    We usually respond within 24 hours.
-
-                  </div>
-
-                </form>
-
-              </section>
-
             </div>
 
           </div>
 
-          {/* ==================================================
-              SUPPORT FEATURES
-          ================================================== */}
+          <div className="company-details">
 
-          <div className="hs-feature-row">
+            <div>
+              <FaMapMarkerAlt />
 
-            <div className="hs-feature">
+              <span>
+                STPI 8th Floor, UPSIDA Complex,
+                Lakhanpur, Kanpur-208024, UP
+              </span>
+            </div>
 
-              <div className="hs-feature-icon purple">
-                <FaRobot />
+            <div>
+              <FaClock />
+
+              <span>
+                24/7 Services Available
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* ======================================================
+            MAIN CONTENT
+        ====================================================== */}
+
+        <div className="support-content-grid">
+
+          {/* ====================================================
+              SEND MESSAGE
+          ==================================================== */}
+
+          <div className="support-card">
+
+            <div className="card-heading">
+
+              <div className="card-heading-icon">
+                <FaPaperPlane />
               </div>
 
               <div>
-
-                <h6>
-                  AI-Powered Help
-                </h6>
+                <h2>
+                  Send Us a Message
+                </h2>
 
                 <p>
-                  Get instant answers about the platform.
+                  Tell us about your problem and
+                  our support team will help you.
                 </p>
-
               </div>
 
             </div>
 
-            <div className="hs-feature">
+            <form onSubmit={handleSubmit}>
 
-              <div className="hs-feature-icon green">
+              {/* Candidate Name */}
+
+              <div className="form-group">
+                <label>
+                  Candidate Name
+                </label>
+
+                <input
+                  type="text"
+                  value={
+                    user?.fullName ||
+                    user?.name ||
+                    'Student'
+                  }
+                  disabled
+                />
+              </div>
+
+              {/* Email */}
+
+              <div className="form-group">
+                <label>
+                  Email Address
+                </label>
+
+                <input
+                  type="email"
+                  value={
+                    user?.email ||
+                    user?.emailAddress ||
+                    ''
+                  }
+                  disabled
+                />
+              </div>
+
+              {/* Subject */}
+
+              <div className="form-group">
+                <label>
+                  Subject <span>*</span>
+                </label>
+
+                <input
+                  type="text"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  placeholder="Enter your support subject"
+                  maxLength={200}
+                  required
+                />
+              </div>
+
+              {/* Message */}
+
+              <div className="form-group">
+                <label>
+                  Message <span>*</span>
+                </label>
+
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  placeholder="Describe your issue or question..."
+                  rows={6}
+                  maxLength={5000}
+                  required
+                />
+
+                <div className="character-count">
+                  {formData.message.length}/5000
+                </div>
+              </div>
+
+              {/* Submit */}
+
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <span className="spinner"></span>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <FaPaperPlane />
+                    Send Support Request
+                  </>
+                )}
+              </button>
+
+              <div className="secure-note">
                 <FaCheckCircle />
+                Your request will be securely saved
+                and sent to our support team.
+              </div>
+
+            </form>
+
+          </div>
+
+          {/* ====================================================
+              FAQ
+          ==================================================== */}
+
+          <div className="support-card">
+
+            <div className="card-heading">
+
+              <div className="card-heading-icon">
+                <FaHeadset />
               </div>
 
               <div>
-
-                <h6>
-                  Candidate Support
-                </h6>
+                <h2>
+                  Frequently Asked Questions
+                </h2>
 
                 <p>
-                  Our team is here when you need us.
+                  Find quick answers to common questions.
                 </p>
-
               </div>
 
             </div>
 
-            <div className="hs-feature">
+            <div className="faq-list">
 
-              <div className="hs-feature-icon orange">
-                <FaShieldAlt />
-              </div>
+              {faqs.map((faq) => {
+                const Icon = faq.icon;
+                const isOpen = openFaq === faq.id;
 
-              <div>
+                return (
+                  <div
+                    className={`faq-item ${
+                      isOpen ? 'faq-open' : ''
+                    }`}
+                    key={faq.id}
+                  >
 
-                <h6>
-                  Secure Platform
-                </h6>
+                    <button
+                      type="button"
+                      className="faq-question"
+                      onClick={() =>
+                        toggleFaq(faq.id)
+                      }
+                    >
 
-                <p>
-                  Your candidate information stays protected.
-                </p>
+                      <div className="faq-question-left">
 
-              </div>
+                        <div className="faq-icon">
+                          <Icon />
+                        </div>
 
-            </div>
+                        <span>
+                          {faq.question}
+                        </span>
 
-            <div className="hs-feature">
+                      </div>
 
-              <div className="hs-feature-icon blue">
-                <FaBriefcase />
-              </div>
+                      {isOpen ? (
+                        <FaChevronUp />
+                      ) : (
+                        <FaChevronDown />
+                      )}
 
-              <div>
+                    </button>
 
-                <h6>
-                  Career Guidance
-                </h6>
+                    {isOpen && (
+                      <div className="faq-answer">
+                        {faq.answer}
+                      </div>
+                    )}
 
-                <p>
-                  Get help throughout your career journey.
-                </p>
-
-              </div>
+                  </div>
+                );
+              })}
 
             </div>
 
@@ -943,175 +676,119 @@ const HelpSupport = () => {
 
         </div>
 
-        {/* ====================================================
-            FLOATING AI LAUNCHER
-        ===================================================== */}
+        {/* ======================================================
+            SUPPORT HISTORY
+        ====================================================== */}
 
-        {!chatOpen && (
+        <div className="support-card history-card">
 
-          <button
-            type="button"
-            className="hs-floating-ai"
-            onClick={() => setChatOpen(true)}
-            aria-label="Open HireSmart AI"
-          >
+          <div className="history-header">
 
-            <span className="hs-floating-ai-icon">
+            <div className="card-heading">
 
-              <span className="hs-ripple ripple-one" />
-              <span className="hs-ripple ripple-two" />
-
-              <FaRobot />
-
-            </span>
-
-            <span className="hs-floating-ai-text">
-              Ask HireSmart AI
-            </span>
-
-          </button>
-
-        )}
-
-        {/* ====================================================
-            AI CHAT WINDOW
-        ===================================================== */}
-
-        {chatOpen && (
-
-          <div className="hs-chat-window">
-
-            {/* HEADER */}
-
-            <div className="hs-chat-header">
-
-              <div className="hs-chat-header-left">
-
-                <div className="hs-chat-avatar">
-                  <FaRobot />
-                </div>
-
-                <div>
-
-                  <div className="hs-chat-title">
-                    HireSmart AI
-                  </div>
-
-                  <div className="hs-chat-status">
-
-                    <span />
-
-                    Online · Ready to help
-
-                  </div>
-
-                </div>
-
+              <div className="card-heading-icon">
+                <FaHistory />
               </div>
 
-              <div className="hs-chat-actions">
+              <div>
+                <h2>
+                  Your Previous Requests
+                </h2>
 
-                <button
-                  type="button"
-                  onClick={resetChat}
-                  title="Reset conversation"
-                >
-                  <FaRedo />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setChatOpen(false)}
-                  title="Close"
-                >
-                  <FaTimes />
-                </button>
-
+                <p>
+                  Track the support requests you
+                  have submitted to our team.
+                </p>
               </div>
 
             </div>
 
-            {/* BODY */}
+            <div className="request-count">
+              <strong>
+                {supportHistory.length}
+              </strong>
 
-            <div
-              className="hs-chat-body"
-              ref={chatBodyRef}
-            >
+              <span>
+                Requests
+              </span>
+            </div>
 
-              {chatMessages.length === 1 && (
+          </div>
 
-                <div className="hs-chat-welcome">
+          {loadingHistory ? (
 
-                  <div className="hs-chat-welcome-icon">
-                    <FaRobot />
-                  </div>
+            <div className="history-loading">
+              <span className="large-spinner"></span>
+              Loading your support history...
+            </div>
 
-                  <h5>
-                    What can I help you with?
-                  </h5>
+          ) : supportHistory.length === 0 ? (
 
-                  <p>
-                    Choose a question or type your own.
-                  </p>
+            <div className="empty-history">
 
-                  <div className="hs-chat-suggestions">
+              <div className="empty-history-icon">
+                <FaHistory />
+              </div>
 
-                    {suggestedQuestions.map(
-                      (question) => (
+              <h3>
+                No Support Requests Yet
+              </h3>
 
-                        <button
-                          key={question}
-                          type="button"
-                          onClick={() =>
-                            sendChatMessage(question)
-                          }
-                        >
-                          {question}
-                        </button>
+              <p>
+                Your submitted support requests
+                will appear here.
+              </p>
 
-                      )
-                    )}
+            </div>
 
-                  </div>
+          ) : (
 
-                </div>
+            <div className="history-list">
 
-              )}
-
-              {chatMessages.map((message) => (
+              {supportHistory.map((item) => (
 
                 <div
-                  key={message.id}
-                  className={`hs-chat-message-row ${
-                    message.sender === 'user'
-                      ? 'user'
-                      : ''
-                  }`}
+                  className="history-item"
+                  key={item._id}
                 >
 
-                  {message.sender === 'ai' && (
+                  <div className="history-main">
 
-                    <div className="hs-chat-mini-avatar">
-                      <FaRobot />
+                    <div className="history-title-row">
+
+                      <h3>
+                        {item.subject}
+                      </h3>
+
+                      <span
+                        className={`status-badge ${getStatusClass(
+                          item.status
+                        )}`}
+                      >
+                        {item.status}
+                      </span>
+
                     </div>
 
-                  )}
+                    <p>
+                      {item.message}
+                    </p>
 
-                  <div
-                    className={`hs-chat-message ${
-                      message.sender === 'user'
-                        ? 'user-message'
-                        : 'bot-message'
-                    }`}
-                  >
-
-                    <div>
-                      {message.text}
+                    <div className="history-meta">
+                      Submitted on {formatDate(item.createdAt)}
                     </div>
 
-                    <span>
-                      {message.time}
-                    </span>
+                  </div>
+
+                  <div className="email-status">
+
+                    <FaCheckCircle />
+
+                    {item.emailStatus === 'Sent'
+                      ? 'Email Sent'
+                      : item.emailStatus === 'Failed'
+                      ? 'Email Failed'
+                      : 'Email Pending'}
 
                   </div>
 
@@ -1119,1491 +796,750 @@ const HelpSupport = () => {
 
               ))}
 
-              {chatTyping && (
-
-                <div className="hs-chat-message-row">
-
-                  <div className="hs-chat-mini-avatar">
-                    <FaRobot />
-                  </div>
-
-                  <div className="hs-chat-typing">
-
-                    <span />
-                    <span />
-                    <span />
-
-                  </div>
-
-                </div>
-
-              )}
-
             </div>
 
-            {/* INPUT */}
+          )}
 
-            <div className="hs-chat-input-wrapper">
+        </div>
 
-              <textarea
-                ref={chatInputRef}
-                value={chatInput}
-                onChange={(e) =>
-                  setChatInput(e.target.value)
-                }
-                onKeyDown={handleChatKeyDown}
-                placeholder="Ask anything..."
-                rows="1"
-                disabled={chatTyping}
-              />
+        {/* ======================================================
+            BOTTOM FEATURES
+        ====================================================== */}
 
-              <button
-                type="button"
-                onClick={() =>
-                  sendChatMessage()
-                }
-                disabled={
-                  !chatInput.trim() ||
-                  chatTyping
-                }
-              >
-                <FaPaperPlane />
-              </button>
+        <div className="features-grid">
 
-            </div>
-
-            <div className="hs-chat-footer">
-
-              <FaRobot />
-
-              HireSmart AI · Demo Assistant
-
-            </div>
-
+          <div className="feature-card">
+            <FaHeadset />
+            <h3>Candidate Support</h3>
+            <p>
+              Get assistance whenever you face
+              an issue on the platform.
+            </p>
           </div>
 
-        )}
+          <div className="feature-card">
+            <FaShieldAlt />
+            <h3>Secure Platform</h3>
+            <p>
+              Your support requests and account
+              information are handled securely.
+            </p>
+          </div>
 
-        {/* ====================================================
-            PAGE STYLES
-        ===================================================== */}
+          <div className="feature-card">
+            <FaBriefcase />
+            <h3>Career Guidance</h3>
+            <p>
+              Get help related to interviews,
+              jobs and your career journey.
+            </p>
+          </div>
+
+          <div className="feature-card">
+            <FaAward />
+            <h3>Career Resources</h3>
+            <p>
+              Get help with resumes, certificates,
+              placements and other resources.
+            </p>
+          </div>
+
+        </div>
+
+        {/* ======================================================
+            STYLES
+        ====================================================== */}
 
         <style>{`
 
-          /* ================================================
-             PAGE
-          ================================================ */
+          * {
+            box-sizing: border-box;
+          }
 
-          .hs-page {
+          .support-page {
+            padding: 10px 5px 40px;
+            background: #f6f7fb;
             min-height: 100vh;
-            background: #FAFAFB;
-            padding: 4px 0 80px;
-            color: #172033;
           }
 
-          /* ================================================
-             PAGE HEADER
-          ================================================ */
+          /* HEADER */
 
-          .hs-page-header {
+          .support-header {
+            background: linear-gradient(
+              135deg,
+              #171b4d,
+              #4235a4
+            );
+            border-radius: 22px;
+            padding: 35px;
+            color: white;
             display: flex;
-            align-items: flex-end;
             justify-content: space-between;
-            padding: 28px 4px 24px;
-            gap: 20px;
+            align-items: center;
+            margin-bottom: 25px;
+            box-shadow: 0 15px 40px rgba(47, 43, 120, 0.18);
           }
 
-          .hs-eyebrow {
+          .support-small-title {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+            opacity: 0.85;
+          }
+
+          .support-header h1 {
+            font-size: 34px;
+            margin: 0 0 8px;
+            font-weight: 800;
+          }
+
+          .support-header p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 15px;
+          }
+
+          .support-header-icon {
+            width: 82px;
+            height: 82px;
+            border-radius: 22px;
+            background: rgba(255,255,255,0.14);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+          }
+
+          /* CONTACT */
+
+          .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 20px;
+          }
+
+          .contact-card {
+            background: white;
+            border: 1px solid #e8e9f1;
+            border-radius: 17px;
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            text-decoration: none;
+            color: #20233b;
+            transition: 0.2s ease;
+            text-align: left;
+          }
+
+          .contact-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(35, 35, 70, 0.08);
+          }
+
+          button.contact-card {
+            width: 100%;
+            cursor: pointer;
+            font-family: inherit;
+          }
+
+          .contact-icon {
+            min-width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: #eeedff;
+            color: #5146df;
             display: flex;
             align-items: center;
-            gap: 7px;
-            margin-bottom: 8px;
-            color: #5146E5;
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 1.2px;
+            justify-content: center;
+            font-size: 21px;
           }
 
-          .hs-page-header h1 {
-            margin: 0;
-            color: #172033;
-            font-size: clamp(28px, 3vw, 38px);
-            font-weight: 800;
-            letter-spacing: -1.4px;
+          .whatsapp-icon {
+            background: #e6f9ed;
+            color: #16a34a;
           }
 
-          .hs-page-header p {
-            margin: 8px 0 0;
-            color: #697386;
+          .contact-card span {
+            display: block;
+            color: #85899d;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+          }
+
+          .contact-card strong,
+          .contact-card a {
+            color: #22253d;
             font-size: 14px;
+            font-weight: 750;
+            text-decoration: none;
+            display: block;
           }
 
-          .hs-header-status {
+          .contact-card small {
+            color: #9699aa;
+            font-size: 11px;
+            margin-top: 4px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+          }
+
+          /* COMPANY */
+
+          .company-info-card {
+            background: white;
+            border: 1px solid #e8e9f1;
+            border-radius: 18px;
+            padding: 23px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 22px;
+          }
+
+          .company-info-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+
+          .company-logo {
+            width: 55px;
+            height: 55px;
+            border-radius: 16px;
+            background: #eeedff;
+            color: #5146df;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 23px;
+          }
+
+          .company-info-left h2 {
+            margin: 0 0 5px;
+            font-size: 19px;
+            color: #20233b;
+          }
+
+          .company-info-left p {
+            margin: 0;
+            color: #85899d;
+            font-size: 13px;
+          }
+
+          .company-details {
+            display: flex;
+            gap: 28px;
+          }
+
+          .company-details div {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 9px 13px;
-            border: 1px solid #E6E8EF;
-            border-radius: 999px;
-            background: #FFFFFF;
-            color: #687184;
-            font-size: 11px;
-            font-weight: 600;
+            color: #64687c;
+            font-size: 12px;
           }
 
-          .hs-header-status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #35C98A;
-            box-shadow:
-              0 0 0 4px rgba(53,201,138,0.10);
+          .company-details svg {
+            color: #5146df;
           }
 
-          /* ================================================
-             AI HERO
-          ================================================ */
+          /* MAIN */
 
-          .hs-ai-hero {
-            position: relative;
-            min-height: 440px;
-            overflow: hidden;
-            margin-bottom: 24px;
-            border: 1px solid #DDE3FA;
-            border-radius: 28px;
-            background:
-              linear-gradient(
-                145deg,
-                #F1F4FF 0%,
-                #F8F9FE 55%,
-                #FFFFFF 100%
-              );
-            box-shadow:
-              0 8px 35px rgba(51,65,85,0.04);
+          .support-content-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 22px;
+            margin-bottom: 22px;
           }
 
-          .hs-ai-hero-content {
-            position: relative;
-            z-index: 2;
-            max-width: 780px;
-            padding: 50px 50px 55px;
-          }
-
-          .hs-ai-hero-icon {
-            width: 116px;
-            height: 116px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 38px;
-            border-radius: 50%;
-            color: #FFFFFF;
-            background:
-              linear-gradient(
-                145deg,
-                #5542E9,
-                #7438E8
-              );
-            font-size: 43px;
-            box-shadow:
-              0 18px 35px rgba(88,65,230,0.20);
-          }
-
-          .hs-ai-badge {
-            display: inline-flex;
-            align-items: center;
-            margin-bottom: 16px;
-            padding: 7px 15px;
-            border-radius: 999px;
-            color: #4438C9;
-            background: #E1E7FF;
-            font-size: 13px;
-            font-weight: 800;
-          }
-
-          .hs-ai-hero h2 {
-            margin: 0 0 17px;
-            color: #182237;
-            font-size: clamp(40px, 5vw, 56px);
-            line-height: 1.05;
-            font-weight: 800;
-            letter-spacing: -2.5px;
-          }
-
-          .hs-ai-hero p {
-            max-width: 760px;
-            margin: 0 0 30px;
-            color: #596170;
-            font-size: 18px;
-            line-height: 1.65;
-          }
-
-          .hs-ai-hero-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 13px;
-            padding: 16px 24px;
-            border: none;
-            border-radius: 15px;
-            color: #FFFFFF;
-            background: #1677F2;
-            font-size: 17px;
-            font-weight: 700;
-            box-shadow:
-              0 10px 25px rgba(22,119,242,0.20);
-            cursor: pointer;
-            transition:
-              transform .2s ease,
-              box-shadow .2s ease;
-          }
-
-          .hs-ai-hero-button:hover {
-            transform: translateY(-2px);
-            box-shadow:
-              0 15px 30px rgba(22,119,242,0.25);
-          }
-
-          .hs-ai-button-arrow {
-            margin-left: 8px;
-            font-size: 13px;
-            transition:
-              transform .2s ease;
-          }
-
-          .hs-ai-hero-button:hover
-          .hs-ai-button-arrow {
-            transform: translateX(3px);
-          }
-
-          .hs-ai-circle {
-            position: absolute;
-            width: 380px;
-            height: 380px;
-            right: -130px;
-            top: -190px;
-            border-radius: 50%;
-            background:
-              rgba(108,122,231,0.08);
-          }
-
-          .hs-ai-circle::after {
-            content: '';
-            position: absolute;
-            width: 240px;
-            height: 240px;
-            right: 80px;
-            bottom: -150px;
-            border-radius: 50%;
-            background:
-              rgba(108,122,231,0.045);
-          }
-
-          .hs-ai-hero-decoration {
-            position: absolute;
-            right: 90px;
-            bottom: 65px;
-            width: 130px;
-            height: 130px;
-          }
-
-          .hs-decoration-dot {
-            position: absolute;
-            border-radius: 50%;
-            background: #C7D2FE;
-          }
-
-          .dot-one {
-            width: 8px;
-            height: 8px;
-            right: 15px;
-            top: 15px;
-          }
-
-          .dot-two {
-            width: 5px;
-            height: 5px;
-            right: 45px;
-            top: 48px;
-          }
-
-          .dot-three {
-            width: 11px;
-            height: 11px;
-            right: 80px;
-            top: 80px;
-            opacity: .55;
-          }
-
-          /* ================================================
-             SECTION CARDS
-          ================================================ */
-
-          .hs-section-card {
-            height: 100%;
-            padding: 28px;
-            border: 1px solid #E5E7ED;
+          .support-card {
+            background: white;
+            border: 1px solid #e8e9f1;
             border-radius: 20px;
-            background: #FFFFFF;
-            box-shadow:
-              0 5px 25px rgba(15,23,42,0.035);
+            padding: 27px;
           }
 
-          .hs-section-header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 20px;
-            padding-bottom: 23px;
-            border-bottom: 1px solid #EEF0F4;
-          }
-
-          .hs-section-label {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            margin-bottom: 9px;
-            color: #5A50DD;
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 1px;
-          }
-
-          .hs-section-label svg {
-            font-size: 11px;
-          }
-
-          .hs-section-card h3 {
-            margin: 0;
-            color: #1B2538;
-            font-size: 23px;
-            font-weight: 800;
-            letter-spacing: -.5px;
-          }
-
-          .hs-section-header p,
-          .hs-support-intro {
-            margin: 7px 0 0;
-            color: #7A8291;
-            font-size: 12px;
-            line-height: 1.6;
-          }
-
-          .hs-section-count {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 7px 10px;
-            border-radius: 8px;
-            color: #5A50DD;
-            background: #F2F3FF;
-            font-size: 12px;
-            font-weight: 800;
-          }
-
-          .hs-section-count span {
-            color: #8A8FA0;
-            font-size: 10px;
-            font-weight: 600;
-          }
-
-          /* ================================================
-             FAQ
-          ================================================ */
-
-          .hs-faq-list {
-            padding-top: 18px;
-          }
-
-          .hs-faq-item {
-            margin-bottom: 8px;
-            border: 1px solid transparent;
-            border-radius: 13px;
-            overflow: hidden;
-            transition:
-              border-color .2s ease,
-              background .2s ease;
-          }
-
-          .hs-faq-item:hover {
-            border-color: #E8EAF1;
-            background: #FCFCFE;
-          }
-
-          .hs-faq-open {
-            border-color: #DFE2F7;
-            background: #F9FAFF;
-          }
-
-          .hs-faq-question {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            padding: 15px 13px;
-            border: none;
-            color: #1F2937;
-            background: transparent;
-            text-align: left;
-            cursor: pointer;
-          }
-
-          .hs-faq-left {
+          .card-heading {
             display: flex;
             align-items: center;
             gap: 13px;
-            min-width: 0;
+            margin-bottom: 25px;
           }
 
-          .hs-faq-icon {
-            width: 38px;
-            height: 38px;
-            flex-shrink: 0;
+          .card-heading-icon {
+            width: 45px;
+            height: 45px;
+            background: #eeedff;
+            color: #5146df;
+            border-radius: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            color: #5A50DD;
-            background: #EFF1FF;
-            font-size: 14px;
           }
 
-          .hs-faq-number {
-            display: block;
-            margin-bottom: 3px;
-            color: #A0A6B2;
-            font-size: 9px;
-            font-weight: 700;
-            letter-spacing: .5px;
+          .card-heading h2 {
+            margin: 0 0 3px;
+            color: #20233b;
+            font-size: 19px;
           }
 
-          .hs-faq-title {
-            display: block;
-            color: #30394A;
-            font-size: 13px;
-            font-weight: 700;
-            line-height: 1.45;
-          }
-
-          .hs-faq-toggle {
-            width: 28px;
-            height: 28px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-            color: #7B8190;
-            background: #F4F5F8;
-            font-size: 9px;
-          }
-
-          .hs-faq-open .hs-faq-toggle {
-            color: #5A50DD;
-            background: #E9EBFF;
-          }
-
-          .hs-faq-answer {
-            display: flex;
-            gap: 12px;
-            padding:
-              0 18px 18px 64px;
-          }
-
-          .hs-faq-answer-line {
-            width: 2px;
-            flex-shrink: 0;
-            border-radius: 10px;
-            background: #C7D2FE;
-          }
-
-          .hs-faq-answer p {
+          .card-heading p {
             margin: 0;
-            color: #6B7280;
+            color: #8a8da0;
             font-size: 12px;
-            line-height: 1.75;
           }
 
-          /* ================================================
-             SUPPORT FORM
-          ================================================ */
+          /* FORM */
 
-          .hs-support-card {
-            padding: 30px;
-          }
-
-          .hs-support-card h3 {
-            font-size: 27px;
-            margin-bottom: 8px;
-          }
-
-          .hs-support-intro {
-            font-size: 13px;
-            margin-bottom: 26px;
-          }
-
-          .hs-form-group {
+          .form-group {
             margin-bottom: 17px;
           }
 
-          .hs-form-group label {
+          .form-group label {
             display: block;
-            margin-bottom: 7px;
-            color: #4B5563;
-            font-size: 11px;
-            font-weight: 700;
-          }
-
-          .hs-form-group label span {
-            color: #EF4444;
-          }
-
-          .hs-form-group input,
-          .hs-form-group select,
-          .hs-form-group textarea {
-            width: 100%;
-            padding: 11px 12px;
-            border: 1px solid #E1E5EB;
-            border-radius: 10px;
-            outline: none;
-            color: #293244;
-            background: #FAFBFC;
-            font-family: inherit;
             font-size: 12px;
-            transition:
-              border-color .2s ease,
-              box-shadow .2s ease,
-              background .2s ease;
+            font-weight: 700;
+            color: #565a70;
+            margin-bottom: 7px;
           }
 
-          .hs-form-group textarea {
-            resize: vertical;
-            min-height: 115px;
+          .form-group label span {
+            color: #ef4444;
           }
 
-          .hs-form-group input:focus,
-          .hs-form-group select:focus,
-          .hs-form-group textarea:focus {
-            border-color: #A5B4FC;
-            background: #FFFFFF;
-            box-shadow:
-              0 0 0 3px rgba(99,102,241,.07);
-          }
-
-          .hs-form-group input:disabled {
-            color: #858C9A;
-            background: #F5F6F8;
-            cursor: not-allowed;
-          }
-
-          .hs-form-group input::placeholder,
-          .hs-form-group textarea::placeholder {
-            color: #A1A8B4;
-          }
-
-          .hs-submit-button {
+          .form-group input,
+          .form-group textarea {
             width: 100%;
+            border: 1px solid #dfe1ea;
+            background: #fafbfc;
+            border-radius: 11px;
+            padding: 12px 14px;
+            font-family: inherit;
+            font-size: 13px;
+            color: #292c42;
+            outline: none;
+            transition: 0.2s;
+          }
+
+          .form-group input:focus,
+          .form-group textarea:focus {
+            border-color: #6559e8;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(101, 89, 232, 0.08);
+          }
+
+          .form-group input:disabled {
+            background: #f3f4f7;
+            color: #85899b;
+          }
+
+          .form-group textarea {
+            resize: vertical;
+            min-height: 135px;
+          }
+
+          .character-count {
+            text-align: right;
+            font-size: 10px;
+            color: #9699a9;
+            margin-top: 4px;
+          }
+
+          .submit-button {
+            width: 100%;
+            border: none;
+            border-radius: 11px;
+            background: linear-gradient(
+              135deg,
+              #5146df,
+              #6358e9
+            );
+            color: white;
+            padding: 13px;
+            font-size: 13px;
+            font-weight: 750;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            color: #FFFFFF;
-            background: #4F46E5;
-            font-size: 12px;
-            font-weight: 700;
             cursor: pointer;
-            transition:
-              background .2s ease,
-              transform .2s ease;
+            transition: 0.2s;
           }
 
-          .hs-submit-button:hover:not(:disabled) {
-            background: #4338CA;
+          .submit-button:hover:not(:disabled) {
             transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(81, 70, 223, 0.22);
           }
 
-          .hs-submit-button:disabled {
-            opacity: .65;
+          .submit-button:disabled {
+            opacity: 0.65;
             cursor: not-allowed;
           }
 
-          .hs-response-note {
+          .spinner,
+          .large-spinner {
+            border: 3px solid rgba(255,255,255,0.35);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          }
+
+          .spinner {
+            width: 15px;
+            height: 15px;
+          }
+
+          .large-spinner {
+            width: 25px;
+            height: 25px;
+            border-color: #d9d7ff;
+            border-top-color: #5146df;
+          }
+
+          @keyframes spin {
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          .secure-note {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
-            margin-top: 13px;
-            color: #8A919F;
+            color: #7e8294;
             font-size: 10px;
+            margin-top: 12px;
           }
 
-          .hs-response-note svg {
-            color: #34B27B;
+          .secure-note svg {
+            color: #22c55e;
           }
 
-          /* ================================================
-             FEATURE ROW
-          ================================================ */
+          /* FAQ */
 
-          .hs-feature-row {
-            display: grid;
-            grid-template-columns:
-              repeat(4, 1fr);
-            gap: 12px;
-            margin-top: 18px;
-          }
-
-          .hs-feature {
+          .faq-list {
             display: flex;
-            align-items: center;
-            gap: 11px;
-            padding: 16px;
-            border: 1px solid #E7E9EE;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .faq-item {
+            border: 1px solid #e7e8ef;
             border-radius: 13px;
-            background: #FFFFFF;
+            overflow: hidden;
           }
 
-          .hs-feature-icon {
-            width: 35px;
-            height: 35px;
-            flex-shrink: 0;
+          .faq-item.faq-open {
+            border-color: #d5d1ff;
+            background: #fbfaff;
+          }
+
+          .faq-question {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 15px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            color: #292c42;
+            text-align: left;
+          }
+
+          .faq-question-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          .faq-question-left span {
+            font-size: 12px;
+            font-weight: 700;
+          }
+
+          .faq-question > svg {
+            color: #777b8f;
+            font-size: 12px;
+          }
+
+          .faq-icon {
+            width: 34px;
+            height: 34px;
+            min-width: 34px;
+            border-radius: 10px;
+            background: #efeeff;
+            color: #5146df;
+            display: flex;
             justify-content: center;
-            border-radius: 9px;
-            font-size: 13px;
+            align-items: center;
           }
 
-          .hs-feature-icon.purple {
-            color: #5B4DE4;
-            background: #EFF0FF;
+          .faq-answer {
+            padding: 0 15px 17px 61px;
+            color: #74788b;
+            font-size: 12px;
+            line-height: 1.7;
           }
 
-          .hs-feature-icon.green {
-            color: #159A69;
-            background: #EAF9F2;
+          /* HISTORY */
+
+          .history-card {
+            margin-bottom: 22px;
           }
 
-          .hs-feature-icon.orange {
-            color: #D97706;
-            background: #FFF5E7;
+          .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
           }
 
-          .hs-feature-icon.blue {
-            color: #2563EB;
-            background: #EBF3FF;
+          .request-count {
+            min-width: 75px;
+            height: 68px;
+            border-radius: 14px;
+            background: #f5f4ff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
           }
 
-          .hs-feature h6 {
-            margin: 0 0 3px;
-            color: #30394A;
-            font-size: 11px;
+          .request-count strong {
+            color: #5146df;
+            font-size: 23px;
+          }
+
+          .request-count span {
+            color: #8a8da0;
+            font-size: 9px;
+          }
+
+          .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .history-item {
+            border: 1px solid #e7e8ef;
+            border-radius: 14px;
+            padding: 18px;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+          }
+
+          .history-main {
+            flex: 1;
+          }
+
+          .history-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 7px;
+          }
+
+          .history-title-row h3 {
+            margin: 0;
+            color: #282b42;
+            font-size: 14px;
+          }
+
+          .history-main p {
+            margin: 0 0 9px;
+            color: #777b8d;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+          }
+
+          .history-meta {
+            font-size: 10px;
+            color: #999cac;
+          }
+
+          .status-badge {
+            border-radius: 20px;
+            padding: 4px 9px;
+            font-size: 9px;
             font-weight: 800;
           }
 
-          .hs-feature p {
-            margin: 0;
-            color: #9096A3;
-            font-size: 9px;
-            line-height: 1.4;
+          .status-pending {
+            background: #fff6dc;
+            color: #b77900;
           }
 
-          /* ================================================
-             FLOATING AI BUTTON
-          ================================================ */
+          .status-progress {
+            background: #e9f2ff;
+            color: #2563eb;
+          }
 
-          .hs-floating-ai {
-            position: fixed;
-            right: 20px;
-            bottom: 20px;
-            z-index: 9998;
+          .status-resolved {
+            background: #e8f9ee;
+            color: #16803b;
+          }
 
-            height: 58px;
-
+          .email-status {
+            color: #22a552;
+            font-size: 10px;
             display: flex;
             align-items: center;
-
-            padding:
-              0 20px 0 10px;
-
-            gap: 11px;
-
-            border: none;
-            border-radius: 999px;
-
-            color: #FFFFFF;
-            background: #111827;
-
-            box-shadow:
-              0 15px 35px rgba(15,23,42,.20);
-
-            cursor: pointer;
-
-            transition:
-              transform .22s ease,
-              box-shadow .22s ease;
-          }
-
-          .hs-floating-ai:hover {
-            transform: translateY(-3px);
-
-            box-shadow:
-              0 20px 42px rgba(15,23,42,.26);
-          }
-
-          /* ================================================
-             LITTLE FELLA ICON
-          ================================================ */
-
-          .hs-floating-ai-icon {
-            position: relative;
-
-            width: 42px;
-            height: 42px;
-
-            flex-shrink: 0;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border-radius: 50%;
-
-            color: #FFFFFF;
-
-            background:
-              linear-gradient(
-                145deg,
-                #5145E5,
-                #4F46E5
-              );
-
-            font-size: 17px;
-
-            box-shadow:
-              0 7px 18px rgba(79,70,229,.25);
-
-            z-index: 1;
-          }
-
-          /* Ripple rings */
-
-          .hs-ripple {
-            position: absolute;
-
-            inset: 0;
-
-            border-radius: 50%;
-
-            border: 2px solid rgba(79,70,229,.38);
-
-            pointer-events: none;
-
-            z-index: -1;
-
-            animation:
-              hsAiRipple 2.4s ease-out infinite;
-          }
-
-          .ripple-two {
-            animation-delay: 1.2s;
-          }
-
-          @keyframes hsAiRipple {
-
-            0% {
-              transform: scale(1);
-              opacity: .75;
-            }
-
-            65% {
-              transform: scale(1.65);
-              opacity: .20;
-            }
-
-            100% {
-              transform: scale(1.95);
-              opacity: 0;
-            }
-
-          }
-
-          /* Tiny breathing animation for the bot */
-
-          .hs-floating-ai-icon svg {
-            animation:
-              hsBotBreathing 2.4s ease-in-out infinite;
-          }
-
-          @keyframes hsBotBreathing {
-
-            0%,
-            100% {
-              transform: translateY(0) scale(1);
-            }
-
-            50% {
-              transform: translateY(-1px) scale(1.04);
-            }
-
-          }
-
-          .hs-floating-ai-text {
-            font-size: 14px;
-            font-weight: 700;
+            gap: 5px;
             white-space: nowrap;
           }
 
-          /* ================================================
-             CHAT WINDOW
-          ================================================ */
-
-          .hs-chat-window {
-            position: fixed;
-
-            right: 20px;
-            bottom: 20px;
-
-            z-index: 9999;
-
-            width: 380px;
-            height: 570px;
-
-            max-width:
-              calc(100vw - 30px);
-
-            max-height:
-              calc(100vh - 45px);
-
-            display: flex;
-            flex-direction: column;
-
-            overflow: hidden;
-
-            border:
-              1px solid #E1E5EC;
-
-            border-radius: 20px;
-
-            background: #FFFFFF;
-
-            box-shadow:
-              0 25px 70px rgba(15,23,42,.22);
-          }
-
-          /* ================================================
-             CHAT HEADER
-          ================================================ */
-
-          .hs-chat-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-
-            padding: 14px 15px;
-
-            color: #FFFFFF;
-
-            background: #111827;
-          }
-
-          .hs-chat-header-left {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-          }
-
-          .hs-chat-avatar {
-            width: 40px;
-            height: 40px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border-radius: 50%;
-
-            color: #FFFFFF;
-
-            background:
-              linear-gradient(
-                145deg,
-                #5548E9,
-                #4F46E5
-              );
-
-            font-size: 18px;
-          }
-
-          .hs-chat-title {
-            color: #FFFFFF;
-            font-size: 14px;
-            font-weight: 800;
-          }
-
-          .hs-chat-status {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-
-            margin-top: 2px;
-
-            color: #AAB2C0;
-
-            font-size: 9px;
-          }
-
-          .hs-chat-status span {
-            width: 6px;
-            height: 6px;
-
-            border-radius: 50%;
-
-            background: #35D399;
-          }
-
-          .hs-chat-actions {
-            display: flex;
-            gap: 4px;
-          }
-
-          .hs-chat-actions button {
-            width: 30px;
-            height: 30px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border: none;
-            border-radius: 8px;
-
-            color: #AAB2C0;
-
-            background:
-              rgba(255,255,255,.07);
-
-            cursor: pointer;
-          }
-
-          .hs-chat-actions button:hover {
-            color: #FFFFFF;
-
-            background:
-              rgba(255,255,255,.13);
-          }
-
-          /* ================================================
-             CHAT BODY
-          ================================================ */
-
-          .hs-chat-body {
-            flex: 1;
-
-            overflow-y: auto;
-
-            padding: 15px;
-
-            background: #F8F9FC;
-          }
-
-          .hs-chat-body::-webkit-scrollbar {
-            width: 5px;
-          }
-
-          .hs-chat-body::-webkit-scrollbar-thumb {
-            background: #D4D8E1;
-            border-radius: 10px;
-          }
-
-          /* ================================================
-             WELCOME
-          ================================================ */
-
-          .hs-chat-welcome {
-            padding: 16px;
-
-            margin-bottom: 17px;
-
+          .empty-history {
             text-align: center;
-
-            border:
-              1px solid #E7EAF0;
-
-            border-radius: 14px;
-
-            background: #FFFFFF;
+            padding: 35px 15px;
           }
 
-          .hs-chat-welcome-icon {
-            width: 42px;
-            height: 42px;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            margin: 0 auto 9px;
-
-            border-radius: 12px;
-
-            color: #5146E5;
-
-            background: #EEF0FF;
-          }
-
-          .hs-chat-welcome h5 {
-            margin: 0 0 4px;
-
-            color: #20293A;
-
-            font-size: 13px;
-            font-weight: 800;
-          }
-
-          .hs-chat-welcome p {
-            margin: 0 0 12px;
-
-            color: #8A91A0;
-
-            font-size: 10px;
-          }
-
-          .hs-chat-suggestions {
-            display: flex;
-            flex-wrap: wrap;
-
-            justify-content: center;
-
-            gap: 6px;
-          }
-
-          .hs-chat-suggestions button {
-            padding: 7px 9px;
-
-            border:
-              1px solid #E0E4F8;
-
-            border-radius: 999px;
-
-            color: #4D45BE;
-
-            background: #F5F6FF;
-
-            font-size: 9px;
-            font-weight: 600;
-
-            cursor: pointer;
-          }
-
-          .hs-chat-suggestions button:hover {
-            background: #ECEEFF;
-          }
-
-          /* ================================================
-             MESSAGES
-          ================================================ */
-
-          .hs-chat-message-row {
-            display: flex;
-            align-items: flex-end;
-
-            gap: 7px;
-
-            margin-bottom: 11px;
-          }
-
-          .hs-chat-message-row.user {
-            justify-content: flex-end;
-          }
-
-          .hs-chat-mini-avatar {
-            width: 24px;
-            height: 24px;
-
-            flex-shrink: 0;
-
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            border-radius: 8px;
-
-            color: #5146E5;
-
-            background: #E7E9FF;
-
-            font-size: 10px;
-          }
-
-          .hs-chat-message {
-            max-width: 78%;
-
-            padding: 9px 11px;
-
-            border-radius: 12px;
-
-            font-size: 11px;
-
-            line-height: 1.55;
-          }
-
-          .bot-message {
-            color: #374151;
-
-            background: #FFFFFF;
-
-            border:
-              1px solid #E3E6ED;
-
-            border-bottom-left-radius: 4px;
-          }
-
-          .user-message {
-            color: #FFFFFF;
-
-            background: #4F46E5;
-
-            border-bottom-right-radius: 4px;
-          }
-
-          .hs-chat-message span {
-            display: block;
-
-            margin-top: 4px;
-
-            text-align: right;
-
-            font-size: 7px;
-
-            opacity: .5;
-          }
-
-          /* ================================================
-             TYPING
-          ================================================ */
-
-          .hs-chat-typing {
-            display: flex;
-            align-items: center;
-
-            gap: 4px;
-
-            padding: 11px 12px;
-
-            border:
-              1px solid #E3E6ED;
-
-            border-radius: 12px;
-
-            border-bottom-left-radius: 4px;
-
-            background: #FFFFFF;
-          }
-
-          .hs-chat-typing span {
-            width: 5px;
-            height: 5px;
-
+          .empty-history-icon {
+            width: 55px;
+            height: 55px;
+            margin: auto;
             border-radius: 50%;
-
-            background: #9299A7;
-
-            animation:
-              hsTyping 1.2s infinite;
-          }
-
-          .hs-chat-typing span:nth-child(2) {
-            animation-delay: .15s;
-          }
-
-          .hs-chat-typing span:nth-child(3) {
-            animation-delay: .3s;
-          }
-
-          @keyframes hsTyping {
-
-            0%,
-            60%,
-            100% {
-              transform: translateY(0);
-              opacity: .4;
-            }
-
-            30% {
-              transform: translateY(-4px);
-              opacity: 1;
-            }
-
-          }
-
-          /* ================================================
-             CHAT INPUT
-          ================================================ */
-
-          .hs-chat-input-wrapper {
+            background: #f1f0ff;
+            color: #665be4;
             display: flex;
-            align-items: flex-end;
-
-            gap: 8px;
-
-            padding: 10px;
-
-            border-top:
-              1px solid #E7E9EE;
-
-            background: #FFFFFF;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
           }
 
-          .hs-chat-input-wrapper textarea {
-            flex: 1;
+          .empty-history h3 {
+            margin: 13px 0 5px;
+            font-size: 15px;
+            color: #292c42;
+          }
 
-            min-height: 39px;
-            max-height: 90px;
-
-            resize: none;
-
-            padding: 10px;
-
-            border:
-              1px solid #DDE1E8;
-
-            border-radius: 10px;
-
-            outline: none;
-
-            color: #273142;
-
-            background: #FAFBFC;
-
-            font-family: inherit;
-
+          .empty-history p {
+            margin: 0;
+            color: #8c8fa0;
             font-size: 11px;
           }
 
-          .hs-chat-input-wrapper textarea:focus {
-            border-color: #9EA5F8;
-
-            background: #FFFFFF;
-
-            box-shadow:
-              0 0 0 3px rgba(79,70,229,.06);
-          }
-
-          .hs-chat-input-wrapper button {
-            width: 39px;
-            height: 39px;
-
-            flex-shrink: 0;
-
+          .history-loading {
+            min-height: 150px;
             display: flex;
             align-items: center;
             justify-content: center;
-
-            border: none;
-            border-radius: 10px;
-
-            color: #FFFFFF;
-
-            background: #4F46E5;
-
-            cursor: pointer;
+            gap: 12px;
+            color: #777b8e;
+            font-size: 12px;
           }
 
-          .hs-chat-input-wrapper button:hover:not(:disabled) {
-            background: #4338CA;
+          /* FEATURES */
+
+          .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
           }
 
-          .hs-chat-input-wrapper button:disabled {
-            opacity: .4;
-
-            cursor: not-allowed;
+          .feature-card {
+            background: white;
+            border: 1px solid #e8e9f1;
+            border-radius: 16px;
+            padding: 20px;
           }
 
-          /* ================================================
-             CHAT FOOTER
-          ================================================ */
-
-          .hs-chat-footer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-
-            gap: 5px;
-
-            padding: 5px;
-
-            border-top:
-              1px solid #F0F1F4;
-
-            color: #9AA1AE;
-
-            background: #FFFFFF;
-
-            font-size: 8px;
+          .feature-card > svg {
+            color: #5146df;
+            font-size: 21px;
+            margin-bottom: 12px;
           }
 
-          /* ================================================
-             RESPONSIVE
-          ================================================ */
-
-          @media (max-width: 1199px) {
-
-            .hs-feature-row {
-              grid-template-columns:
-                repeat(2, 1fr);
-            }
-
+          .feature-card h3 {
+            margin: 0 0 6px;
+            color: #292c42;
+            font-size: 13px;
           }
 
-          @media (max-width: 767px) {
+          .feature-card p {
+            margin: 0;
+            color: #85899a;
+            font-size: 10px;
+            line-height: 1.6;
+          }
 
-            .hs-page-header {
-              align-items: flex-start;
-              flex-direction: column;
-            }
+          /* RESPONSIVE */
 
-            .hs-header-status {
-              display: none;
-            }
+          @media (max-width: 1000px) {
 
-            .hs-ai-hero {
-              min-height: 420px;
-              border-radius: 20px;
-            }
-
-            .hs-ai-hero-content {
-              padding: 35px 25px 40px;
-            }
-
-            .hs-ai-hero-icon {
-              width: 82px;
-              height: 82px;
-
-              margin-bottom: 28px;
-
-              font-size: 30px;
-            }
-
-            .hs-ai-hero h2 {
-              font-size: 38px;
-              letter-spacing: -1.5px;
-            }
-
-            .hs-ai-hero p {
-              font-size: 15px;
-            }
-
-            .hs-ai-hero-decoration {
-              display: none;
-            }
-
-            .hs-section-card {
-              padding: 21px;
-            }
-
-            .hs-section-header {
-              flex-direction: column;
-            }
-
-            .hs-section-count {
-              display: none;
-            }
-
-            .hs-feature-row {
+            .contact-grid {
               grid-template-columns: 1fr;
             }
 
-            .hs-floating-ai {
-              right: 15px;
-              bottom: 15px;
-
-              height: 54px;
-
-              padding:
-                0 15px 0 8px;
-
-              gap: 9px;
+            .support-content-grid {
+              grid-template-columns: 1fr;
             }
 
-            .hs-floating-ai-icon {
-              width: 40px;
-              height: 40px;
-
-              font-size: 16px;
+            .company-info-card {
+              flex-direction: column;
+              align-items: flex-start;
             }
 
-            .hs-floating-ai-text {
-              font-size: 13px;
+            .company-details {
+              flex-direction: column;
+              gap: 10px;
             }
 
-            .hs-chat-window {
-              right: 10px;
-              bottom: 10px;
-
-              width:
-                calc(100vw - 20px);
-
-              height:
-                calc(100vh - 20px);
-
-              max-height: none;
-
-              border-radius: 17px;
+            .features-grid {
+              grid-template-columns: repeat(2, 1fr);
             }
 
           }
 
-          @media (max-width: 480px) {
+          @media (max-width: 600px) {
 
-            .hs-page-header h1 {
-              font-size: 30px;
+            .support-page {
+              padding: 5px;
             }
 
-            .hs-ai-hero-content {
-              padding:
-                30px 20px;
+            .support-header {
+              padding: 25px;
             }
 
-            .hs-ai-hero h2 {
-              font-size: 34px;
+            .support-header h1 {
+              font-size: 27px;
             }
 
-            .hs-ai-hero-button {
-              width: 100%;
-              justify-content: center;
-            }
-
-            .hs-faq-answer {
-              padding-left: 15px;
-            }
-
-            .hs-faq-number {
+            .support-header-icon {
               display: none;
             }
 
-            .hs-floating-ai {
-              right: 12px;
-              bottom: 12px;
+            .support-card {
+              padding: 20px;
             }
 
-            .hs-floating-ai-text {
-              font-size: 12px;
+            .history-item {
+              flex-direction: column;
             }
 
-          }
+            .email-status {
+              align-self: flex-start;
+            }
 
-          /* Respect reduced-motion preference */
+            .features-grid {
+              grid-template-columns: 1fr;
+            }
 
-          @media (prefers-reduced-motion: reduce) {
-
-            .hs-ripple,
-            .hs-floating-ai-icon svg,
-            .hs-chat-typing span {
-              animation: none !important;
+            .history-header {
+              align-items: flex-start;
             }
 
           }
@@ -2611,7 +1547,6 @@ const HelpSupport = () => {
         `}</style>
 
       </div>
-
     </StudentLayout>
   );
 };

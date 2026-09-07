@@ -6,7 +6,7 @@ import StudentLayout from '../../components/StudentLayout';
 
 import API from '../../services/api';
 
-import DataTable from '../super-admin/components/DataTable';
+import ReusableDataTableforstudent from './components/DataTableforstudent';
 
 import { FaTrash } from 'react-icons/fa';
 
@@ -925,7 +925,7 @@ const StudentInterviews = () => {
           onClick={handleTableClick}
         >
 
-          <DataTable
+          <ReusableDataTableforstudent
             title="Interview History"
             data={filteredInterviews}
             columns={columns}
