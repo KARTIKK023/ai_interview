@@ -51,49 +51,250 @@ const ReusableDataTable = ({
   }, [selectedStudentIds, data]);
 
   // Export handlers
-  const exportToCSV = () => {
-    if (!data || data.length === 0) {
-      toast.error('No data available to export');
-      return;
-    }
-    const headers = columns.map(c => c.title || c.data).join(',');
-    const rows = data.map(row =>
-      columns.map(c => {
-        let val;
-        if (typeof c.render === 'function') {
-          try {
-            val = c.render(row[c.data], 'export', row);
-          } catch (err) {
-            val = row[c.data];
-          }
-        } else {
-          val = row[c.data];
-        }
+const exportToCSV = () => {
+  if (!data || data.length === 0) {
+    toast.error('No data available to export');
+    return;
+  }
 
-        if (val === undefined || val === null) {
-          val = '';
-        }
-        const clean = String(val)
-          .replace(/<[^>]*>?/gm, '')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/"/g, '""')
-          .trim();
-        return `"${clean}"`;
-      }).join(',')
-    );
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_export.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported ${data.length} records to CSV`);
+  // =====================================================
+  // FILTER ONLY CSV COLUMNS
+  // =====================================================
+  const exportColumns = columns.filter((column) => {
+    const rawTitle = String(column.title || '');
+
+    const cleanTitle = rawTitle
+      .replace(/<[^>]*>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    // Remove checkbox / Select column
+    const isCheckboxColumn =
+      rawTitle.includes('type="checkbox"') ||
+      rawTitle.includes("type='checkbox'") ||
+      rawTitle.includes('select-all') ||
+      rawTitle.includes('checkbox') ||
+      cleanTitle === 'select';
+
+    if (isCheckboxColumn) {
+      return false;
+    }
+
+    // Remove Performance Report / View column
+    const isViewColumn =
+      cleanTitle === 'performance report' ||
+      cleanTitle === 'view' ||
+      cleanTitle.includes('performance report');
+
+    if (isViewColumn) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // =====================================================
+  // CLEAN HTML → TEXT
+  // =====================================================
+  const cleanText = (value) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return '';
+    }
+
+    const temp =
+      document.createElement('div');
+
+    temp.innerHTML = String(value);
+
+    // Remove checkbox/input elements
+    temp
+      .querySelectorAll(
+        'input, select, textarea'
+      )
+      .forEach((element) => {
+        element.remove();
+      });
+
+    // Keep button text
+    temp
+      .querySelectorAll('button')
+      .forEach((button) => {
+        button.replaceWith(
+          document.createTextNode(
+            button.textContent || ''
+          )
+        );
+      });
+
+    // Keep link text
+    temp
+      .querySelectorAll('a')
+      .forEach((link) => {
+        link.replaceWith(
+          document.createTextNode(
+            link.textContent || ''
+          )
+        );
+      });
+
+    return temp.textContent
+      .replace(/\s+/g, ' ')
+      .trim();
   };
+
+  // =====================================================
+  // CSV HEADERS
+  // =====================================================
+  const headers = exportColumns
+    .map((column) => {
+      const header = cleanText(
+        column.title ||
+        column.data
+      );
+
+      return `"${header.replace(
+        /"/g,
+        '""'
+      )}"`;
+    })
+    .join(',');
+
+  // =====================================================
+  // CSV ROWS
+  // =====================================================
+  const rows = data.map(
+    (row, rowIndex) => {
+
+      return exportColumns
+        .map((column) => {
+
+          let value;
+
+          // S.No.
+          if (
+            column.data ===
+            'serialNumber'
+          ) {
+            value =
+              row.serialNumber ??
+              rowIndex + 1;
+          }
+
+          // Subscription Amount
+          else if (
+            column.data ===
+            'subscriptionAmount'
+          ) {
+            const amount =
+              row.subscriptionAmount;
+
+            if (
+              amount === null ||
+              amount === undefined ||
+              amount === ''
+            ) {
+              value = 'Not Amount';
+            } else {
+              value =
+                `₹${Number(
+                  amount
+                ).toLocaleString(
+                  'en-IN'
+                )}`;
+            }
+          }
+
+          // Subscription Status
+          else if (
+            column.data ===
+            'subscriptionStatus'
+          ) {
+            value = (
+              row.subscriptionStatus ||
+              'UNPAID'
+            ).toLowerCase();
+          }
+
+          // Rendered columns
+          else if (
+            typeof column.render ===
+            'function'
+          ) {
+            try {
+              value =
+                column.render(
+                  row[column.data],
+                  'export',
+                  row
+                );
+            } catch (error) {
+              value =
+                row[column.data];
+            }
+          }
+
+          // Normal columns
+          else {
+            value =
+              row[column.data];
+          }
+
+          const clean =
+            cleanText(value);
+
+          return `"${clean.replace(
+            /"/g,
+            '""'
+          )}"`;
+        })
+        .join(',');
+    }
+  );
+
+  // =====================================================
+  // CREATE CSV
+  // =====================================================
+  const csvContent = [
+    headers,
+    ...rows
+  ].join('\r\n');
+
+  const blob = new Blob(
+    [csvContent],
+    {
+      type: 'text/csv;charset=utf-8;'
+    }
+  );
+
+  const url =
+    URL.createObjectURL(blob);
+
+  const link =
+    document.createElement('a');
+
+  link.href = url;
+
+  link.download =
+    `${title
+      .toLowerCase()
+      .replace(/\s+/g, '_')}_export.csv`;
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+
+  toast.success(
+    `Exported ${data.length} records to CSV`
+  );
+};
 
 const exportToExcel = () => {
   if (!data || data.length === 0) {

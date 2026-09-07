@@ -426,14 +426,15 @@ const handleSendScoreNotification = async (targetIds = null) => {
   data: 'serialNumber',
   orderable: false,
   searchable: false,
+  width: '55px',
+
   render: (data) => `
-    <span style="
-      display:block;
-      width:70px;
-      text-align:center;
+    <div style="
+      width: 100%;
+      text-align: center;
     ">
       ${data}.
-    </span>
+    </div>
   `
 },
 //candiName     

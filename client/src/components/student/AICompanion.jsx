@@ -13,7 +13,7 @@ import {
   FaChevronRight
 } from 'react-icons/fa';
 
-import { AuthContext } from '/Users/kartikchaudhary/Desktop/Ai-Interview main/client/src/context/AuthContext.jsx';
+import { AuthContext } from '../../context/AuthContext';
 
 
 // ============================================================
