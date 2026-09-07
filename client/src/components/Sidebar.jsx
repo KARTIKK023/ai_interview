@@ -84,11 +84,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaTachometerAlt />
-          <span>Dashboard</span>
+          <span className='small'>Dashboard</span>
         </NavLink>
 
 
@@ -116,11 +116,11 @@ const Sidebar = () => {
             style={{
               cursor: 'pointer',
               letterSpacing: '0.05em',
-              fontWeight: '700'
+              fontWeight: '500'
             }}
           >
 
-            <span className="d-flex align-items-center">
+            <span className="small d-flex align-items-center">
               <FaUser className="me-2" />
               Profile
             </span>
@@ -179,11 +179,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaFileAlt />
-          <span>My Resume</span>
+          <span className='small'>My Resume</span>
         </NavLink>
 
 
@@ -198,11 +198,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaBriefcase />
-          <span>Target Jobs</span>
+          <span className='small'>Target Jobs</span>
         </NavLink>
 
 
@@ -217,11 +217,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaBookOpen />
-          <span>Question Bank</span>
+          <span className='small'>Question Bank</span>
         </NavLink>
 
 
@@ -249,11 +249,11 @@ const Sidebar = () => {
             style={{
               cursor: 'pointer',
               letterSpacing: '0.05em',
-              fontWeight: '700'
+              fontWeight: '500'
             }}
           >
 
-            <span className="d-flex align-items-center">
+            <span className="small d-flex align-items-center ">
               <FaGraduationCap className="me-2" />
               Interview
             </span>
@@ -346,11 +346,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaAward />
-          <span>Certificates</span>
+          <span className='small'>Certificates</span>
         </NavLink>
 
 
@@ -365,11 +365,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaBriefcase />
-          <span>Placements</span>
+          <span className='small'>Placements</span>
         </NavLink>
 
 
@@ -384,11 +384,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaRobot />
-          <span>Ask AI</span>
+          <span className='small'>Ask AI</span>
         </NavLink>
 
 
@@ -403,11 +403,11 @@ const Sidebar = () => {
           }
           style={{
             letterSpacing: '0.05em',
-            fontWeight: '700'
+            fontWeight: '500'
           }}
         >
           <FaQuestionCircle />
-          <span>Help & Support</span>
+          <span className='small'>Help & Support</span>
         </NavLink>
 
       </nav>
