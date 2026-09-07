@@ -8,6 +8,7 @@ import {
   FaBriefcase,
   FaBrain,
   FaAward,
+  FaClipboardList ,
   FaSignOutAlt
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -36,6 +37,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'target-jobs', label: 'Target Jobs Records', icon: FaBriefcase, route: '/super-admin/target-jobs', badge: 'Jobs' },
     { id: 'mock-interviews', label: 'Mock Interviews', icon: FaBrain, route: '/super-admin/mock-interviews', badge: 'AI' },
     { id: 'certificates', label: 'Certificates', icon: FaAward, route: '/super-admin/certificates', badge: 'Verify' },
+    { id:'inquiry' , label:'Inquiry Details' , icon: FaClipboardList , route: '/super-admin/inquiry-details', badge:'details' },
     { id: 'logout', label: 'Logout', icon: FaSignOutAlt, isLogout: true }
   ];
 
