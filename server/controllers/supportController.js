@@ -279,7 +279,150 @@ const getMySupportMessages = async (req, res) => {
   }
 };
 
+// ============================================================
+// SUPER ADMIN - GET ALL SUPPORT / INQUIRY MESSAGES
+// ============================================================
+
+const getAllSupportMessages = async (req, res) => {
+  try {
+    const messages = await SupportMessage.find()
+      .sort({
+        createdAt: -1,
+      })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: messages.length,
+      data: messages,
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Get all support messages error:',
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        'Failed to fetch inquiry details.',
+    });
+  }
+};
+
+const sendSupportReply = async (req, res) => {
+  try {
+    const {
+      inquiryId,
+      email,
+      name,
+      subject,
+      reply
+    } = req.body;
+
+    if (!inquiryId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Inquiry ID is required'
+      });
+    }
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student email is required'
+      });
+    }
+
+    if (!reply || !reply.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reply message is required'
+      });
+    }
+
+    // Find inquiry
+    const inquiry = await SupportMessage.findById(
+      inquiryId
+    );
+
+    if (!inquiry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inquiry not found'
+      });
+    }
+
+    // =========================
+    // SEND EMAIL
+    // =========================
+
+   await transporter.sendMail({
+  from: process.env.EMAIL_USER,
+  to: email,
+
+  subject: `Reply: ${subject || 'HireSmart AI Support'}`,
+
+  // Send exactly what Super Admin typed
+  text: reply,
+
+  html: `
+    <div
+      style="
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #222;
+      "
+    >
+      <h2 style="color:#4C1D95;">
+        HireSmart AI Support
+      </h2>
+
+      <div style="white-space: pre-wrap;">
+        ${reply
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\n/g, '<br />')
+        }
+      </div>
+    </div>
+  `
+});
+
+    // =========================
+    // UPDATE INQUIRY STATUS
+    // =========================
+
+    inquiry.status = 'Resolved';
+
+    await inquiry.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Reply sent successfully and inquiry marked as resolved.',
+      data: inquiry
+    });
+
+  } catch (error) {
+
+    console.error(
+      'Send support reply error:',
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send reply'
+    });
+  }
+};
+
 module.exports = {
   createSupportMessage,
   getMySupportMessages,
+  getAllSupportMessages,
+  sendSupportReply
 };

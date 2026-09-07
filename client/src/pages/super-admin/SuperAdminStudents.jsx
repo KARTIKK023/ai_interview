@@ -288,29 +288,12 @@ HireSmart AI Team 🚀`;
     data: 'email'
   },
 
-  {
-    title: 'Phone Number',
-    data: 'mobileNumber',
-    render: (_data, _type, row) => {
-      const phone =
-        row.mobileNumber ||
-        row.profile?.phone ||
-        row.phone ||
-        row.phoneNumber;
-
-      return phone
-        ? `<span class="fw-medium text-dark">${phone}</span>`
-        : '<span class="text-muted">N/A</span>';
-    }
-  },
-
- {
-  title: 'WhatsApp',
+{
+  title: 'Phone Number',
   data: null,
   orderable: false,
-  searchable: false,
-  render: (_data, _type, row) => {
 
+  render: (_data, _type, row) => {
     const phone =
       row.mobileNumber ||
       row.profile?.phone ||
@@ -318,34 +301,58 @@ HireSmart AI Team 🚀`;
       row.phoneNumber;
 
     if (!phone) {
-      return '<span class="text-muted">No Number</span>';
+      return `
+        <span class="text-muted">
+          No Number
+        </span>
+      `;
     }
 
     return `
-      <button
-        type="button"
-        class="whatsapp-message-btn"
-        data-phone="${phone}"
-        data-name="${row.fullName || row.name || 'Student'}"
-        title="Send WhatsApp Message"
+      <div
         style="
-          border: none;
-          background: transparent;
-          padding: 4px;
-          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
         "
       >
-        <img
-          src="https://cdn.simpleicons.org/whatsapp/25D366"
-          alt="WhatsApp"
-          width="25"
-          height="25"
-          style="display:block;"
-        />
-      </button>
+
+        <!-- Phone Number -->
+        <span>
+          ${phone}
+        </span>
+
+        <!-- WhatsApp Button -->
+        <button
+          type="button"
+          class="whatsapp-message-btn"
+          data-phone="${phone}"
+          data-name="${row.fullName || row.name || 'Student'}"
+          title="Send WhatsApp Message"
+          style="
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+          "
+        >
+          <i
+            class="fab fa-whatsapp"
+            style="
+              color: #25D366;
+              font-size: 22px;
+            "
+          ></i>
+        </button>
+
+      </div>
     `;
   }
 },
+
+
 
   {
     title: 'Role',

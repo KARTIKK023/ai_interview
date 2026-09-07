@@ -26,6 +26,7 @@ import {
   FaExclamationTriangle,
   FaUserGraduate,
   FaUserPlus,
+  FaClipboardList ,
   FaAward
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';

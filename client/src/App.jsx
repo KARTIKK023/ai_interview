@@ -49,6 +49,7 @@ import SuperAdminTargetJobs from './pages/super-admin/SuperAdminTargetJobs';
 import SuperAdminMockInterviews from './pages/super-admin/SuperAdminMockInterviews';
 import SuperAdminCertificates from './pages/super-admin/SuperAdminCertificates';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
+import SuperAdminInquiryDetails from './pages/super-admin/InquiryDetails';
 
 function App() {
   return (
@@ -83,6 +84,7 @@ function App() {
         <Route path="/super-admin/target-jobs" element={<SuperAdminTargetJobs />} />
         <Route path="/super-admin/mock-interviews" element={<SuperAdminMockInterviews />} />
         <Route path="/super-admin/certificates" element={<SuperAdminCertificates />} />
+        <Route path="/super-admin/inquiry-details" element={<SuperAdminInquiryDetails />} />
 
         {/* Additional Super Admin Resource Routes */}
         <Route path="/super-admin/users" element={<SuperAdminUsers />} />
@@ -263,7 +265,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
 
       {/* Catch-all Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

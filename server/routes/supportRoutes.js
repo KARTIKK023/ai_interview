@@ -5,6 +5,8 @@ const router = express.Router();
 const {
   createSupportMessage,
   getMySupportMessages,
+  getAllSupportMessages,
+  sendSupportReply
 } = require('../controllers/supportController');
 
 // IMPORTANT:
@@ -29,6 +31,22 @@ router.get(
   '/messages/my',
   protect,
   getMySupportMessages
+);
+
+// ============================================================
+// SUPER ADMIN - GET ALL INQUIRIES
+// ============================================================
+
+router.get(
+  '/messages',
+  protect,
+  getAllSupportMessages
+);
+// reply 
+router.post(
+  '/messages/reply',
+  protect,
+  sendSupportReply
 );
 
 module.exports = router;
