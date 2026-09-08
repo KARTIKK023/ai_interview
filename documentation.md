@@ -120,6 +120,9 @@ Every student route is protected with `ProtectedRoute` and `allowedRoles={['STUD
 - `/student/resume`: `StudentResume.jsx`; uploads, views, updates, and deletes a PDF resume.
 - `/student/target-jobs`: `StudentTargetJobs.jsx`; manages target roles and target companies.
 - `/student/ats-scanner`: `AtsScanner.jsx`; frontend ATS-scanner page.
+- `/student/ats-scanner/history`: `ats/AtsHistory.jsx`; owned ATS history with deletion.
+- `/student/ats-scanner/analysis/:id`: `ats/AtsAnalysis.jsx`; detailed AI analysis.
+- `/student/ats-scanner/analysis/:id/resume`: `ats/AtsTailoredResume.jsx`; editable tailored resume and PDF download.
 - `/student/achievements`: `StudentAchievements.jsx`; displays achievement-related content.
 - `/student/placement-opportunities`: `PlacementOpportunities.jsx`; searches matched jobs.
 - `/student/help-support`: `HelpSupport.jsx`; creates and reads support messages.
@@ -192,7 +195,11 @@ Unknown URLs redirect to `/`.
 - `pages/student/ProfileProgress.jsx`: reads profile-progress data and displays completion categories.
 - `pages/student/StudentResume.jsx`: manages resume CRUD and PDF viewing/download.
 - `pages/student/StudentTargetJobs.jsx`: loads job roles and target jobs, then creates, edits, and deletes target-job records.
-- `pages/student/AtsScanner.jsx`: ATS-related user interface; the inspected backend has no dedicated ATS route/controller.
+- `pages/student/AtsScanner.jsx`: ATS setup page that selects the stored resume and target job before requesting analysis.
+- `pages/student/ats/atsApi.js`: ATS API methods and response normalization.
+- `pages/student/ats/AtsAnalysis.jsx`: detailed score, evidence, strengths, weaknesses, skills, keywords, and recommendation view.
+- `pages/student/ats/AtsHistory.jsx`: server-backed scan history and student-owned deletion.
+- `pages/student/ats/AtsTailoredResume.jsx`: editable structured tailored resume view and generated PDF download.
 - `pages/student/StudentAchievements.jsx`: achievement display page.
 - `pages/student/PlacementOpportunities.jsx`: filters and displays placement results.
 - `pages/student/HelpSupport.jsx`: loads support history and submits support requests.
@@ -277,6 +284,7 @@ All route paths are mounted below `/api` by `server/server.js`.
 - `routes/locationRoutes.js`: countries, states, and cities.
 - `routes/supportRoutes.js`: create and list support messages.
 - `routes/askRoutes.js`: AI-chat health, chat CRUD, messages, and SSE streaming.
+- `routes/atsRoutes.js`: protected ATS scan, detail, deletion, tailored-generation, and artifact-download endpoints.
 - `routes/notificationRoutes.js`: notification sending endpoints.
 
 ### Admin routes
@@ -305,6 +313,7 @@ All route paths are mounted below `/api` by `server/server.js`.
 - `controllers/askController.js`: creates/reads/deletes user-owned chats, persists messages, builds recent-message context, and streams assistant output via Server-Sent Events.
 - `controllers/supportController.js`: persists support requests, sends SMTP email, records email success/failure, and lists the current student’s support history.
 - `controllers/notificationController.js`: sends notification email operations and score-based notifications.
+- `controllers/atsController.js`: extracts stored PDF text, computes exact resume/target-job cache identities, invokes the dedicated ATS AI service, stores detailed results, generates tailored PDF artifacts, streams artifacts, and deletes owned history.
 
 ## 11. Data Models and Relationships
 
@@ -322,6 +331,8 @@ All route paths are mounted below `/api` by `server/server.js`.
 - `models/AskMessage.js`: chat/user references, `user` or `assistant` role, content, model, completion state, and timestamps.
 - `models/SupportMessage.js`: student identity, subject/message, support status, and email status.
 - `models/Notification.js`: sender, recipients, email status, aggregate delivery status, and counters. It is defined but not currently persisted by the notification controller.
+- `models/AtsScan.js`: versioned AI ATS results, exact resume and target-job hashes, score breakdowns, evidence, recommendations, tailored content, and generation status.
+- `models/AtsArtifact.js`: generated tailored PDF bytes and metadata owned by an ATS scan.
 
 The primary relationship chain is:
 
@@ -340,6 +351,7 @@ User
 ## 12. Important Backend Services
 
 - `services/aiService.js`: provider abstraction for Gemini, Groq, and Ollama; question generation; question cleanup/deduplication; answer evaluation; follow-up generation; final report generation; and fallback responses.
+- `services/atsAIService.js`: separate Gemini/Groq-only ATS provider, strict JSON analysis, score normalization, unsupported-claim warnings, and structured tailored-resume generation.
 - `services/aiRetryService.js`: retries rate-limited Groq requests using `Retry-After` or exponential delay.
 - `services/askAIService.js`: Ollama chat streaming, cancellation using `AbortController`, and Ollama health checking.
 - `services/evaluationService.js`: defines the fixed evaluation criteria: relevance, accuracy, technical knowledge, problem solving, and answer quality.
@@ -390,6 +402,20 @@ The Ask page manages chat records and message history. A message is posted to th
 
 The support page loads the user’s history and submits a support request. The controller stores it, sends an SMTP message to `SUPPORT_EMAIL`, records whether delivery succeeded, and returns the saved request.
 
+### ATS analysis and tailored resume
+
+1. The ATS setup page loads the student’s stored PDF resume and target jobs.
+2. `POST /api/ats/scan` hashes the exact PDF bytes and a canonical snapshot of every target-job field.
+3. If the same student, resume hash, target-job hash, and analysis version already exist, the completed result is returned with `cached: true`.
+4. Otherwise the server extracts PDF text with `pdf-parse`, sends only bounded text plus the target-job snapshot to `atsAIService.js`, validates the structured Gemini/Groq response, and stores the detailed analysis.
+5. The analysis page displays scores, rationales, evidence, matched/missing skills and keywords, strengths, weaknesses, recommendations, and warnings.
+6. The tailored-resume page calls `POST /api/ats/scans/:id/optimize`. The ATS AI service returns editable structured resume content, and the server sends that content through a separate strict ATS re-score using the same six categories. It retries one draft when the first result scores lower, stores only a higher validated projection, and records `no-reliable-improvement` when no safe improvement is validated. The server renders/stores a professional one-column PDF artifact with `pdfkit`.
+7. `GET /api/ats/scans/:id/optimized-resume` streams the generated artifact; it never returns the original resume as an optimized file.
+8. `DELETE /api/ats/scans/:id` removes the student-owned analysis and generated artifact.
+9. `PUT /api/ats/scans/:id/tailored-resume` stores controlled student edits, re-scores the edited content, and regenerates the derived PDF artifact. The original uploaded resume is never modified.
+
+ATS prompt and result versions are stored so future prompt/rubric changes invalidate old cache entries intentionally. Tailored resume generation currently uses `resume-v3`; older tailored artifacts are regenerated. The projected score is based on a separate provider-backed re-score, is explicitly a prediction rather than a guarantee, and is hidden when the tailored result is not validated as better. The tailored-resume UI includes Original/Tailored document preview, controlled editing, review warnings, and existing demo premium gating.
+
 ## 14. Seed and Maintenance Files
 
 - `server/seed.js`: clears and reseeds job roles, creates a default student if absent, and inserts sample questions. It does not delete registered users.
@@ -424,9 +450,9 @@ These are observations from reading the current code, included to help future de
 11. `completeInterview` and `submitFullInterview` are overlapping completion paths.
 12. Admin pages that call a URL outside the interceptor’s admin-pattern check may receive the wrong token when both sessions exist.
 13. The AI mock level page can navigate to `/student/subscription`, but no such route is declared in `App.jsx`.
-14. The ATS scanner page exists, but no dedicated ATS backend route/controller was found during inspection.
+14. ATS now uses a dedicated Gemini/Groq service and versioned exact-input caching. Existing scans created by the earlier heuristic implementation may not have the new hash/version fields and should be treated as legacy results.
 15. The server logs a database connection failure but continues starting; protected database-dependent endpoints will then fail later.
-16. Resume PDFs are stored in MongoDB and can approach the document-size limit at the configured upload maximum.
+16. Resume PDFs and generated tailored PDFs are stored in MongoDB and can approach the document-size limit at the configured upload maximum; larger-scale deployment should move artifacts to object storage.
 
 ## 17. A Practical Reading Order
 
