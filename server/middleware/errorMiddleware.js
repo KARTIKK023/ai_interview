@@ -1,7 +1,7 @@
 const errorHandler = (err, req, res, next) => {
   console.error(`[API ERROR ${req.method} ${req.originalUrl}]:`, err);
 
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message || 'Server Error';
 
   if (err.name === 'CastError') {

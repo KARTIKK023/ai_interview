@@ -1,328 +1,98 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import StudentLayout from '../../components/StudentLayout';
-import API from '../../services/api';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+
 import {
   FaArrowLeft,
   FaBriefcase,
-  FaBuilding,
   FaCheckCircle,
-  FaChevronDown,
-  FaClock,
-  FaDownload,
-  FaEye,
+  FaChevronRight,
   FaFilePdf,
   FaHistory,
-  FaKey,
-  FaLightbulb,
-  FaMagic,
-  
   FaSearch,
   FaShieldAlt,
-  FaStar,
   FaUpload,
-  FaExclamationTriangle,
-  FaTimes,
 } from 'react-icons/fa';
 
-/*
-|--------------------------------------------------------------------------
-| ATS API CONTRACT
-|--------------------------------------------------------------------------
-| Existing endpoints used by this page:
-|   GET  /resume/my-resume
-|   GET  /resume/file/:id
-|   GET  /target-jobs
-|
-| ATS endpoints below are the backend contract we will add:
-|   GET  /ats/scans
-|       -> student's ATS scan history
-|
-|   POST /ats/scan
-|       body: { resumeId, targetJobId }
-|       -> creates a new scan OR returns the existing scan for the same
-|          resume version + target job
-|
-|   GET  /ats/scans/:scanId
-|       -> returns one complete ATS analysis
-|
-|   POST /ats/scans/:scanId/optimize
-|       -> generates target-job-specific optimized resume
-|
-|   GET /ats/scans/:scanId/optimized-resume
-|       -> downloads/streams optimized PDF
-|
-| IMPORTANT:
-| The existing repository currently has no dedicated ATS backend route.
-| Do not silently replace these URLs with interview/resume endpoints.
-|--------------------------------------------------------------------------
-*/
+import toast from 'react-hot-toast';
 
-const ATS_ENDPOINTS = {
-  scans: '/ats/scans',
-  scan: '/ats/scan',
-  scanById: (id) => `/ats/scans/${id}`,
-  optimize: (id) => `/ats/scans/${id}/optimize`,
-  optimizedResume: (id) => `/ats/scans/${id}/optimized-resume`,
-};
-
-const scoreLabel = (score) => {
-  if (score >= 85) return { label: 'Excellent Match', className: 'text-success' };
-  if (score >= 70) return { label: 'Strong Match', className: 'text-primary' };
-  if (score >= 55) return { label: 'Moderate Match', className: 'text-warning' };
-  return { label: 'Needs Improvement', className: 'text-danger' };
-};
-
-const scoreBarClass = (score) => {
-  if (score >= 85) return 'bg-success';
-  if (score >= 70) return 'bg-primary';
-  if (score >= 55) return 'bg-warning';
-  return 'bg-danger';
-};
-
-const formatDate = (value) => {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString(undefined, {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
-const normalizeScan = (scan) => {
-  const score = scan?.scores || {};
-  return {
-    ...scan,
-    overallScore: scan?.overallScore ?? scan?.score ?? 0,
-    scores: {
-      atsCompatibility: score.atsCompatibility ?? scan?.atsCompatibilityScore ?? 0,
-      keywordMatch: score.keywordMatch ?? scan?.keywordMatchScore ?? 0,
-      skillsMatch: score.skillsMatch ?? scan?.skillsMatchScore ?? 0,
-      experience: score.experience ?? scan?.experienceScore ?? 0,
-      education: score.education ?? scan?.educationScore ?? 0,
-      formatting: score.formatting ?? scan?.formattingScore ?? 0,
-    },
-    matchedSkills: scan?.matchedSkills || scan?.skills?.matched || [],
-    missingSkills: scan?.missingSkills || scan?.skills?.missing || [],
-    matchedKeywords: scan?.matchedKeywords || scan?.keywords?.matched || [],
-    missingKeywords: scan?.missingKeywords || scan?.keywords?.missing || [],
-    criticalKeywords: scan?.criticalKeywords || [],
-    strengths: scan?.strengths || [],
-    weaknesses: scan?.weaknesses || [],
-    improvements: scan?.improvements || [],
-    optimization: scan?.optimization || null,
-  };
-};
+import StudentLayout from '../../components/StudentLayout';
+import { atsApi, errorMessage } from './ats/atsApi';
 
 const AtsScanner = () => {
+  const navigate = useNavigate();
+
   const [resume, setResume] = useState(null);
   const [targetJobs, setTargetJobs] = useState([]);
-  const [selectedTargetJobId, setSelectedTargetJobId] = useState('');
-
-  const [loadingResume, setLoadingResume] = useState(true);
-  const [loadingJobs, setLoadingJobs] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const [history, setHistory] = useState([]);
-  const [analysis, setAnalysis] = useState(null);
-
+  const [selectedJobId, setSelectedJobId] = useState('');
+  const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
-  const [optimizing, setOptimizing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [showHistory, setShowHistory] = useState(true);
   const [error, setError] = useState('');
 
-  const selectedTargetJob = useMemo(
-    () => targetJobs.find((job) => job._id === selectedTargetJobId) || null,
-    [targetJobs, selectedTargetJobId]
-  );
-
   useEffect(() => {
-    loadInitialData();
+    const load = async () => {
+      try {
+        const [resumeResponse, jobsResponse] = await Promise.all([
+          atsApi.getResume(),
+          atsApi.getTargetJobs(),
+        ]);
+
+        const nextResume = resumeResponse.data?.resume || null;
+        const jobs = jobsResponse.data?.targetJobs || [];
+
+        setResume(nextResume);
+        setTargetJobs(jobs);
+        setSelectedJobId(jobs[0]?._id || '');
+      } catch (requestError) {
+        const message = errorMessage(
+          requestError,
+          'Unable to load ATS Scanner data.'
+        );
+
+        setError(message);
+        toast.error(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, []);
 
-  useEffect(() => {
-    if (resume && targetJobs.length > 0) {
-      fetchHistory();
-    }
-  }, [resume?._id, targetJobs.length]);
-
-  const loadInitialData = async () => {
-    await Promise.all([fetchResume(), fetchTargetJobs()]);
-  };
-
-  const fetchResume = async () => {
-    try {
-      setLoadingResume(true);
-      const res = await API.get('/resume/my-resume');
-      setResume(res?.data?.resume || null);
-    } catch (err) {
-      console.error('ATS resume fetch error:', err);
-      setResume(null);
-      toast.error(err.response?.data?.message || 'Failed to load your resume');
-    } finally {
-      setLoadingResume(false);
-    }
-  };
-
-  const fetchTargetJobs = async () => {
-    try {
-      setLoadingJobs(true);
-      const res = await API.get('/target-jobs');
-      const jobs = res?.data?.targetJobs || [];
-
-      setTargetJobs(jobs);
-
-      if (jobs.length > 0) {
-        setSelectedTargetJobId((current) => current || jobs[0]._id);
-      }
-    } catch (err) {
-      console.error('ATS target jobs fetch error:', err);
-      setTargetJobs([]);
-      toast.error(err.response?.data?.message || 'Failed to load Target Jobs');
-    } finally {
-      setLoadingJobs(false);
-    }
-  };
-
-  const fetchHistory = async () => {
-    if (!resume) return;
-
-    try {
-      setLoadingHistory(true);
-
-      /*
-       * Backend contract:
-       * GET /ats/scans
-       *
-       * The backend should return scans belonging to the authenticated student.
-       * Prefer returning all recent scans; frontend can display the selected
-       * resume's history.
-       */
-      const res = await API.get(ATS_ENDPOINTS.scans);
-      const scans = (res?.data?.scans || []).map(normalizeScan);
-
-      const resumeScans = scans.filter(
-        (scan) =>
-          String(scan.resume?._id || scan.resumeId || scan.resume) ===
-            String(resume._id) ||
-          String(scan.resumeHash || '') === String(resume.resumeHash || '')
-      );
-
-      setHistory(resumeScans);
-    } catch (err) {
-      /*
-       * ATS backend is not present in the current repository yet.
-       * Keep the page usable instead of showing a hard error on initial load.
-       */
-      console.warn('ATS history endpoint is not available yet:', err);
-      setHistory([]);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleTargetJobChange = async (e) => {
-    const jobId = e.target.value;
-    setSelectedTargetJobId(jobId);
-    setAnalysis(null);
-    setActiveTab('overview');
-
-    /*
-     * When the backend exists, this can immediately load an existing scan
-     * for Resume + Target Job instead of requiring another analysis.
-     */
-    if (resume && jobId) {
-      await loadExistingScan(jobId);
-    }
-  };
-
-  const loadExistingScan = async (jobId = selectedTargetJobId) => {
-    if (!resume || !jobId) return;
-
-    try {
-      setLoadingHistory(true);
-
-      const res = await API.get(ATS_ENDPOINTS.scans, {
-        params: {
-          resumeId: resume._id,
-          targetJobId: jobId,
-        },
-      });
-
-      const scans = (res?.data?.scans || []).map(normalizeScan);
-
-      if (scans.length > 0) {
-        const latest = scans[0];
-        setAnalysis(latest);
-        setHistory((current) => {
-          const merged = [latest, ...current.filter((item) => item._id !== latest._id)];
-          return merged;
-        });
-      } else {
-        setAnalysis(null);
-      }
-    } catch (err) {
-      console.warn('Could not load existing ATS scan:', err);
-      setAnalysis(null);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleCheckScore = async () => {
+  const handleCheck = async () => {
     if (!resume) {
-      toast.error('Please upload your resume first.');
-      return;
+      return toast.error('Upload a resume before checking your ATS score.');
     }
 
-    if (!selectedTargetJob) {
-      toast.error('Please select a Target Job first.');
-      return;
+    if (!selectedJobId) {
+      return toast.error('Select a Target Job first.');
     }
 
     try {
       setChecking(true);
-      setError('');
 
-      /*
-       * IMPORTANT:
-       * The backend should make Resume + Resume Version/Hash + Target Job
-       * the idempotency key.
-       *
-       * Therefore clicking this button again for the same resume and target
-       * job must return the existing scan instead of creating another scan.
-       */
-      const res = await API.post(ATS_ENDPOINTS.scan, {
+      const response = await atsApi.createScan({
         resumeId: resume._id,
-        targetJobId: selectedTargetJob._id,
+        targetJobId: selectedJobId,
       });
 
-      if (!res?.data?.scan) {
-        throw new Error('No ATS analysis was returned.');
+      const scan = response.data?.scan;
+
+      if (!scan?._id) {
+        throw new Error('The ATS service returned no analysis.');
       }
 
-      const result = normalizeScan(res.data.scan);
-
-      setAnalysis(result);
-      setHistory((current) => [
-        result,
-        ...current.filter((item) => item._id !== result._id),
-      ]);
-      setActiveTab('overview');
-
       toast.success(
-        res?.data?.cached
-          ? 'Existing ATS analysis loaded'
-          : 'ATS score generated successfully'
+        response.data.cached
+          ? 'Existing analysis loaded.'
+          : 'AI ATS analysis completed.'
       );
-    } catch (err) {
-      console.error('ATS analysis error:', err);
 
-      const message =
-        err.response?.data?.message ||
-        'ATS analysis could not be completed. Please try again.';
+      navigate(`/student/ats-scanner/analysis/${scan._id}`);
+    } catch (requestError) {
+      const message = errorMessage(
+        requestError,
+        'ATS analysis could not be completed.'
+      );
 
       setError(message);
       toast.error(message);
@@ -331,974 +101,782 @@ const AtsScanner = () => {
     }
   };
 
-  const handleViewHistory = async (scan) => {
-    if (!scan?._id) return;
-
-    try {
-      const res = await API.get(ATS_ENDPOINTS.scanById(scan._id));
-      setAnalysis(normalizeScan(res?.data?.scan || scan));
-      setActiveTab('overview');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      console.error('ATS history detail error:', err);
-      setAnalysis(scan);
-      setActiveTab('overview');
-    }
-  };
-
-  const handleOptimize = async () => {
-    if (!analysis?._id) {
-      toast.error('Please generate an ATS analysis first.');
-      return;
-    }
-
-    try {
-      setOptimizing(true);
-
-      const res = await API.post(ATS_ENDPOINTS.optimize(analysis._id));
-
-      const updated = normalizeScan({
-        ...analysis,
-        ...(res?.data?.scan || {}),
-        optimization:
-          res?.data?.optimization || analysis.optimization,
-      });
-
-      setAnalysis(updated);
-      setActiveTab('optimization');
-      toast.success('Target-job optimized resume generated');
-    } catch (err) {
-      console.error('ATS optimization error:', err);
-      toast.error(
-        err.response?.data?.message ||
-          'Resume optimization could not be completed'
-      );
-    } finally {
-      setOptimizing(false);
-    }
-  };
-
-  const handleDownloadOptimized = async () => {
-    if (!analysis?._id) return;
-
-    try {
-      const response = await API.get(
-        ATS_ENDPOINTS.optimizedResume(analysis._id),
-        { responseType: 'blob' }
-      );
-
-      const blob = new Blob([response.data], {
-        type: 'application/pdf',
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-
-      link.href = url;
-      link.download = `ATS-Optimized-${selectedTargetJob?.target_job_role || 'Resume'}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Optimized resume download error:', err);
-      toast.error(
-        err.response?.data?.message ||
-          'Failed to download optimized resume'
-      );
-    }
-  };
-
-  const handleViewOriginalResume = async () => {
-    if (!resume?._id) return;
-
-    try {
-      const response = await API.get(`/resume/file/${resume._id}`, {
-        responseType: 'blob',
-      });
-
-      const blob = new Blob([response.data], {
-        type: 'application/pdf',
-      });
-
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Resume preview error:', err);
-      toast.error('Failed to open resume');
-    }
-  };
-
-  const renderScore = (score) => {
-    const meta = scoreLabel(score);
-
+  if (loading) {
     return (
-      <div className="text-center">
-        <div
-          className="mx-auto d-flex align-items-center justify-content-center rounded-circle border border-5"
-          style={{
-            width: 170,
-            height: 170,
-            borderColor: 'rgba(13, 110, 253, 0.15)',
-            background:
-              'radial-gradient(circle, rgba(13,110,253,.08), rgba(255,255,255,1))',
-          }}
-        >
-          <div>
-            <div className="display-4 fw-bold text-primary">{score}</div>
-            <div className="small text-muted fw-semibold">OUT OF 100</div>
+      <StudentLayout>
+        <div className="container-fluid py-5">
+          <div
+            className="d-flex justify-content-center align-items-center"
+            style={{ minHeight: '55vh' }}
+          >
+            <div className="text-center">
+              <div
+                className="spinner-border text-primary mb-3"
+                role="status"
+                style={{
+                  width: '2.5rem',
+                  height: '2.5rem',
+                }}
+              >
+                <span className="visually-hidden">Loading...</span>
+              </div>
+
+              <p className="text-muted mb-0 fw-medium">
+                Loading ATS Scanner...
+              </p>
+            </div>
+          </div>
+        </div>
+      </StudentLayout>
+    );
+  }
+
+  const selectedJob = targetJobs.find(
+    (job) => job._id === selectedJobId
+  );
+
+  const resumeName =
+    resume?.resume_file?.fileName ||
+    resume?.fileName ||
+    'Resume.pdf';
+
+  return (
+    <StudentLayout>
+      <div
+        className="container-fluid px-2 px-md-3 px-xl-4 py-3 py-lg-4"
+        style={{
+          maxWidth: '1440px',
+          margin: '0 auto',
+        }}
+      >
+        <div className="mb-4">
+          <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+            <div>
+              <Link
+                to="/student/dashboard"
+                className="text-decoration-none text-muted small fw-semibold d-inline-flex align-items-center mb-3"
+              >
+                <FaArrowLeft className="me-2" size={12} />
+                Back to Dashboard
+              </Link>
+
+              <div className="d-flex align-items-center gap-3">
+                <div
+                  className="d-flex align-items-center justify-content-center rounded-4 bg-primary text-white shadow-sm flex-shrink-0"
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                  }}
+                >
+                  <FaSearch size={20} />
+                </div>
+
+                <div>
+                  <h1
+                    className="fw-bold mb-1"
+                    style={{
+                      fontSize: 'clamp(1.55rem, 3vw, 2.1rem)',
+                      letterSpacing: '-0.03em',
+                    }}
+                  >
+                    AI ATS Resume Checker
+                  </h1>
+
+                  <p className="text-muted mb-0">
+                    Evaluate your resume against the job you want.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              to="/student/ats-scanner/history"
+              className="btn btn-outline-secondary rounded-3 d-inline-flex align-items-center justify-content-center px-3 py-2 fw-semibold"
+            >
+              <FaHistory className="me-2" size={14} />
+              Analysis History
+            </Link>
           </div>
         </div>
 
-        <h5 className={`fw-bold mt-3 mb-1 ${meta.className}`}>
-          {meta.label}
-        </h5>
-
-        <p className="small text-muted mb-0">
-          Based on your resume against the selected Target Job
-        </p>
-      </div>
-    );
-  };
-
-  const renderMetric = (label, score, icon) => (
-    <div className="p-3 bg-light rounded-3 border h-100">
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="small fw-semibold text-muted">{label}</span>
-        <span className="text-primary">{icon}</span>
-      </div>
-
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <span className="fw-bold fs-5">{score}/100</span>
-      </div>
-
-      <div className="progress" style={{ height: 7 }}>
         <div
-          className={`progress-bar ${scoreBarClass(score)}`}
-          style={{ width: `${Math.max(0, Math.min(score, 100))}%` }}
-        />
-      </div>
-    </div>
-  );
-
-  const renderList = (items, emptyText, type = 'default') => {
-    if (!items?.length) {
-      return (
-        <div className="text-muted small py-3">
-          {emptyText}
-        </div>
-      );
-    }
-
-    return (
-      <div className="d-flex flex-column gap-2">
-        {items.map((item, index) => {
-          const value =
-            typeof item === 'string'
-              ? item
-              : item?.name || item?.keyword || item?.text || item?.suggestion || JSON.stringify(item);
-
-          return (
-            <div
-              key={`${value}-${index}`}
-              className="d-flex align-items-start gap-2 p-2 rounded-3 border bg-white"
-            >
-              {type === 'missing' ? (
-                <FaExclamationTriangle className="text-warning mt-1 flex-shrink-0" />
-              ) : type === 'matched' ? (
-                <FaCheckCircle className="text-success mt-1 flex-shrink-0" />
-              ) : (
-                <span className="text-primary mt-1">•</span>
-              )}
-
-              <span className="small text-dark">{value}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const renderAnalysisContent = () => {
-    if (!analysis) return null;
-
-    const normalized = normalizeScan(analysis);
-    const score = normalized.overallScore;
-
-    return (
-      <div className="mt-4">
-        <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-          <div className="card-body p-4 p-lg-5">
-            <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-              <div>
-                <span className="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2 rounded-pill">
-                  ATS Analysis
-                </span>
-
-                <h4 className="fw-bold mt-2 mb-1">
-                  {selectedTargetJob?.target_job_role ||
-                    normalized.jobTitle ||
-                    'Target Job'}
-                </h4>
-
-                <p className="text-muted small mb-0">
-                  {selectedTargetJob?.target_company ||
-                    normalized.company ||
-                    'Company not specified'}
-                  {' • '}
-                  Analyzed {formatDate(normalized.createdAt)}
-                </p>
-              </div>
-
-              {normalized.accessSnapshot?.isPremium ? (
-                <span className="badge bg-warning text-dark px-3 py-2">
-                  <FaStar className="me-1" /> Premium
-                </span>
-              ) : (
-                <span className="badge bg-secondary px-3 py-2">
-                  Free Plan
-                </span>
-              )}
-            </div>
-
-            <div className="row g-4 align-items-center">
-              <div className="col-lg-4">{renderScore(score)}</div>
-
-              <div className="col-lg-8">
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'ATS Compatibility',
-                      normalized.scores.atsCompatibility,
-                      <FaShieldAlt />
-                    )}
-                  </div>
-
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'Keyword Match',
-                      normalized.scores.keywordMatch,
-                      <FaKey />
-                    )}
-                  </div>
-
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'Skills Match',
-                      normalized.scores.skillsMatch,
-                      <FaStar />
-                    )}
-                  </div>
-
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'Experience Relevance',
-                      normalized.scores.experience,
-                      <FaBriefcase />
-                    )}
-                  </div>
-
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'Education',
-                      normalized.scores.education,
-                      <FaCheckCircle />
-                    )}
-                  </div>
-
-                  <div className="col-md-6">
-                    {renderMetric(
-                      'Formatting',
-                      normalized.scores.formatting,
-                      <FaFilePdf />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-top mt-5 pt-4">
-              <div className="d-flex flex-wrap gap-2">
-                {[
-                  ['overview', 'Overview'],
-                  ['skills', 'Skills'],
-                  ['keywords', 'Keywords'],
-                  ['improvements', 'Improvements'],
-                  ['optimization', 'Resume Optimization'],
-                  ['download', 'Download'],
-                ].map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`btn btn-sm rounded-pill px-3 fw-semibold ${
-                      activeTab === key
-                        ? 'btn-primary'
-                        : 'btn-outline-secondary'
-                    }`}
-                    onClick={() => setActiveTab(key)}
+          className="card border shadow-sm rounded-4 mb-4 overflow-hidden"
+          style={{
+            borderColor: '#e7eaf0',
+            background: '#ffffff',
+          }}
+        >
+          {/* <div className="card-body p-4 p-lg-5">
+            <div className="row align-items-center g-4">
+              <div className="col-lg-7">
+                <div className="d-flex align-items-start gap-3">
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                    style={{
+                      width: '46px',
+                      height: '46px',
+                      background: '#f1f5ff',
+                      color: '#0d6efd',
+                    }}
                   >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {activeTab === 'overview' && (
-              <div className="row g-4 mt-1">
-                <div className="col-lg-6">
-                  <div className="h-100 p-4 rounded-4 border bg-light">
-                    <h6 className="fw-bold mb-3">
-                      <FaCheckCircle className="text-success me-2" />
-                      Strengths
-                    </h6>
-                    {renderList(
-                      normalized.strengths,
-                      'No strengths were returned yet.',
-                      'matched'
-                    )}
+                    <FaShieldAlt size={19} />
                   </div>
-                </div>
 
-                <div className="col-lg-6">
-                  <div className="h-100 p-4 rounded-4 border bg-light">
-                    <h6 className="fw-bold mb-3">
-                      <FaExclamationTriangle className="text-warning me-2" />
-                      Areas to Improve
-                    </h6>
-                    {renderList(
-                      normalized.weaknesses,
-                      'No major weaknesses were returned.'
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'skills' && (
-              <div className="row g-4 mt-1">
-                <div className="col-lg-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <h6 className="fw-bold mb-3 text-success">
-                      <FaCheckCircle className="me-2" />
-                      Matched Skills
-                    </h6>
-
-                    {renderList(
-                      normalized.matchedSkills,
-                      'No matched skills found.',
-                      'matched'
-                    )}
-                  </div>
-                </div>
-
-                <div className="col-lg-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <h6 className="fw-bold mb-3 text-warning">
-                      <FaExclamationTriangle className="me-2" />
-                      Missing / Weak Skills
-                    </h6>
-
-                    <p className="small text-muted">
-                      These are skills that were not sufficiently detected in
-                      your resume for this Target Job. They do not automatically
-                      mean you do not have the skill.
-                    </p>
-
-                    {renderList(
-                      normalized.missingSkills,
-                      'No missing skills were identified.',
-                      'missing'
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'keywords' && (
-              <div className="row g-4 mt-1">
-                <div className="col-lg-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <h6 className="fw-bold mb-3 text-success">
-                      <FaCheckCircle className="me-2" />
-                      Matched Keywords
-                    </h6>
-
-                    {renderList(
-                      normalized.matchedKeywords,
-                      'No matched keywords found.',
-                      'matched'
-                    )}
-                  </div>
-                </div>
-
-                <div className="col-lg-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <h6 className="fw-bold mb-3 text-warning">
-                      <FaKey className="me-2" />
-                      Missing Keywords
-                    </h6>
-
-                    {renderList(
-                      normalized.missingKeywords,
-                      'No missing keywords identified.',
-                      'missing'
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'improvements' && (
-              <div className="mt-3">
-                <div className="p-4 rounded-4 border bg-light">
-                  <h6 className="fw-bold mb-3">
-                    <FaLightbulb className="text-warning me-2" />
-                    Recommended Resume Improvements
-                  </h6>
-
-                  {renderList(
-                    normalized.improvements,
-                    'No improvement suggestions were returned.'
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'optimization' && (
-              <div className="mt-3">
-                {!normalized.optimization ? (
-                  <div className="p-5 text-center rounded-4 border bg-light">
-                    <FaMagic className="text-primary fs-1 mb-3" />
-
-                    <h5 className="fw-bold">
-                      Optimize Your Resume for This Job
-                    </h5>
-
-                    <p className="text-muted small mx-auto" style={{ maxWidth: 600 }}>
-                      Generate an AI-optimized version of your resume using the
-                      selected Target Job while preserving your real experience
-                      and qualifications.
-                    </p>
-
-                    <button
-                      type="button"
-                      className="btn btn-primary px-4 py-2 fw-semibold"
-                      onClick={handleOptimize}
-                      disabled={optimizing}
+                  <div>
+                    <div
+                      className="small fw-bold text-primary mb-2"
+                      style={{ letterSpacing: '0.06em' }}
                     >
-                      <FaMagic className="me-2" />
-                      {optimizing
-                        ? 'Generating Optimized Resume...'
-                        : 'Generate Optimized Resume'}
-                    </button>
+                      RESUME INTELLIGENCE
+                    </div>
+
+                    <h2
+                      className="fw-bold mb-2"
+                      style={{
+                        fontSize: 'clamp(1.35rem, 2.5vw, 1.8rem)',
+                        letterSpacing: '-0.025em',
+                      }}
+                    >
+                      Know how your resume performs before you apply.
+                    </h2>
+
+                    <p
+                      className="text-muted mb-0"
+                      style={{
+                        maxWidth: '650px',
+                        lineHeight: '1.7',
+                      }}
+                    >
+                      Compare your resume with a specific target position
+                      and identify the skills, keywords, strengths, and
+                      opportunities that matter most.
+                    </p>
                   </div>
-                ) : (
-                  <div className="p-4 rounded-4 border bg-light">
-                    <div className="d-flex align-items-start gap-3">
-                      <div className="rounded-circle bg-success bg-opacity-10 p-3">
-                        <FaCheckCircle className="text-success fs-4" />
+                </div>
+              </div>
+
+              <div className="col-lg-5">
+                <div className="row g-2">
+                  <div className="col-4">
+                    <div
+                      className="h-100 rounded-3 p-3 text-center"
+                      style={{
+                        background: '#f8f9fb',
+                        border: '1px solid #edf0f4',
+                      }}
+                    >
+                      <FaCheckCircle
+                        className="text-success mb-2"
+                        size={17}
+                      />
+
+                      <div className="small fw-semibold">
+                        Skills
                       </div>
 
-                      <div className="flex-grow-1">
-                        <h5 className="fw-bold mb-1">
-                          Optimized Resume Ready
-                        </h5>
+                      <div className="text-muted small">
+                        Match
+                      </div>
+                    </div>
+                  </div>
 
-                        <p className="text-muted small mb-3">
-                          Your resume has been optimized specifically for{' '}
-                          <strong>
-                            {selectedTargetJob?.target_job_role}
-                          </strong>
-                          .
-                        </p>
+                  <div className="col-4">
+                    <div
+                      className="h-100 rounded-3 p-3 text-center"
+                      style={{
+                        background: '#f8f9fb',
+                        border: '1px solid #edf0f4',
+                      }}
+                    >
+                      <FaCheckCircle
+                        className="text-success mb-2"
+                        size={17}
+                      />
 
-                        <div className="d-flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-primary fw-semibold"
-                            onClick={handleDownloadOptimized}
+                      <div className="small fw-semibold">
+                        Keywords
+                      </div>
+
+                      <div className="text-muted small">
+                        Check
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-4">
+                    <div
+                      className="h-100 rounded-3 p-3 text-center"
+                      style={{
+                        background: '#f8f9fb',
+                        border: '1px solid #edf0f4',
+                      }}
+                    >
+                      <FaCheckCircle
+                        className="text-success mb-2"
+                        size={17}
+                      />
+
+                      <div className="small fw-semibold">
+                        ATS
+                      </div>
+
+                      <div className="text-muted small">
+                        Score
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div> */}
+        </div>
+
+        {error && (
+          <div
+            className="alert alert-danger border rounded-4 shadow-sm d-flex align-items-start mb-4"
+            role="alert"
+          >
+            <div>
+              <strong>Something went wrong.</strong>
+              <div className="small mt-1">{error}</div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-close ms-auto"
+              aria-label="Close"
+              onClick={() => setError('')}
+            />
+          </div>
+        )}
+
+        {!resume ? (
+          <div
+            className="card border shadow-sm rounded-4 overflow-hidden"
+            style={{ borderColor: '#e7eaf0' }}
+          >
+            <div className="card-body text-center py-5 px-4 px-lg-5">
+              <div
+                className="d-flex align-items-center justify-content-center rounded-4 mx-auto mb-4"
+                style={{
+                  width: '84px',
+                  height: '84px',
+                  background: '#fff3f3',
+                  color: '#dc3545',
+                }}
+              >
+                <FaFilePdf size={32} />
+              </div>
+
+              <div
+                className="small fw-bold text-danger mb-2"
+                style={{ letterSpacing: '0.06em' }}
+              >
+                RESUME REQUIRED
+              </div>
+
+              <h3
+                className="fw-bold mb-2"
+                style={{ letterSpacing: '-0.025em' }}
+              >
+                Upload your resume first
+              </h3>
+
+              <p
+                className="text-muted mx-auto mb-4"
+                style={{
+                  maxWidth: '560px',
+                  lineHeight: '1.7',
+                }}
+              >
+                ATS analysis needs the PDF currently stored in your
+                student profile. Upload or manage your resume before
+                starting an analysis.
+              </p>
+
+              <Link
+                to="/student/resume"
+                className="btn btn-primary rounded-3 px-4 py-2 d-inline-flex align-items-center fw-semibold"
+              >
+                <FaUpload className="me-2" />
+                Manage Resume
+                <FaChevronRight className="ms-2" size={12} />
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div
+              className="card border shadow-sm rounded-4 overflow-hidden mb-4"
+              style={{ borderColor: '#e7eaf0' }}
+            >
+              <div className="card-body p-3 p-md-4 p-lg-5">
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                  <div>
+                    <div
+                      className="small fw-bold text-primary mb-2"
+                      style={{ letterSpacing: '0.06em' }}
+                    >
+                      NEW ANALYSIS
+                    </div>
+
+                    <h2
+                      className="fw-bold mb-1"
+                      style={{
+                        fontSize: 'clamp(1.35rem, 2.5vw, 1.75rem)',
+                        letterSpacing: '-0.025em',
+                      }}
+                    >
+                      Start your ATS analysis
+                    </h2>
+
+                    <p className="text-muted mb-0">
+                      Select your resume and target position.
+                    </p>
+                  </div>
+
+                  <div
+                    className="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                    style={{
+                      width: '46px',
+                      height: '46px',
+                      background: '#f1f5ff',
+                      color: '#0d6efd',
+                    }}
+                  >
+                    <FaSearch size={18} />
+                  </div>
+                </div>
+
+                <div className="row g-3 g-lg-4">
+                  <div className="col-lg-5">
+                    <div
+                      className="h-100 rounded-4 p-3 p-lg-4"
+                      style={{
+                        border: '1px solid #e7eaf0',
+                        background: '#fbfcfd',
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                          <div
+                            className="small fw-bold text-muted mb-1"
+                            style={{ letterSpacing: '0.05em' }}
                           >
-                            <FaDownload className="me-2" />
-                            Download Optimized Resume
-                          </button>
+                            YOUR RESUME
+                          </div>
 
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary fw-semibold"
-                            onClick={() => setActiveTab('download')}
+                          <div className="small text-muted">
+                            Ready for analysis
+                          </div>
+                        </div>
+
+                        <div
+                          className="d-flex align-items-center justify-content-center rounded-3"
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            background: '#fff0f0',
+                            color: '#dc3545',
+                          }}
+                        >
+                          <FaFilePdf size={19} />
+                        </div>
+                      </div>
+
+                      <div
+                        className="rounded-3 p-3"
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #edf0f4',
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-3">
+                          <div className="flex-grow-1 overflow-hidden">
+                            <div
+                              className="fw-bold text-truncate"
+                              title={resumeName}
+                            >
+                              {resumeName}
+                            </div>
+
+                            <div className="d-flex align-items-center mt-1">
+                              <FaCheckCircle
+                                className="text-success me-1"
+                                size={11}
+                              />
+
+                              <small className="text-success fw-semibold">
+                                Ready for AI analysis
+                              </small>
+                            </div>
+                          </div>
+
+                          <Link
+                            to="/student/resume"
+                            className="btn btn-sm btn-outline-secondary rounded-3 px-3 flex-shrink-0"
                           >
-                            View Download Options
-                          </button>
+                            Change
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-lg-5">
+                    <div
+                      className="h-100 rounded-4 p-3 p-lg-4"
+                      style={{
+                        border: '1px solid #e7eaf0',
+                        background: '#fbfcfd',
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                          <div
+                            className="small fw-bold text-muted mb-1"
+                            style={{ letterSpacing: '0.05em' }}
+                          >
+                            TARGET JOB
+                          </div>
+
+                          <div className="small text-muted">
+                            Choose the position
+                          </div>
+                        </div>
+
+                        <div
+                          className="d-flex align-items-center justify-content-center rounded-3"
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            background: '#f1f5ff',
+                            color: '#0d6efd',
+                          }}
+                        >
+                          <FaBriefcase size={18} />
+                        </div>
+                      </div>
+
+                      {targetJobs.length ? (
+                        <div
+                          className="rounded-3 p-3"
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #edf0f4',
+                          }}
+                        >
+                          <select
+                            className="form-select border-0 shadow-none fw-semibold px-0"
+                            value={selectedJobId}
+                            onChange={(event) =>
+                              setSelectedJobId(event.target.value)
+                            }
+                            style={{
+                              backgroundColor: 'transparent',
+                            }}
+                          >
+                            {targetJobs.map((job) => (
+                              <option
+                                key={job._id}
+                                value={job._id}
+                              >
+                                {job.target_job_role}
+                                {job.target_company
+                                  ? ` - ${job.target_company}`
+                                  : ''}
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="d-flex align-items-center mt-2">
+                            <FaCheckCircle
+                              className="text-success me-2"
+                              size={11}
+                            />
+
+                            <small className="text-muted">
+                              Position selected for comparison
+                            </small>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          className="rounded-3 p-3 h-100 d-flex align-items-center"
+                          style={{
+                            background: '#fff9e8',
+                            border: '1px solid #f4e3aa',
+                          }}
+                        >
+                          <div>
+                            <div className="fw-bold text-dark">
+                              No target jobs found.
+                            </div>
+
+                            <div className="small text-muted mt-1">
+                              Add a target job before scanning.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="col-lg-2">
+                    <div className="h-100 d-flex">
+                      <button
+                        type="button"
+                        className="btn btn-primary rounded-4 w-100 fw-semibold shadow-sm d-flex flex-column align-items-center justify-content-center"
+                        style={{
+                          minHeight: '100%',
+                          padding: '24px 14px',
+                        }}
+                        disabled={checking || !targetJobs.length}
+                        onClick={handleCheck}
+                      >
+                        {checking ? (
+                          <>
+                            <span
+                              className="spinner-border mb-3"
+                              role="status"
+                              aria-hidden="true"
+                              style={{
+                                width: '1.4rem',
+                                height: '1.4rem',
+                              }}
+                            />
+
+                            <span>Analyzing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaSearch size={21} className="mb-3" />
+
+                            <span>Check ATS</span>
+
+                            <small
+                              className="mt-2 opacity-75 text-center"
+                              style={{ fontSize: '0.72rem' }}
+                            >
+                              Analyze resume
+                            </small>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedJob && (
+                  <div
+                    className="mt-4 rounded-4 p-3 p-md-4"
+                    style={{
+                      background: '#f7f9fc',
+                      border: '1px solid #e7eaf0',
+                    }}
+                  >
+                    <div className="row align-items-center g-3">
+                      <div className="col-md-8">
+                        <div className="d-flex align-items-center gap-3">
+                          <div
+                            className="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                            style={{
+                              width: '46px',
+                              height: '46px',
+                              background: '#ffffff',
+                              color: '#0d6efd',
+                              border: '1px solid #e5eaf2',
+                            }}
+                          >
+                            <FaBriefcase size={18} />
+                          </div>
+
+                          <div className="overflow-hidden">
+                            <div
+                              className="small fw-bold text-muted mb-1"
+                              style={{ letterSpacing: '0.05em' }}
+                            >
+                              SELECTED TARGET
+                            </div>
+
+                            <div className="fw-bold fs-5 text-truncate">
+                              {selectedJob.target_job_role}
+                            </div>
+
+                            <div className="text-muted small mt-1">
+                              {selectedJob.target_company ||
+                                'Company not specified'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-md-4">
+                        <div
+                          className="d-flex align-items-center justify-content-md-end"
+                        >
+                          <div
+                            className="d-flex align-items-center rounded-pill px-3 py-2"
+                            style={{
+                              background: '#ecf8f0',
+                              color: '#198754',
+                            }}
+                          >
+                            <FaCheckCircle
+                              className="me-2"
+                              size={13}
+                            />
+
+                            <span className="small fw-semibold">
+                              Ready to compare
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
-            )}
-
-            {activeTab === 'download' && (
-              <div className="row g-4 mt-3">
-                <div className="col-md-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <FaFilePdf className="text-danger fs-2 mb-3" />
-                    <h6 className="fw-bold">Original Resume</h6>
-                    <p className="small text-muted">
-                      Open your currently uploaded resume.
-                    </p>
-
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary fw-semibold"
-                      onClick={handleViewOriginalResume}
-                    >
-                      <FaEye className="me-2" />
-                      View Original Resume
-                    </button>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div className="p-4 rounded-4 border h-100">
-                    <FaMagic className="text-primary fs-2 mb-3" />
-                    <h6 className="fw-bold">AI-Optimized Resume</h6>
-                    <p className="small text-muted">
-                      Download the version optimized for the selected Target Job.
-                    </p>
-
-                    {normalized.optimization ? (
-                      <button
-                        type="button"
-                        className="btn btn-primary fw-semibold"
-                        onClick={handleDownloadOptimized}
-                      >
-                        <FaDownload className="me-2" />
-                        Download Optimized Resume
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-outline-primary fw-semibold"
-                        onClick={() => setActiveTab('optimization')}
-                      >
-                        <FaMagic className="me-2" />
-                        Generate First
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <StudentLayout>
-      <div className="container-fluid px-3 px-lg-4 py-3">
-        <div className="mx-auto" style={{ maxWidth: 1100 }}>
-          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-            <div>
-              <Link
-                to="/student/dashboard"
-                className="text-decoration-none small fw-semibold text-muted"
-              >
-                <FaArrowLeft className="me-2" />
-                Back to Dashboard
-              </Link>
-
-              <h2 className="fw-bold mt-2 mb-1">
-                ATS Resume Checker
-              </h2>
-
-              <p className="text-muted mb-0">
-                Check how well your resume matches a specific Target Job.
-              </p>
             </div>
 
-            <div className="d-flex gap-2">
-              <Link
-                to="/student/resume"
-                className="btn btn-outline-secondary btn-sm fw-semibold"
-              >
-                <FaUpload className="me-2" />
-                Manage Resume
-              </Link>
-
-              <Link
-                to="/student/target-jobs"
-                className="btn btn-outline-primary btn-sm fw-semibold"
-              >
-                <FaBriefcase className="me-2" />
-                Target Jobs
-              </Link>
-            </div>
-          </div>
-
-          {error && (
-            <div className="alert alert-danger d-flex align-items-center gap-2">
-              <FaExclamationTriangle />
-              <span className="small">{error}</span>
-
-              <button
-                type="button"
-                className="btn-close ms-auto"
-                onClick={() => setError('')}
-              />
-            </div>
-          )}
-
-          {loadingResume ? (
-            <div className="card border-0 shadow-sm rounded-4">
-              <div className="card-body p-5 text-center">
-                <div className="spinner-border text-primary" />
-                <p className="text-muted small mt-3 mb-0">
-                  Loading your resume...
-                </p>
-              </div>
-            </div>
-          ) : !resume ? (
-            <div className="card border-0 shadow-sm rounded-4">
-              <div className="card-body p-5 text-center">
+            <div className="row g-3 g-lg-4">
+              <div className="col-md-4">
                 <div
-                  className="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10"
-                  style={{ width: 90, height: 90 }}
+                  className="card border shadow-sm rounded-4 h-100"
+                  style={{ borderColor: '#e7eaf0' }}
                 >
-                  <FaFilePdf className="text-danger fs-1" />
-                </div>
-
-                <h4 className="fw-bold">Upload Your Resume First</h4>
-
-                <p
-                  className="text-muted small mx-auto mb-4"
-                  style={{ maxWidth: 560 }}
-                >
-                  ATS analysis uses your uploaded resume and compares it
-                  against the Target Job you select.
-                </p>
-
-                <Link
-                  to="/student/resume"
-                  className="btn btn-primary px-4 py-2 fw-semibold"
-                >
-                  <FaUpload className="me-2" />
-                  Upload Resume
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="card border-0 shadow-sm rounded-4 mb-4">
-                <div className="card-body p-4">
-                  <div className="row g-4 align-items-end">
-                    <div className="col-lg-5">
-                      <label className="form-label fw-bold small text-uppercase text-muted">
-                        Your Resume
-                      </label>
-
-                      <div className="p-3 rounded-3 border bg-light d-flex align-items-center gap-3">
-                        <div className="rounded-3 bg-danger bg-opacity-10 p-3">
-                          <FaFilePdf className="text-danger fs-4" />
-                        </div>
-
-                        <div className="min-w-0 flex-grow-1">
-                          <div className="fw-bold text-dark text-truncate">
-                            {resume.resume_file?.fileName || 'Resume.pdf'}
-                          </div>
-
-                          <div className="small text-muted">
-                            Uploaded {formatDate(resume.createdAt)}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-secondary flex-shrink-0"
-                          onClick={handleViewOriginalResume}
-                        >
-                          <FaEye className="me-1" />
-                          View
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="col-lg-5">
-                      <label className="form-label fw-bold small text-uppercase text-muted">
-                        Select Target Job
-                      </label>
-
-                      {loadingJobs ? (
-                        <div className="form-control text-muted">
-                          Loading Target Jobs...
-                        </div>
-                      ) : targetJobs.length === 0 ? (
-                        <div className="p-3 rounded-3 border border-warning bg-warning bg-opacity-10">
-                          <div className="fw-bold small">
-                            No Target Jobs Found
-                          </div>
-
-                          <div className="small text-muted mb-2">
-                            Add a Target Job before checking your ATS score.
-                          </div>
-
-                          <Link
-                            to="/student/target-jobs"
-                            className="btn btn-sm btn-warning fw-semibold"
-                          >
-                            <FaBriefcase className="me-1" />
-                            Add Target Job
-                          </Link>
-                        </div>
-                      ) : (
-                        <div className="position-relative">
-                          <select
-                            className="form-select form-select-lg fw-semibold"
-                            value={selectedTargetJobId}
-                            onChange={handleTargetJobChange}
-                          >
-                            {targetJobs.map((job) => (
-                              <option key={job._id} value={job._id}>
-                                🎯 {job.target_job_role}
-                                {job.target_company
-                                  ? ` — ${job.target_company}`
-                                  : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="col-lg-2">
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-lg w-100 fw-bold"
-                        onClick={handleCheckScore}
-                        disabled={
-                          checking ||
-                          loadingJobs ||
-                          !resume ||
-                          !selectedTargetJob
-                        }
+                  <div className="card-body p-4 p-lg-4 d-flex flex-column">
+                    <div className="d-flex align-items-center justify-content-between mb-4">
+                      <div
+                        className="d-flex align-items-center justify-content-center rounded-3"
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          background: '#f1f5ff',
+                          color: '#0d6efd',
+                        }}
                       >
-                        {checking ? (
-                          <>
-                            <span className="spinner-border spinner-border-sm me-2" />
-                            Checking...
-                          </>
-                        ) : (
-                          <>
-                            <FaSearch className="me-2" />
-                            Check ATS
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {selectedTargetJob && (
-                    <div className="mt-4 p-3 rounded-3 bg-light border">
-                      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <h6 className="fw-bold mb-0">
-                          <FaBuilding className="text-primary me-2" />
-                          Target Job Context
-                        </h6>
-
-                        <span className="badge bg-success">
-                          {selectedTargetJob.target_industry || 'Industry'}
-                        </span>
+                        <FaSearch size={17} />
                       </div>
 
-                      <div className="row g-3 small">
-                        <div className="col-md-4">
-                          <div className="text-muted">Role</div>
-                          <div className="fw-bold">
-                            {selectedTargetJob.target_job_role || '—'}
-                          </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="text-muted">Company</div>
-                          <div className="fw-bold">
-                            {selectedTargetJob.target_company || 'Not Specified'}
-                          </div>
-                        </div>
-
-                        <div className="col-md-4">
-                          <div className="text-muted">Experience</div>
-                          <div className="fw-bold">
-                            {selectedTargetJob.experience || 'Fresher'}
-                          </div>
-                        </div>
-                      </div>
+                      <span
+                        className="small fw-bold text-muted"
+                        style={{ letterSpacing: '0.05em' }}
+                      >
+                        01
+                      </span>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {analysis ? (
-                renderAnalysisContent()
-              ) : (
-                <div className="card border-0 shadow-sm rounded-4 mb-4">
-                  <div className="card-body p-5 text-center">
-                    <div
-                      className="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10"
-                      style={{ width: 90, height: 90 }}
+                    <h5
+                      className="fw-bold mb-2"
+                      style={{ letterSpacing: '-0.015em' }}
                     >
-                      <FaSearch className="text-primary fs-1" />
-                    </div>
-
-                    <h4 className="fw-bold">
-                      Ready to Check Your ATS Score?
-                    </h4>
+                      ATS Compatibility
+                    </h5>
 
                     <p
-                      className="text-muted small mx-auto mb-0"
-                      style={{ maxWidth: 620 }}
+                      className="text-muted small mb-0"
+                      style={{ lineHeight: '1.7' }}
                     >
-                      Select a Target Job above and click{' '}
-                      <strong>Check ATS</strong>. If an analysis already exists
-                      for this same resume and Target Job, the saved result will
-                      be loaded instead of analyzing the resume again.
+                      Understand how well your resume is structured for
+                      automated screening systems.
                     </p>
                   </div>
                 </div>
-              )}
+              </div>
 
-              <div className="card border-0 shadow-sm rounded-4 mt-4">
-                <div className="card-body p-4">
-                  <div className="d-flex align-items-center justify-content-between gap-3">
-                    <div>
-                      <h5 className="fw-bold mb-1">
-                        <FaHistory className="text-primary me-2" />
-                        ATS Analysis History
-                      </h5>
-
-                      <p className="text-muted small mb-0">
-                        Previous analyses for your uploaded resume.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary fw-semibold"
-                      onClick={() => {
-                        const next = !showHistory;
-                        setShowHistory(next);
-                        if (next) fetchHistory();
-                      }}
-                    >
-                      <FaChevronDown
-                        className="me-1"
+              <div className="col-md-4">
+                <div
+                  className="card border shadow-sm rounded-4 h-100"
+                  style={{ borderColor: '#e7eaf0' }}
+                >
+                  <div className="card-body p-4 p-lg-4 d-flex flex-column">
+                    <div className="d-flex align-items-center justify-content-between mb-4">
+                      <div
+                        className="d-flex align-items-center justify-content-center rounded-3"
                         style={{
-                          transform: showHistory
-                            ? 'rotate(180deg)'
-                            : 'rotate(0deg)',
-                          transition: 'transform .2s',
+                          width: '44px',
+                          height: '44px',
+                          background: '#eefaf3',
+                          color: '#198754',
                         }}
-                      />
-                      {showHistory ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
+                      >
+                        <FaCheckCircle size={17} />
+                      </div>
 
-                  {showHistory && (
-                    <div className="mt-4">
-                      {loadingHistory ? (
-                        <div className="text-center py-4">
-                          <div className="spinner-border spinner-border-sm text-primary" />
-                          <div className="small text-muted mt-2">
-                            Loading history...
-                          </div>
-                        </div>
-                      ) : history.length === 0 ? (
-                        <div className="p-4 rounded-3 bg-light border text-center">
-                          <FaHistory className="text-muted fs-2 mb-2" />
-
-                          <div className="fw-semibold">
-                            No previous ATS analysis
-                          </div>
-
-                          <div className="small text-muted">
-                            Your first completed analysis will appear here.
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="table-responsive">
-                          <table className="table align-middle mb-0">
-                            <thead>
-                              <tr className="small text-muted">
-                                <th>Target Job</th>
-                                <th>Company</th>
-                                <th>Score</th>
-                                <th>Analyzed</th>
-                                <th className="text-end">Action</th>
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              {history.map((scan) => {
-                                const scanJob =
-                                  scan.targetJob ||
-                                  scan.target_job ||
-                                  {};
-
-                                const scanScore = scan.overallScore || 0;
-
-                                return (
-                                  <tr key={scan._id}>
-                                    <td>
-                                      <div className="fw-semibold">
-                                        {scanJob.target_job_role ||
-                                          scan.jobTitle ||
-                                          'Target Job'}
-                                      </div>
-                                    </td>
-
-                                    <td className="text-muted small">
-                                      {scanJob.target_company ||
-                                        scan.company ||
-                                        '—'}
-                                    </td>
-
-                                    <td>
-                                      <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2">
-                                        {scanScore}/100
-                                      </span>
-                                    </td>
-
-                                    <td className="text-muted small">
-                                      {formatDate(scan.createdAt)}
-                                    </td>
-
-                                    <td className="text-end">
-                                      <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-primary fw-semibold"
-                                        onClick={() =>
-                                          handleViewHistory(scan)
-                                        }
-                                      >
-                                        <FaEye className="me-1" />
-                                        View
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                      <span
+                        className="small fw-bold text-muted"
+                        style={{ letterSpacing: '0.05em' }}
+                      >
+                        02
+                      </span>
                     </div>
-                  )}
+
+                    <h5
+                      className="fw-bold mb-2"
+                      style={{ letterSpacing: '-0.015em' }}
+                    >
+                      Skills & Keywords
+                    </h5>
+
+                    <p
+                      className="text-muted small mb-0"
+                      style={{ lineHeight: '1.7' }}
+                    >
+                      Find matching skills, important keywords, and
+                      potential gaps for your target position.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
+
+              <div className="col-md-4">
+                <div
+                  className="card border shadow-sm rounded-4 h-100"
+                  style={{ borderColor: '#e7eaf0' }}
+                >
+                  <div className="card-body p-4 p-lg-4 d-flex flex-column">
+                    <div className="d-flex align-items-center justify-content-between mb-4">
+                      <div
+                        className="d-flex align-items-center justify-content-center rounded-3"
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          background: '#fff8e8',
+                          color: '#b77900',
+                        }}
+                      >
+                        <FaBriefcase size={17} />
+                      </div>
+
+                      <span
+                        className="small fw-bold text-muted"
+                        style={{ letterSpacing: '0.05em' }}
+                      >
+                        03
+                      </span>
+                    </div>
+
+                    <h5
+                      className="fw-bold mb-2"
+                      style={{ letterSpacing: '-0.015em' }}
+                    >
+                      Job-Specific Insights
+                    </h5>
+
+                    <p
+                      className="text-muted small mb-0"
+                      style={{ lineHeight: '1.7' }}
+                    >
+                      Get analysis based specifically on the job you're
+                      targeting rather than a generic resume score.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </StudentLayout>
   );
