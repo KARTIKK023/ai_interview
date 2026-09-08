@@ -20,6 +20,9 @@ import ProfileProgress from './pages/student/ProfileProgress';
 import StudentResume from './pages/student/StudentResume';
 import StudentTargetJobs from './pages/student/StudentTargetJobs';
 import AtsScanner from './pages/student/AtsScanner';
+import AtsAnalysis from './pages/student/ats/AtsAnalysis';
+import AtsHistory from './pages/student/ats/AtsHistory';
+import AtsTailoredResume from './pages/student/ats/AtsTailoredResume';
 import StudentAchievements from './pages/student/StudentAchievements';
 import PlacementOpportunities from './pages/student/PlacementOpportunities';
 import HelpSupport from './pages/student/HelpSupport';
@@ -191,6 +194,30 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['STUDENT']}>
             <AtsScanner />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/ats-scanner/history"
+        element={
+          <ProtectedRoute allowedRoles={['STUDENT']}>
+            <AtsHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/ats-scanner/analysis/:id"
+        element={
+          <ProtectedRoute allowedRoles={['STUDENT']}>
+            <AtsAnalysis />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/ats-scanner/analysis/:id/resume"
+        element={
+          <ProtectedRoute allowedRoles={['STUDENT']}>
+            <AtsTailoredResume />
           </ProtectedRoute>
         }
       />
