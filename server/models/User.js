@@ -92,11 +92,37 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['Active', 'Services Inactive', 'ACTIVE', 'SERVICES_INACTIVE', 'Inactive'],
       default: 'Active'
-    }
+    
+    },
+
+  lastLogin: {
+  type: Date,
+  default: null
+},
+
+loginStartedAt: {
+  type: Date,
+  default: null
+},
+
+lastLogout: {
+  type: Date,
+  default: null
+},
+
+loginDuration: {
+  type: Number,
+  default: 0
+}
+
+
   },
   {
     timestamps: true
-  }
+  },
+
+
+
 );
 
 // Pre-save middleware to keep name/fullName and mobileNumber/profile.phone in sync for backward compatibility

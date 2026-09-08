@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import API from '../../services/api';
 import DataTable from './components/DataTable';
 import toast from 'react-hot-toast';
+import SuperAdminStudentProfileView from './components/SuperAdminStudentProfileView';
 
 import {
   FaTimes,
@@ -13,6 +14,8 @@ import {
 const InquiryDetails = () => {
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
 
   // =========================
   // FILTER STATES
@@ -360,11 +363,37 @@ setReplyMessage(
         `${data}.`
     },
 
-    {
-      title: 'Student Name',
-      data: 'studentName',
-      defaultContent: '-'
-    },
+   {
+  title: 'Student Name',
+  data: 'studentName',
+  render: (_data, _type, row) => {
+    const studentName =
+      row.studentName ||
+      row.userId?.fullName ||
+      row.userId?.name ||
+      'Student';
+
+    const targetId =
+      row.userId?._id ||
+      (typeof row.userId === 'string'
+        ? row.userId
+        : null) ||
+      row.studentId ||
+      row.student_id;
+
+    return `
+      <a
+        href="#"
+        class="view-student-profile text-decoration-none fw-bold"
+        style="color: #6D28D9;"
+        data-id="${targetId || ''}"
+        title="Click to view full student profile"
+      >
+        ${studentName}
+      </a>
+    `;
+  }
+},
 
     {
       title: 'Email',
@@ -409,7 +438,7 @@ setReplyMessage(
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          color: #B8860B;
+          color: #F52727;
           font-weight: 600;
           font-size: 13px;
           cursor: help;
@@ -507,6 +536,18 @@ setReplyMessage(
     }
 
   ];
+
+   if (selectedStudentId) {
+    return (
+      <div className="p-3.5">
+        <SuperAdminStudentProfileView
+          studentId={selectedStudentId}
+          onBack={() => setSelectedStudentId(null)}
+          backTitle="Back to Inquiry Details"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-3">
@@ -692,14 +733,14 @@ setReplyMessage(
           DATA TABLE
       ========================= */}
 
-      <div className="card border-0 shadow-sm">
-
-        <DataTable
-          columns={columns}
-          data={filteredInquiries}
-          loading={loading}
-          title="Inquiry Details"
-        />
+ <div className="card border-0 shadow-sm">
+<DataTable
+  columns={columns}
+  data={filteredInquiries}
+  loading={loading}
+  title="Inquiry Details"
+  onStudentClick={(id) => setSelectedStudentId(id)}
+/>
 
       </div>
 

@@ -10,7 +10,8 @@ const {
   getMe,
   updateProfile,
   getProfileProgress,
-  uploadProfilePhoto
+  uploadProfilePhoto,
+  logoutUser
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -48,6 +49,7 @@ router.post('/login', loginUser);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.get('/profile-progress', protect, getProfileProgress);
+router.post('/logout', protect, logoutUser);
 
 // Upload profile photo endpoint
 router.post('/upload-photo', protect, (req, res, next) => {

@@ -56,14 +56,25 @@ export const AuthProvider = ({ children }) => {
     }
     return res.data;
   };
-
-  const logout = () => {
+// ==========================================
+// LOGOUT + SESSION DURATION TRACKING
+// ==========================================
+ const logout = async () => {
+  try {
+    // Tell backend that the student is logging out
+    await API.post('/auth/logout');
+  } catch (err) {
+    console.error('Logout tracking failed:', err);
+  } finally {
+    // Remove local session
     localStorage.removeItem('studentToken');
     localStorage.removeItem('studentUser');
     localStorage.removeItem('token');
+
     setToken(null);
     setUser(null);
-  };
+  }
+};
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, register, logout, setUser }}>

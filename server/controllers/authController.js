@@ -262,6 +262,21 @@ const loginUser = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Account is deactivated' });
     }
 
+    // ==========================================
+// LOGIN TRACKING
+// ==========================================
+
+const loginTime = new Date();
+
+user.lastLogin = loginTime;
+user.loginStartedAt = loginTime;
+user.lastLogout = null;
+user.loginDuration = 0;
+user.isOnline = true;
+
+await user.save();
+
+
     const token = generateToken(user._id);
 
     const userObj = {
@@ -298,6 +313,8 @@ const loginUser = async (req, res, next) => {
     next(err);
   }
 };
+
+
 
 // @desc    Get logged in user
 // @route   GET /api/auth/me
@@ -506,6 +523,47 @@ const uploadProfilePhoto = async (req, res, next) => {
     next(err);
   }
 };
+// @desc    Logout user and save session duration
+// @route   POST /api/auth/logout
+// @access  Private
+const logoutUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const logoutTime = new Date();
+
+    // Calculate session duration in seconds
+    if (user.loginStartedAt) {
+      const duration = Math.floor(
+        (logoutTime.getTime() -
+          new Date(user.loginStartedAt).getTime()) / 1000
+      );
+
+      user.loginDuration = duration;
+    }
+
+    // Update logout information
+    user.lastLogout = logoutTime;
+    user.isOnline = false;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Logout successful'
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
 
 module.exports = {
   sendOtp,
@@ -515,5 +573,6 @@ module.exports = {
   getMe,
   updateProfile,
   getProfileProgress,
-  uploadProfilePhoto
+  uploadProfilePhoto,
+  logoutUser
 };

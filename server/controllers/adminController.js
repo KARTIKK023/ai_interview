@@ -71,7 +71,16 @@ const adminLogin = async (req, res, next) => {
       });
     }
 
-    // 5. Generate JWT Token
+    // 5. Login Tracking
+    const loginTime = new Date();
+    user.lastLogin = loginTime;
+    user.loginStartedAt = loginTime;
+    user.lastLogout = null;
+    user.loginDuration = 0;
+    user.isOnline = true;
+    await user.save();
+
+    // 6. Generate JWT Token
     const token = generateToken(user._id);
 
     const adminObj = {
