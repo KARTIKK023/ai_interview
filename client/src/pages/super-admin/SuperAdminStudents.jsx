@@ -379,6 +379,98 @@ HireSmart AI Team 🚀`;
       `<span class="text-nowrap font-monospace small">${formatDateTime(data)}</span>`
   },
 
+{
+  title: 'Last Login / Duration',
+  data: 'lastLogin',
+  width: '210px',
+  className: 'text-center',
+
+  render: (data, type, row) => {
+    const lastLogin = row.lastLogin;
+    const loginStartedAt = row.loginStartedAt;
+    const lastLogout = row.lastLogout;
+    const loginDuration = Number(row.loginDuration) || 0;
+
+    if (!lastLogin) {
+      return `
+        <div style="width:100%; text-align:center; white-space:nowrap;">
+          <span class="text-muted small">No Login Recorded</span>
+        </div>
+      `;
+    }
+
+    const date = new Date(lastLogin);
+    if (isNaN(date.getTime())) {
+      return `
+        <div style="text-align:center;">
+          <span class="text-muted small">N/A</span>
+        </div>
+      `;
+    }
+
+    if (type === 'sort' || type === 'type') {
+      return date.getTime();
+    }
+
+    // Determine online status accurately
+    let isOnline = row.isOnline === true || row.isOnline === 'true';
+    if (!isOnline && lastLogin) {
+      const loginTime = date.getTime();
+      const logoutTime = lastLogout ? new Date(lastLogout).getTime() : 0;
+      if (!lastLogout || loginTime > logoutTime) {
+        isOnline = true;
+      }
+    }
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const strHours = String(hours).padStart(2, '0');
+
+    const time = `${strHours}:${minutes} ${ampm}`;
+
+    // Calculate duration for offline sessions
+    let totalSeconds = loginDuration;
+    if (!totalSeconds && loginStartedAt && lastLogout) {
+      const start = new Date(loginStartedAt).getTime();
+      const end = new Date(lastLogout).getTime();
+      if (end > start) {
+        totalSeconds = Math.floor((end - start) / 1000);
+      }
+    }
+
+    const durationHours = Math.floor(totalSeconds / 3600);
+    const durationMinutes = Math.floor((totalSeconds % 3600) / 60);
+    const durationSeconds = totalSeconds % 60;
+
+    let durationText;
+    if (durationHours > 0) {
+      durationText = `${durationHours}h ${durationMinutes}m ${durationSeconds}s`;
+    } else if (durationMinutes > 0) {
+      durationText = `${durationMinutes}m ${durationSeconds}s`;
+    } else {
+      durationText = `${durationSeconds}s`;
+    }
+
+    return `
+      <div style="width:100%; text-align:center; white-space:nowrap;">
+        <div class="small fw-semibold text-dark" style="line-height:1.4;">
+          ${day}/${month}/${year}, ${time}
+        </div>
+        <div class="small fw-semibold mt-1" style="color:${isOnline ? '#16a34a' : '#6b7280'}; line-height:1.4;">
+          ${isOnline ? '● Active' : `● Offline <span style="color:#2563eb;">• Duration: ${durationText}</span>`}
+        </div>
+      </div>
+    `;
+  }
+},  
+
+
  {
   title: 'Subscription Amount',
   data: 'subscriptionAmount',
@@ -406,7 +498,7 @@ HireSmart AI Team 🚀`;
             border: 1px solid #EF4444;
           "
         >
-          Not Amount
+          No Amount
         </button>
       `;
     }

@@ -248,51 +248,140 @@ const SuperAdminCertificates = () => {
       data: 'jobRole',
       render: (data) => `<strong class="text-dark">${data || 'Software Engineer'}</strong>`
     },
+    // {
+    //   title: 'Category / Mode',
+    //   data: 'category',
+    //   render: (data, type, row) => `<span class="badge bg-secondary me-1">${data || 'Technical'}</span><span class="badge bg-info">${row.mode || 'Video'}</span>`
+    // },
     {
-      title: 'Category / Mode',
-      data: 'category',
-      render: (data, type, row) => `<span class="badge bg-secondary me-1">${data || 'Technical'}</span><span class="badge bg-info">${row.mode || 'Video'}</span>`
-    },
-    {
-      title: 'AI Score',
-      data: 'score',
-      render: (data, type, row) => {
-        const scoreVal = data ?? row.score ?? row.percentage ?? 0;
-        return `<span class="fw-semibold text-dark">${scoreVal}%</span>`;
-      }
-    },
-    {
-      title: 'Generate Certificate',
-      data: '_id',
-      render: (data, type, row) => {
-        const targetId = row._id || row.interviewId;
-        if (row.isGenerated) {
-          return `
-            <div class="d-inline-flex align-items-center gap-1.5">
-              <span
-                  class="badge text-white fw-bold py-1 px-2"
-                  style="background-color: #24bf36;"
-               >
-           ✓Generated
+  title: 'AI Score',
+  data: 'score',
+  width: '90px',
+  className: 'text-center',
+  render: (data, type, row) => {
+    const scoreVal =
+      data ??
+      row.score ??
+      row.percentage ??
+      0;
+
+    return `
+      <div
+        style="
+          width: 80%;
+          text-align: center;
+          white-space: nowrap;
+        "
+      >
+        <span class="fw-semibold text-dark">
+          ${scoreVal}%
+        </span>
+      </div>
+    `;
+  }
+},
+   {
+  title: 'Generate Certificate',
+  data: '_id',
+  width: '180px',
+  className: 'text-center',
+
+  render: (data, type, row) => {
+    const targetId = row._id || row.interviewId;
+
+    if (row.isGenerated) {
+      return `
+        <div
+          class="d-inline-flex align-items-center gap-1.5"
+          style="
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+          "
+        >
+          <span
+            class="badge text-white fw-bold py-1 px-2"
+            style="background-color: #24bf36;"
+          >
+            ✓Generated
           </span>
-              <button class="btn btn-sm btn-outline-secondary generate-cert-row-btn py-0.5 px-2 fw-semibold" data-id="${targetId}" title="View Generated Certificate">
-                👁️
-              </button>
-            </div>
-          `;
-        }
-        return `
-          <button class="btn btn-sm btn-warning fw-bold generate-cert-row-btn d-inline-flex align-items-center gap-1 py-0.5 px-2 text-dark shadow-sm" data-id="${targetId}" title="Click to generate & preview certificate using real MongoDB candidate performance data">
-            🎓Generate
+
+          <button
+            class="btn btn-sm btn-outline-secondary generate-cert-row-btn py-0.5 px-2 fw-semibold"
+            data-id="${targetId}"
+            title="View Generated Certificate"
+          >
+            👁️
           </button>
-        `;
-      }
-    },
-    {
-      title: 'Completion Date & Time',
-      data: 'issueDate',
-      render: (data) => `<span class="text-nowrap font-monospace small">${formatDateTime(data)}</span>`
+        </div>
+      `;
     }
+
+    return `
+      <div
+        style="
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        "
+      >
+        <button
+          class="btn btn-sm btn-warning fw-bold generate-cert-row-btn d-inline-flex align-items-center gap-1 py-0.5 px-2 text-dark shadow-sm"
+          data-id="${targetId}"
+          title="Click to generate & preview certificate using real MongoDB candidate performance data"
+        >
+          🎓Generate
+        </button>
+      </div>
+    `;
+  }
+},
+ {
+  title: 'Completion Date & Time',
+  data: 'issueDate',
+  width: '250px',
+  className: 'text-center',
+
+  render: (data, type) => {
+    // Use timestamp when DataTable sorts the column
+    if (type === 'sort' || type === 'type') {
+      if (!data) return 0;
+
+      const date = new Date(data);
+
+      return isNaN(date.getTime())
+        ? 0
+        : date.getTime();
+    }
+
+    // Display
+    if (!data) {
+      return 'N/A';
+    }
+
+    const date = new Date(data);
+
+    if (isNaN(date.getTime())) {
+      return 'N/A';
+    }
+
+    return `
+      <span
+        style="
+          display: inline-block;
+          width: 100%;
+          text-align: center;
+          white-space: nowrap;
+        "
+        class="font-monospace small"
+      >
+        ${formatDateTime(data)}
+      </span>
+    `;
+  }
+},
   ];
 
   if (selectedStudentId) {
@@ -338,14 +427,17 @@ const SuperAdminCertificates = () => {
       </div>
 
       {/* Main Certificates Master Table */}
-      <DataTable
-        title="Student Certificate Records Master Table"
-        columns={columns}
-        data={certificates}
-        loading={loading}
-        onStudentClick={(id) => setSelectedStudentId(id)}
-        onGenerateClick={handleRowGenerateCert}
-      />
+   <DataTable
+  title="Student Certificate Records Master Table"
+  columns={columns}
+  data={certificates}
+  loading={loading}
+  onStudentClick={(id) => setSelectedStudentId(id)}
+  onGenerateClick={handleRowGenerateCert}
+  options={{
+    order: [[6, 'desc']]
+  }}
+/>
 
       {/* GENERATE CERTIFICATE MODAL */}
       {showGenerateModal && (
