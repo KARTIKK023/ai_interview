@@ -11,6 +11,7 @@ const {
   getAdminResumeScans,
   getAdminStudents,
   getAdminStudentProfile,
+  getStudentLoginHistory,
   updateStudentServiceStatus,
   getAdminRegistrations,
   getAdminResumes,
@@ -39,6 +40,7 @@ router.get('/resume-scans', protectAdmin, getAdminResumeScans);
 
 // Exact Requested Super Admin Endpoints
 router.get('/students', protectAdmin, getAdminStudents);
+router.get('/students/:studentId/login-history', protectAdmin, getStudentLoginHistory);
 router.get('/students/:id', protectAdmin, getAdminStudentProfile);
 router.put('/students/:id/service-status', protectAdmin, updateStudentServiceStatus);
 router.get('/registrations', protectAdmin, getAdminRegistrations);

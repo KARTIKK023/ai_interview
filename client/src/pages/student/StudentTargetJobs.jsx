@@ -276,21 +276,21 @@ const JOB_TYPE_OPTIONS = [
 ];
 
 const COMMON_SKILLS = [
-  'React.js',
-  'JavaScript',
-  'Node.js',
-  'Python',
-  'Java',
-  'SQL',
-  'MongoDB',
-  'HTML/CSS',
-  'Docker',
-  'AWS',
-  'C++',
-  'Git',
-  'Data Analysis',
-  'Machine Learning',
-  'Communication'
+  // 'React.js',
+  // 'JavaScript',
+  // 'Node.js',
+  // 'Python',
+  // 'Java',
+  // 'SQL',
+  // 'MongoDB',
+  // 'HTML/CSS',
+  // 'Docker',
+  // 'AWS',
+  // 'C++',
+  // 'Git',
+  // 'Data Analysis',
+  // 'Machine Learning',
+  // 'Communication'
 ];
 
 /*
@@ -1856,9 +1856,9 @@ const StudentTargetJobs = () => {
 
                     <div className="mt-2">
 
-                      <span className="small text-muted me-2">
+                      {/* <span className="small text-muted me-2">
                         Suggestions:
-                      </span>
+                      </span> */}
 
                       {COMMON_SKILLS.slice(
                         0,

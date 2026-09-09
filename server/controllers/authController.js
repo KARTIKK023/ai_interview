@@ -263,18 +263,35 @@ const loginUser = async (req, res, next) => {
     }
 
     // ==========================================
-// LOGIN TRACKING
-// ==========================================
+    // LOGIN LOGIC (LAST 24 HOURS ONLY)
+    // ==========================================
+    const loginTime = new Date();
 
-const loginTime = new Date();
+    user.lastLogin = loginTime;
+    user.loginStartedAt = loginTime;
+    user.lastLogout = null;
+    user.loginDuration = 0;
+    user.isOnline = true;
 
-user.lastLogin = loginTime;
-user.loginStartedAt = loginTime;
-user.lastLogout = null;
-user.loginDuration = 0;
-user.isOnline = true;
+    // Filter to remove loginHistory records older than 24 hours
+    const twentyFourHoursAgo = new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    );
 
-await user.save();
+    user.loginHistory = (user.loginHistory || []).filter(
+      session =>
+        session.loginAt &&
+        new Date(session.loginAt) >= twentyFourHoursAgo
+    );
+
+    // Add the new login session
+    user.loginHistory.push({
+      loginAt: loginTime,
+      logoutAt: null,
+      duration: 0
+    });
+
+    await user.save();
 
 
     const token = generateToken(user._id);
@@ -539,19 +556,45 @@ const logoutUser = async (req, res, next) => {
 
     const logoutTime = new Date();
 
-    // Calculate session duration in seconds
-    if (user.loginStartedAt) {
-      const duration = Math.floor(
-        (logoutTime.getTime() -
-          new Date(user.loginStartedAt).getTime()) / 1000
-      );
+    let duration = 0;
 
-      user.loginDuration = duration;
+    if (user.loginStartedAt) {
+      duration = Math.max(
+        0,
+        Math.floor(
+          (
+            logoutTime.getTime() -
+            new Date(user.loginStartedAt).getTime()
+          ) / 1000
+        )
+      );
     }
 
-    // Update logout information
     user.lastLogout = logoutTime;
+    user.loginDuration = duration;
     user.isOnline = false;
+
+    // Find the latest loginHistory session that does not have logoutAt
+    const latestSession =
+      [...(user.loginHistory || [])]
+        .reverse()
+        .find(session => !session.logoutAt);
+
+    if (latestSession) {
+      latestSession.logoutAt = logoutTime;
+      latestSession.duration = duration;
+    }
+
+    // Remove records older than 24 hours
+    const twentyFourHoursAgo = new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    );
+
+    user.loginHistory = (user.loginHistory || []).filter(
+      session =>
+        session.loginAt &&
+        new Date(session.loginAt) >= twentyFourHoursAgo
+    );
 
     await user.save();
 
