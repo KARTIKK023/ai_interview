@@ -96,24 +96,46 @@ const userSchema = new mongoose.Schema(
     },
 
   lastLogin: {
-  type: Date,
-  default: null
-},
+    type: Date,
+    default: null
+  },
 
-loginStartedAt: {
-  type: Date,
-  default: null
-},
+  loginStartedAt: {
+    type: Date,
+    default: null
+  },
 
-lastLogout: {
-  type: Date,
-  default: null
-},
+  lastLogout: {
+    type: Date,
+    default: null
+  },
 
-loginDuration: {
-  type: Number,
-  default: 0
-}
+  loginDuration: {
+    type: Number,
+    default: 0
+  },
+
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+
+  loginHistory: [
+    {
+      loginAt: {
+        type: Date,
+        required: true
+      },
+      logoutAt: {
+        type: Date,
+        default: null
+      },
+      duration: {
+        type: Number,
+        default: 0
+      }
+    }
+  ]
 
 
   },

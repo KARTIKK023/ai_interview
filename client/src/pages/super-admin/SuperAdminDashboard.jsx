@@ -26,8 +26,10 @@ import {
   FaExclamationTriangle,
   FaUserGraduate,
   FaUserPlus,
-  FaClipboardList ,
-  FaAward
+  FaClipboardList,
+  FaAward,
+  FaGraduationCap,
+  FaEnvelope
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import SuperAdminSidebar from './SuperAdminSidebar';
@@ -42,7 +44,9 @@ const kpiIconMap = {
   'active-jobs': FaClock,
   'ai-interviews': FaBrain,
   'avg-score': FaAward,
-  'resume-scans': FaFileAlt
+  'resume-scans': FaFileAlt,
+  'total-certificates': FaGraduationCap,
+  'total-inquiries': FaEnvelope
 };
 
 const SuperAdminDashboard = () => {
@@ -137,7 +141,9 @@ const SuperAdminDashboard = () => {
     'active-jobs': '/super-admin/mock-interviews?status=Pending',
     'ai-interviews': '/super-admin/mock-interviews',
     'avg-score': '/super-admin/mock-interviews',
-    'resume-scans': '/super-admin/resumes'
+    'resume-scans': '/super-admin/resumes',
+    'total-certificates': '/super-admin/certificates',
+    'total-inquiries': '/super-admin/inquiry-details'
   };
 
   const kpiStyleMap = {
@@ -176,6 +182,14 @@ const SuperAdminDashboard = () => {
     'resume-scans': {
       bg: 'linear-gradient(135deg, #F97316 0%, #EA580C 60%, #C2410C 100%)',
       shadow: '0 6px 18px -3px rgba(234, 88, 12, 0.35)'
+    },
+    'total-certificates': {
+      bg: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 60%, #6D28D9 100%)',
+      shadow: '0 6px 18px -3px rgba(124, 58, 237, 0.35)'
+    },
+    'total-inquiries': {
+      bg: 'linear-gradient(135deg, #06B6D4 0%, #0891B2 60%, #0E7490 100%)',
+      shadow: '0 6px 18px -3px rgba(8, 145, 178, 0.35)'
     }
   };
 
@@ -183,11 +197,14 @@ const SuperAdminDashboard = () => {
   const rawKpiCards = dashboardData.kpiCards && dashboardData.kpiCards.length > 0
     ? dashboardData.kpiCards
     : [
-      { id: 'total-students', title: 'Total Students', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'registered students', color: '#2563EB', bgLight: 'rgba(37, 99, 235, 0.1)', route: '/super-admin/students' },
-      { id: 'completed-interviews', title: 'Completed Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'completed sessions', color: '#059669', bgLight: 'rgba(5, 150, 105, 0.1)', route: '/super-admin/mock-interviews?status=Completed' },
-      { id: 'pending-interviews', title: 'Pending Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'pending sessions', color: '#6366F1', bgLight: 'rgba(99, 102, 241, 0.1)', route: '/super-admin/mock-interviews?status=Pending' },
-      { id: 'ai-interviews', title: 'AI Interviews', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'evaluated by AI', color: '#9333EA', bgLight: 'rgba(147, 51, 234, 0.1)', route: '/super-admin/mock-interviews' },
-      { id: 'avg-score', title: 'Average Score', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' }
+      { id: 'total-students', title: 'TOTAL STUDENTS', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'registered students', color: '#2563EB', bgLight: 'rgba(37, 99, 235, 0.1)', route: '/super-admin/students' },
+      { id: 'completed-interviews', title: 'COMPLETED INTERVIEWS', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'completed sessions', color: '#059669', bgLight: 'rgba(5, 150, 105, 0.1)', route: '/super-admin/mock-interviews?status=Completed' },
+      { id: 'pending-interviews', title: 'PENDING INTERVIEWS', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'pending sessions', color: '#6366F1', bgLight: 'rgba(99, 102, 241, 0.1)', route: '/super-admin/mock-interviews?status=Pending' },
+      { id: 'ai-interviews', title: 'TOTAL INTERVIEWS', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'evaluated by AI', color: '#9333EA', bgLight: 'rgba(147, 51, 234, 0.1)', route: '/super-admin/mock-interviews' },
+      { id: 'avg-score', title: 'AVERAGE SCORE', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' },
+      { id: 'total-inquiries', title: 'TOTAL INQUIRIES', value: '0', trend: '', trendUp: true, timeframe: 'Total support inquiries', color: '#0284C7', bgLight: 'rgba(2, 132, 199, 0.1)', route: '/super-admin/inquiry-details' },
+      { id: 'total-certificates', title: 'TOTAL CERTIFICATES', value: '0', trend: '', trendUp: true, timeframe: 'All issued certificates', color: '#7C3AED', bgLight: 'rgba(124, 58, 237, 0.1)', route: '/super-admin/certificates' },
+      
     ];
 
   const interviewActivityData = dashboardData.interviewActivityData || [];
@@ -489,18 +506,18 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            {/* 5 DYNAMIC COLOR KPI CARDS GRID */}
-            <div className="row g-2.5 mb-3">
+            {/* 7 DYNAMIC COLOR KPI CARDS GRID (ROW 1: 5 CARDS, ROW 2: 2 CARDS) */}
+            <div className="kpi-grid mb-3.5">
               {rawKpiCards.map((kpi) => {
                 const IconComponent = kpiIconMap[kpi.id] || FaUsers;
-                const targetRoute = kpi.route || routeMap[kpi.id] || '/super-admin/dashboard';
+                const targetRoute = routeMap[kpi.id] || kpi.route || '/super-admin/dashboard';
                 const styleConfig = kpiStyleMap[kpi.id] || {
                   bg: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
                   shadow: '0 6px 18px -3px rgba(37, 99, 235, 0.35)'
                 };
 
                 return (
-                  <div key={kpi.id} className="col-12 col-sm-6 col-xl-2-4">
+                  <div key={kpi.id} className="w-100 h-100">
                     <div
                       role="button"
                       tabIndex={0}
@@ -511,62 +528,81 @@ const SuperAdminDashboard = () => {
                           navigate(targetRoute);
                         }
                       }}
-                      className="card border-0 p-2.5 p-md-3 h-100 position-relative kpi-card-hover text-white overflow-hidden"
+                      className="card border-0 p-3 h-100 position-relative kpi-card-hover text-white overflow-hidden d-flex flex-column justify-content-between"
                       style={{
                         background: styleConfig.bg,
-                        borderRadius: '15px',
+                        borderRadius: '16px',
                         boxShadow: styleConfig.shadow,
                         cursor: 'pointer',
                         transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                        border: '1px solid rgba(255, 255, 255, 0.22)',
+                        minHeight: '145px'
                       }}
-                      title={`Click to manage ${kpi.title}`}
+                      title={`Click to view ${kpi.title}`}
                     >
-                      <div className="d-flex align-items-center justify-content-between mb-1.5">
+                      {/* Top Row: Title + Icon */}
+                      <div className="d-flex align-items-center justify-content-between mb-2 gap-2">
                         <span
-                          className="fw-bold text-uppercase"
+                          className="fw-bold text-uppercase text-truncate"
                           style={{
-                            fontSize: '0.7rem',
+                            fontSize: '0.725rem',
                             letterSpacing: '0.4px',
-                            color: 'rgba(255, 255, 255, 0.95)'
+                            color: 'rgba(255, 255, 255, 0.95)',
+                            lineHeight: 1.2
                           }}
+                          title={kpi.title}
                         >
                           {kpi.title}
                         </span>
                         <div
-                          className="rounded-2 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
+                          className="rounded-3 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0"
                           style={{
                             background: 'rgba(255, 255, 255, 0.22)',
                             color: '#FFFFFF',
-                            width: '28px',
-                            height: '28px',
+                            width: '32px',
+                            height: '32px',
                             backdropFilter: 'blur(6px)',
                             border: '1px solid rgba(255, 255, 255, 0.3)'
                           }}
                         >
-                          <IconComponent size={13} />
+                          <IconComponent size={14} />
                         </div>
                       </div>
 
-                      <h4 className="fw-black text-white my-1" style={{ letterSpacing: '-0.5px', fontSize: '1.35rem', fontWeight: 800 }}>
+                      {/* Middle Row: Big KPI Value Number */}
+                      <h3 className="fw-black text-white my-1" style={{ letterSpacing: '-0.6px', fontSize: '1.65rem', fontWeight: 800 }}>
                         {loading ? '...' : kpi.value}
-                      </h4>
+                      </h3>
 
-                      <div className="d-flex align-items-center gap-1.5 mt-auto flex-wrap">
+                      {/* Bottom Row: Trend Badge + Subtitle/Timeframe */}
+                      <div className="d-flex align-items-center justify-content-between gap-1.5 mt-auto pt-2">
+                        {kpi.trend ? (
+                          <span
+                            className="badge fw-bold px-2 py-1 rounded-2 d-inline-flex align-items-center gap-1 shadow-sm flex-shrink-0"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.25)',
+                              color: '#FFFFFF',
+                              fontSize: '0.65rem',
+                              border: '1px solid rgba(255, 255, 255, 0.35)',
+                              backdropFilter: 'blur(4px)',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {kpi.trendUp ? <FaArrowUp size={7} /> : <FaArrowDown size={7} />}
+                            {kpi.trend}
+                          </span>
+                        ) : null}
                         <span
-                          className="badge fw-bold px-1.5 py-0.5 rounded-2 d-inline-flex align-items-center gap-1 shadow-sm"
+                          className="text-truncate text-end flex-grow-1"
                           style={{
-                            background: 'rgba(255, 255, 255, 0.25)',
-                            color: '#FFFFFF',
-                            fontSize: '0.65rem',
-                            border: '1px solid rgba(255, 255, 255, 0.35)',
-                            backdropFilter: 'blur(4px)'
+                            fontSize: '0.68rem',
+                            color: 'rgba(255, 255, 255, 0.95)',
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap',
+                            lineHeight: 1.2
                           }}
+                          title={kpi.timeframe}
                         >
-                          {kpi.trendUp ? <FaArrowUp size={7} /> : <FaArrowDown size={7} />}
-                          {kpi.trend}
-                        </span>
-                        <span style={{ fontSize: '0.65rem', color: 'rgba(255, 255, 255, 0.88)', fontWeight: 500 }}>
                           {kpi.timeframe}
                         </span>
                       </div>
@@ -800,12 +836,29 @@ const SuperAdminDashboard = () => {
 
 
 
-      {/* Custom Styles for 5-column grid & animations */}
+      {/* Custom Styles for 5-column desktop grid & animations */}
       <style>{`
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(1, 1fr);
+          gap: 12px;
+        }
+        @media (min-width: 576px) {
+          .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+          }
+        }
+        @media (min-width: 992px) {
+          .kpi-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+          }
+        }
         @media (min-width: 1200px) {
-          .col-xl-2-4 {
-            flex: 0 0 auto;
-            width: 20%;
+          .kpi-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 14px;
           }
         }
         .spin-anim {

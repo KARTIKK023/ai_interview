@@ -280,29 +280,31 @@ const SuperAdminCertificates = () => {
     `;
   }
 },
-   {
+ {
   title: 'Generate Certificate',
   data: '_id',
-  width: '180px',
-  className: 'text-center',
-
   render: (data, type, row) => {
     const targetId = row._id || row.interviewId;
+
+    // Get the actual AI score
+    const scoreVal = Number(
+      row.score ?? row.percentage ?? 0
+    );
+
+    // Only allow certificate generation for score >= 75
+    if (scoreVal < 75) {
+      return '';
+    }
 
     if (row.isGenerated) {
       return `
         <div
           class="d-inline-flex align-items-center gap-1.5"
-          style="
-            width: 100%;
-            justify-content: center;
-            text-align: center;
-            white-space: nowrap;
-          "
+          style="width:90%; text-align:center; white-space:nowrap;"
         >
           <span
             class="badge text-white fw-bold py-1 px-2"
-            style="background-color: #24bf36;"
+            style="background-color:#24bf36;"
           >
             ✓Generated
           </span>
@@ -319,22 +321,13 @@ const SuperAdminCertificates = () => {
     }
 
     return `
-      <div
-        style="
-          width: 100%;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        "
+      <button
+        class="btn btn-sm btn-warning fw-bold generate-cert-row-btn d-inline-flex align-items-center gap-1 py-0.5 px-2 text-dark shadow-sm"
+        data-id="${targetId}"
+        title="Click to generate & preview certificate"
       >
-        <button
-          class="btn btn-sm btn-warning fw-bold generate-cert-row-btn d-inline-flex align-items-center gap-1 py-0.5 px-2 text-dark shadow-sm"
-          data-id="${targetId}"
-          title="Click to generate & preview certificate using real MongoDB candidate performance data"
-        >
-          🎓Generate
-        </button>
-      </div>
+        🎓 Generate
+      </button>
     `;
   }
 },

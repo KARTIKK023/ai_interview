@@ -8,6 +8,7 @@ const JobRole = require('../models/JobRole');
 const TargetJob = require('../models/TargetJob');
 const Evaluation = require('../models/Evaluation');
 const Certificate = require('../models/Certificate');
+const SupportMessage = require('../models/SupportMessage');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure', {
@@ -155,6 +156,8 @@ const getAdminDashboard = async (req, res, next) => {
       newInterviews30d,
       totalResumeScans,
       newResumeScans30d,
+      totalCertificates,
+      totalInquiries,
       avgScoreAgg
     ] = await Promise.all([
       User.countDocuments(studentFilter),
@@ -167,6 +170,8 @@ const getAdminDashboard = async (req, res, next) => {
       Interview.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
       Resume.countDocuments().catch(() => 0),
       Resume.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
+      Certificate.countDocuments().catch(() => 0),
+      SupportMessage.countDocuments().catch(() => 0),
       Interview.aggregate([
         { $match: { $or: [{ score: { $gt: 0 } }, { percentage: { $gt: 0 } }] } },
         {
@@ -196,7 +201,7 @@ const getAdminDashboard = async (req, res, next) => {
     const kpiCards = [
       {
         id: 'total-students',
-        title: 'Total Students',
+        title: 'TOTAL STUDENTS',
         value: totalStudents.toLocaleString(),
         trend: calcTrend(newStudents30d, totalStudents),
         trendUp: newStudents30d >= 0,
@@ -207,7 +212,7 @@ const getAdminDashboard = async (req, res, next) => {
       },
       {
         id: 'completed-interviews',
-        title: 'Completed Interviews',
+        title: 'COMPLETED INTERVIEWS',
         value: totalCompletedInterviews.toLocaleString(),
         trend: calcTrend(newCompleted30d, totalCompletedInterviews),
         trendUp: newCompleted30d >= 0,
@@ -218,7 +223,7 @@ const getAdminDashboard = async (req, res, next) => {
       },
       {
         id: 'pending-interviews',
-        title: 'Pending Interviews',
+        title: 'PENDING INTERVIEWS',
         value: totalPendingInterviews.toLocaleString(),
         trend: calcTrend(newPending30d, totalPendingInterviews),
         trendUp: newPending30d >= 0,
@@ -229,7 +234,7 @@ const getAdminDashboard = async (req, res, next) => {
       },
       {
         id: 'ai-interviews',
-        title: 'Total Interviews',
+        title: 'TOTAL INTERVIEWS',
         value: totalInterviews.toLocaleString(),
         trend: calcTrend(newInterviews30d, totalInterviews),
         trendUp: newInterviews30d >= 0,
@@ -238,9 +243,10 @@ const getAdminDashboard = async (req, res, next) => {
         bgLight: 'rgba(147, 51, 234, 0.1)',
         route: '/super-admin/mock-interviews'
       },
+     
       {
         id: 'avg-score',
-        title: 'Average Score',
+        title: 'AVERAGE SCORE',
         value: avgScoreDisplay,
         trend: '+2.5%',
         trendUp: true,
@@ -248,7 +254,30 @@ const getAdminDashboard = async (req, res, next) => {
         color: '#D97706',
         bgLight: 'rgba(217, 119, 6, 0.1)',
         route: '/super-admin/mock-interviews'
+      },
+       {
+        id: 'total-inquiries',
+        title: 'TOTAL INQUIRIES',
+        value: totalInquiries.toLocaleString(),
+        trend: '',
+        trendUp: true,
+        timeframe: 'Total support inquiries',
+        color: '#0284C7',
+        bgLight: 'rgba(2, 132, 199, 0.1)',
+        route: '/super-admin/inquiry-details'
+      },
+      {
+        id: 'total-certificates',
+        title: 'TOTAL CERTIFICATES',
+        value: totalCertificates.toLocaleString(),
+        trend: '',
+        trendUp: true,
+        timeframe: 'All issued certificates',
+        color: '#7C3AED',
+        bgLight: 'rgba(124, 58, 237, 0.1)',
+        route: '/super-admin/certificates'
       }
+      
     ];
 
     // 2. AI Interview Activity Trends (Dynamic daily breakdown)
@@ -724,6 +753,93 @@ const getAdminStudentProfile = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get Student Latest Login History Session (Super Admin)
+ * @route   GET /api/admin/students/:studentId/login-history
+ * @access  Private (Super Admin)
+ */
+const getStudentLoginHistory = async (req, res, next) => {
+  try {
+    const studentIdParam = req.params.studentId;
+    let student = null;
+    if (mongoose.Types.ObjectId.isValid(studentIdParam)) {
+      student = await User.findById(studentIdParam).lean();
+    }
+    if (!student) {
+      student = await User.findOne({
+        $or: [
+          { studentId: studentIdParam },
+          { student_id: studentIdParam }
+        ]
+      }).lean();
+    }
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found in database' });
+    }
+
+    const twentyFourHoursAgo = new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    );
+
+    let history = (student.loginHistory || []).filter(
+      session =>
+        session.loginAt &&
+        new Date(session.loginAt) >= twentyFourHoursAgo
+    );
+
+    // Fallback if student logged in within 24h but loginHistory array was empty
+    if (history.length === 0 && student.lastLogin && new Date(student.lastLogin) >= twentyFourHoursAgo) {
+      history = [
+        {
+          loginAt: student.lastLogin,
+          logoutAt: student.isOnline ? null : student.lastLogout,
+          duration: student.loginDuration || 0
+        }
+      ];
+    }
+
+    // Sort newest first
+    history.sort((a, b) => new Date(b.loginAt).getTime() - new Date(a.loginAt).getTime());
+
+    // Calculate live duration for currently active session if online
+    const formattedHistory = history.map((session, index) => {
+      const isSessionActive = Boolean(student.isOnline) && !session.logoutAt && index === 0;
+      let sessionDuration = session.duration || 0;
+
+      if (isSessionActive && (session.loginAt || student.loginStartedAt)) {
+        const startMs = new Date(session.loginAt || student.loginStartedAt).getTime();
+        if (!isNaN(startMs)) {
+          sessionDuration = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+        }
+      }
+
+      return {
+        _id: session._id,
+        loginAt: session.loginAt,
+        logoutAt: isSessionActive ? null : session.logoutAt,
+        duration: sessionDuration,
+        isOnline: isSessionActive
+      };
+    });
+
+    return res.json({
+      success: true,
+      student: {
+        id: student._id,
+        _id: student._id,
+        name: student.fullName || student.name || 'Student',
+        fullName: student.fullName || student.name || 'Student',
+        studentId: student.studentId || student.student_id || (student._id ? String(student._id).substring(0, 8) : 'N/A'),
+        isOnline: Boolean(student.isOnline)
+      },
+      history: formattedHistory
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * @desc    Update Student HireSmart AI Service Access Status (Super Admin)
  * @route   PUT /api/admin/students/:id/service-status
  * @access  Private (Super Admin)
@@ -916,6 +1032,7 @@ module.exports = {
   getAdminResumeScans,
   getAdminStudents,
   getAdminStudentProfile,
+  getStudentLoginHistory,
   updateStudentServiceStatus,
   getAdminRegistrations,
   getAdminResumes,
