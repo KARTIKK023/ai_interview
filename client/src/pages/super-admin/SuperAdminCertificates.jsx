@@ -41,15 +41,36 @@ const SuperAdminCertificates = () => {
         API.get('/admin/mock-interviews').catch(() => ({ data: { interviews: [] } }))
       ]);
 
-      if (certRes.data && certRes.data.success) {
-        setCertificates(certRes.data.certificates || []);
-      }
+     if (certRes.data && certRes.data.success) {
+  const eligibleCertificates = (certRes.data.certificates || []).filter(
+    (certificate) => {
+      const score = Number(
+        certificate.score ??
+        certificate.percentage ??
+        certificate.aiScore ??
+        0
+      );
+
+      return score >= 75;
+    }
+  );
+
+  setCertificates(eligibleCertificates);
+}
 
       if (intRes.data && intRes.data.success) {
-        const completed = (intRes.data.interviews || []).filter(
-          i => i.status === 'Completed' || (i.score && i.score > 0)
-        );
-        setMockInterviews(completed.length > 0 ? completed : (intRes.data.interviews || []));
+        const eligibleInterviews = (intRes.data.interviews || []).filter((interview) => {
+  const score = Number(
+    interview.score ??
+    interview.percentage ??
+    interview.aiScore ??
+    0
+  );
+
+  return score >= 75;
+});
+
+setMockInterviews(eligibleInterviews);
       }
     } catch (err) {
       console.error('Failed to load certificates data:', err);

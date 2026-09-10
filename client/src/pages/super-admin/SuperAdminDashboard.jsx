@@ -81,27 +81,95 @@ const SuperAdminDashboard = () => {
     { id: 1, text: 'Real-time production database connected to Super Admin dashboard.', time: '1 min ago', read: false }
   ]);
 
-  const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, showToast = false) => {
-    try {
-      if (showToast) setIsRefreshing(true);
-      const res = await API.get(`/admin/dashboard?timeframe=${timeframe}`);
-      if (res.data && res.data.success) {
-        setDashboardData(res.data);
-        setError(null);
-        if (showToast) toast.success('Platform metrics synced from database');
-      } else {
-        setError('Failed to fetch live platform metrics');
-      }
-    } catch (err) {
-      console.error('Super Admin Dashboard Error:', err);
-      setError(err.response?.data?.message || 'Failed to connect to backend server.');
-      if (showToast) toast.error('Failed to sync live production data');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [selectedTimeframe]);
+const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, showToast = false) => {
+  try {
+    if (showToast) setIsRefreshing(true);
 
+    // Fetch dashboard data + ACTUAL generated certificates
+    const [dashboardRes, certificatesRes] = await Promise.all([
+      API.get(`/admin/dashboard?timeframe=${timeframe}`),
+      API.get('/admin/certificates')
+    ]);
+
+    if (dashboardRes.data && dashboardRes.data.success) {
+
+      // ============================================================
+      // GET ACTUALLY GENERATED / ISSUED CERTIFICATES
+      // ============================================================
+      const certificates =
+        certificatesRes.data?.certificates ||
+        certificatesRes.data?.data ||
+        [];
+
+      // Only certificates with score >= 75%
+      const issuedCertificates = certificates.filter((certificate) => {
+  const score = Number(
+    certificate.score ??
+    certificate.percentage ??
+    certificate.aiScore ??
+    0
+  );
+
+  // Must have score >= 75 AND certificate must actually be generated
+  return score >= 75 && certificate.isGenerated === true;
+});
+
+      const issuedCertificateCount = issuedCertificates.length;
+
+      console.log('======================================');
+      console.log('CERTIFICATES FROM DATABASE:', certificates);
+      console.log('ISSUED CERTIFICATES:', issuedCertificates);
+      console.log('TOTAL ISSUED CERTIFICATES:', issuedCertificateCount);
+      console.log('======================================');
+
+      // ============================================================
+      // UPDATE TOTAL CERTIFICATES KPI
+      // ============================================================
+      const updatedKpiCards = (dashboardRes.data.kpiCards || []).map((kpi) => {
+
+        if (kpi.id === 'total-certificates') {
+          return {
+            ...kpi,
+            value: issuedCertificateCount,
+            timeframe: 'Issued certificates with score >= 75%'
+          };
+        }
+
+        return kpi;
+      });
+
+      setDashboardData({
+        ...dashboardRes.data,
+        kpiCards: updatedKpiCards
+      });
+
+      setError(null);
+
+      if (showToast) {
+        toast.success('Platform metrics synced from database');
+      }
+
+    } else {
+      setError('Failed to fetch live platform metrics');
+    }
+
+  } catch (err) {
+    console.error('Super Admin Dashboard Error:', err);
+
+    setError(
+      err.response?.data?.message ||
+      'Failed to connect to backend server.'
+    );
+
+    if (showToast) {
+      toast.error('Failed to sync live production data');
+    }
+
+  } finally {
+    setLoading(false);
+    setIsRefreshing(false);
+  }
+}, [selectedTimeframe]);
   useEffect(() => {
     fetchDashboardData(selectedTimeframe);
     const interval = setInterval(() => {
@@ -203,7 +271,7 @@ const SuperAdminDashboard = () => {
       { id: 'ai-interviews', title: 'TOTAL INTERVIEWS', value: '0', trend: '+0.0%', trendUp: true, timeframe: 'evaluated by AI', color: '#9333EA', bgLight: 'rgba(147, 51, 234, 0.1)', route: '/super-admin/mock-interviews' },
       { id: 'avg-score', title: 'AVERAGE SCORE', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' },
       { id: 'total-inquiries', title: 'TOTAL INQUIRIES', value: '0', trend: '', trendUp: true, timeframe: 'Total support inquiries', color: '#0284C7', bgLight: 'rgba(2, 132, 199, 0.1)', route: '/super-admin/inquiry-details' },
-      { id: 'total-certificates', title: 'TOTAL CERTIFICATES', value: '0', trend: '', trendUp: true, timeframe: 'All issued certificates', color: '#7C3AED', bgLight: 'rgba(124, 58, 237, 0.1)', route: '/super-admin/certificates' },
+      { id: 'total-certificates', title: 'TOTAL CERTIFICATES', value: '0', trend: '', trendUp: true, timeframe: 'All issued certificates with score >= 75%', color: '#7C3AED', bgLight: 'rgba(124, 58, 237, 0.1)', route: '/super-admin/certificates' },
       
     ];
 
