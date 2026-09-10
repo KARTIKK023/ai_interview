@@ -206,64 +206,1009 @@ const deleteScan = async (req, res, next) => {
   }
 };
 
-const createResumePdf = (resume, targetJob) => new Promise((resolve, reject) => {
-  const doc = new PDFDocument({ size: 'A4', margin: 48 });
-  const chunks = [];
-  doc.on('data', (chunk) => chunks.push(chunk));
-  doc.on('end', () => resolve(Buffer.concat(chunks)));
-  doc.on('error', reject);
-
-  const heading = (text) => {
-    if (!text) return;
-    doc.moveDown(0.7).fontSize(13).fillColor('#0d6efd').font('Helvetica-Bold').text(text.toUpperCase());
-    doc.moveDown(0.15).strokeColor('#dbe7f5').lineWidth(1).moveTo(doc.x, doc.y).lineTo(547, doc.y).stroke();
-    doc.moveDown(0.25).font('Helvetica').fillColor('#172033');
-  };
-  const itemText = (text) => { if (text) doc.fontSize(9.5).fillColor('#263248').text(text, { lineGap: 2 }); };
-
-  const contact = resume.contact || {};
-  doc.font('Helvetica-Bold').fontSize(20).fillColor('#102a43').text(contact.name || resume.headline || targetJob.target_job_role || 'Targeted Resume');
-  if (contact.name && resume.headline) doc.moveDown(0.15).font('Helvetica').fontSize(11).fillColor('#52606d').text(resume.headline);
-  const contactLine = [contact.email, contact.phone, contact.location, ...(contact.links || [])].filter(Boolean).join(' | ');
-  if (contactLine) doc.moveDown(0.25).font('Helvetica').fontSize(9).fillColor('#52606d').text(contactLine);
-  doc.moveDown(0.15).font('Helvetica').fontSize(9).fillColor('#52606d').text(`Tailored for ${targetJob.target_job_role || 'target role'}${targetJob.target_company ? ` at ${targetJob.target_company}` : ''}`);
-  heading('Professional Summary');
-  itemText(resume.professionalSummary);
-  if (resume.skills?.length || resume.skillCategories?.length) {
-    heading('Technical Skills');
-    if (resume.skillCategories?.length) resume.skillCategories.forEach((category) => itemText(`${category.category}: ${category.skills.join(', ')}`));
-    else itemText(resume.skills.join(', '));
-  }
-  if (resume.experience?.length) {
-    heading('Experience');
-    resume.experience.forEach((item) => {
-      doc.font('Helvetica-Bold').fontSize(10.5).text([item.jobTitle, item.company].filter(Boolean).join(' | '));
-      itemText([item.location, item.dates].filter(Boolean).join(' | '));
-      (item.bullets || []).forEach((bullet) => doc.fontSize(9.5).text(`- ${bullet}`, { indent: 10, lineGap: 2 }));
-      doc.moveDown(0.35);
+const createResumePdf = (resume, targetJob) =>
+  new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 48,
+      bufferPages: true
     });
-  }
-  if (resume.projects?.length) {
-    heading('Projects');
-    resume.projects.forEach((item) => {
-      doc.font('Helvetica-Bold').fontSize(10.5).text(item.name || 'Project');
-      itemText(item.description);
-      (item.bullets || []).forEach((bullet) => doc.fontSize(9.5).text(`- ${bullet}`, { indent: 10, lineGap: 2 }));
-    });
-  }
-  if (resume.education?.length) {
-    heading('Education');
-    resume.education.forEach((item) => itemText([item.degree, item.institution, item.dates, item.details].filter(Boolean).join(' | ')));
-  }
-  if (resume.certifications?.length) {
-    heading('Certifications');
-    resume.certifications.forEach((item) => itemText([item.name, item.issuer, item.date].filter(Boolean).join(' | ')));
-  }
-  if (resume.additionalSections?.length) {
-    resume.additionalSections.forEach((item) => { heading(item.title); itemText(item.content); });
-  }
-  doc.end();
-});
+
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    // ---------------------------------------------------------
+    // Page dimensions
+    // ---------------------------------------------------------
+
+    const PAGE_WIDTH = doc.page.width;
+    const PAGE_HEIGHT = doc.page.height;
+
+    const LEFT = doc.page.margins.left;
+    const RIGHT = doc.page.margins.right;
+    const TOP = doc.page.margins.top;
+    const BOTTOM = doc.page.margins.bottom;
+
+    const CONTENT_WIDTH = PAGE_WIDTH - LEFT - RIGHT;
+    const CONTENT_BOTTOM = PAGE_HEIGHT - BOTTOM;
+
+    // ---------------------------------------------------------
+    // Colors
+    // ---------------------------------------------------------
+
+    const COLORS = {
+      black: '#111111',
+      dark: '#202020',
+      text: '#333333',
+      muted: '#666666',
+      light: '#888888',
+      line: '#BDBDBD'
+    };
+
+    // ---------------------------------------------------------
+    // Basic helpers
+    // ---------------------------------------------------------
+
+    const safeText = (value) => {
+      if (value === null || value === undefined) return '';
+      return String(value).trim();
+    };
+
+    const hasText = (value) => safeText(value).length > 0;
+
+    const availableHeight = () => CONTENT_BOTTOM - doc.y;
+
+    const addPage = () => {
+      doc.addPage({
+        size: 'A4',
+        margin: 48
+      });
+    };
+
+    /*
+     * Content-aware page break.
+     *
+     * This does not blindly add pages after every section.
+     * It checks how much vertical space is left first.
+     */
+    const ensureSpace = (requiredHeight = 20) => {
+      if (availableHeight() < requiredHeight) {
+        addPage();
+        return true;
+      }
+
+      return false;
+    };
+
+    // ---------------------------------------------------------
+    // Text height helper
+    // ---------------------------------------------------------
+
+    const measureText = (text, options = {}) => {
+      if (!hasText(text)) return 0;
+
+      return doc.heightOfString(text, {
+        width: options.width || CONTENT_WIDTH,
+        font: options.font,
+        fontSize: options.fontSize,
+        lineGap: options.lineGap || 0,
+        align: options.align || 'left',
+        indent: options.indent || 0
+      });
+    };
+
+    // ---------------------------------------------------------
+    // Section heading
+    // ---------------------------------------------------------
+
+    const drawSectionHeading = (title) => {
+      if (!hasText(title)) return;
+
+      // Keep the heading with at least some content below it.
+      ensureSpace(42);
+
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(11)
+        .fillColor(COLORS.black)
+        .text(title.toUpperCase(), {
+          width: CONTENT_WIDTH
+        });
+
+      const lineY = doc.y + 4;
+
+      doc
+        .strokeColor(COLORS.line)
+        .lineWidth(0.8)
+        .moveTo(LEFT, lineY)
+        .lineTo(PAGE_WIDTH - RIGHT, lineY)
+        .stroke();
+
+      doc.y = lineY + 9;
+    };
+
+    // ---------------------------------------------------------
+    // Normal body text
+    // ---------------------------------------------------------
+
+    const drawBodyText = (
+      text,
+      {
+        font = 'Helvetica',
+        fontSize = 9.5,
+        color = COLORS.text,
+        lineGap = 2,
+        width = CONTENT_WIDTH,
+        align = 'left'
+      } = {}
+    ) => {
+      if (!hasText(text)) return;
+
+      doc
+        .font(font)
+        .fontSize(fontSize)
+        .fillColor(color)
+        .text(text, {
+          width,
+          lineGap,
+          align
+        });
+    };
+
+    // ---------------------------------------------------------
+    // Bullet
+    // ---------------------------------------------------------
+
+    const drawBullet = (text) => {
+      if (!hasText(text)) return;
+
+      const bulletWidth = 12;
+      const textWidth = CONTENT_WIDTH - bulletWidth;
+
+      doc
+        .font('Helvetica')
+        .fontSize(9.3)
+        .fillColor(COLORS.text);
+
+      const bulletHeight = measureText(text, {
+        width: textWidth,
+        font: 'Helvetica',
+        fontSize: 9.3,
+        lineGap: 1.5
+      });
+
+      /*
+       * If a bullet is very close to the bottom, move it to the
+       * next page. PDFKit can split text itself, but this keeps
+       * normal bullets visually clean.
+       */
+      if (bulletHeight <= availableHeight() && availableHeight() < 24) {
+        addPage();
+      }
+
+      const startY = doc.y;
+
+      doc
+        .font('Helvetica')
+        .fontSize(9.3)
+        .fillColor(COLORS.text)
+        .text('•', LEFT, startY, {
+          width: bulletWidth
+        });
+
+      doc.text(text, LEFT + bulletWidth, startY, {
+        width: textWidth,
+        lineGap: 1.5
+      });
+
+      doc.y += 2;
+    };
+
+    // ---------------------------------------------------------
+    // Two-column row
+    // ---------------------------------------------------------
+
+    const drawTwoColumnRow = (
+      leftText,
+      rightText,
+      {
+        leftFont = 'Helvetica',
+        leftFontSize = 10,
+        rightFont = 'Helvetica',
+        rightFontSize = 9,
+        color = COLORS.text,
+        gap = 12
+      } = {}
+    ) => {
+      if (!hasText(leftText) && !hasText(rightText)) return;
+
+      const rightWidth = Math.min(
+        150,
+        Math.max(100, CONTENT_WIDTH * 0.28)
+      );
+
+      const leftWidth = CONTENT_WIDTH - rightWidth - gap;
+
+      doc
+        .font(leftFont)
+        .fontSize(leftFontSize)
+        .fillColor(color);
+
+      const leftHeight = hasText(leftText)
+        ? measureText(leftText, {
+            width: leftWidth,
+            font: leftFont,
+            fontSize: leftFontSize,
+            lineGap: 1
+          })
+        : 0;
+
+      doc
+        .font(rightFont)
+        .fontSize(rightFontSize)
+        .fillColor(color);
+
+      const rightHeight = hasText(rightText)
+        ? measureText(rightText, {
+            width: rightWidth,
+            font: rightFont,
+            fontSize: rightFontSize,
+            lineGap: 1
+          })
+        : 0;
+
+      const rowHeight = Math.max(leftHeight, rightHeight);
+
+      ensureSpace(rowHeight + 4);
+
+      const startY = doc.y;
+
+      if (hasText(leftText)) {
+        doc
+          .font(leftFont)
+          .fontSize(leftFontSize)
+          .fillColor(color)
+          .text(leftText, LEFT, startY, {
+            width: leftWidth,
+            lineGap: 1
+          });
+      }
+
+      if (hasText(rightText)) {
+        doc
+          .font(rightFont)
+          .fontSize(rightFontSize)
+          .fillColor(color)
+          .text(rightText, LEFT + leftWidth + gap, startY, {
+            width: rightWidth,
+            align: 'right',
+            lineGap: 1
+          });
+      }
+
+      doc.y = startY + rowHeight;
+    };
+
+    // ---------------------------------------------------------
+    // Estimate an experience/project entry height
+    // ---------------------------------------------------------
+
+    const estimateEntryHeight = ({
+      title,
+      rightText,
+      company,
+      rightSecondary,
+      bullets = [],
+      description
+    }) => {
+      let height = 0;
+
+      const rightWidth = Math.min(
+        150,
+        Math.max(100, CONTENT_WIDTH * 0.28)
+      );
+
+      const leftWidth = CONTENT_WIDTH - rightWidth - 12;
+
+      // Title
+      doc.font('Helvetica-Bold').fontSize(10);
+
+      const titleHeight = measureText(title, {
+        width: leftWidth,
+        font: 'Helvetica-Bold',
+        fontSize: 10,
+        lineGap: 1
+      });
+
+      doc.font('Helvetica').fontSize(9);
+
+      const rightHeight = measureText(rightText, {
+        width: rightWidth,
+        font: 'Helvetica',
+        fontSize: 9,
+        lineGap: 1
+      });
+
+      height += Math.max(titleHeight, rightHeight);
+
+      // Company / location
+      if (hasText(company) || hasText(rightSecondary)) {
+        doc.font('Helvetica').fontSize(9);
+
+        const companyHeight = measureText(company, {
+          width: leftWidth,
+          font: 'Helvetica',
+          fontSize: 9,
+          lineGap: 1
+        });
+
+        const secondaryHeight = measureText(rightSecondary, {
+          width: rightWidth,
+          font: 'Helvetica',
+          fontSize: 9,
+          lineGap: 1
+        });
+
+        height += Math.max(companyHeight, secondaryHeight);
+      }
+
+      // Description
+      if (hasText(description)) {
+        doc.font('Helvetica').fontSize(9.3);
+
+        height += measureText(description, {
+          width: CONTENT_WIDTH,
+          font: 'Helvetica',
+          fontSize: 9.3,
+          lineGap: 1.5
+        });
+
+        height += 2;
+      }
+
+      // Bullets
+      bullets.forEach((bullet) => {
+        if (!hasText(bullet)) return;
+
+        doc.font('Helvetica').fontSize(9.3);
+
+        height += measureText(bullet, {
+          width: CONTENT_WIDTH - 12,
+          font: 'Helvetica',
+          fontSize: 9.3,
+          lineGap: 1.5
+        });
+
+        height += 4;
+      });
+
+      return height + 7;
+    };
+
+    // ---------------------------------------------------------
+    // Experience
+    // ---------------------------------------------------------
+
+    const drawExperienceItem = (item = {}) => {
+      const jobTitle = safeText(item.jobTitle);
+      const company = safeText(item.company);
+      const location = safeText(item.location);
+      const dates = safeText(item.dates);
+
+      const bullets = Array.isArray(item.bullets)
+        ? item.bullets.filter(hasText)
+        : [];
+
+      const estimatedHeight = estimateEntryHeight({
+        title: jobTitle,
+        rightText: dates,
+        company,
+        rightSecondary: location,
+        bullets
+      });
+
+      /*
+       * If the complete entry comfortably fits on a page but does
+       * not fit in the remaining area, start it on the next page.
+       *
+       * If the entry itself is larger than a full page, we allow
+       * PDFKit to naturally split it.
+       */
+      const usablePageHeight = PAGE_HEIGHT - TOP - BOTTOM;
+
+      if (
+        estimatedHeight <= usablePageHeight - 20 &&
+        estimatedHeight > availableHeight()
+      ) {
+        addPage();
+      }
+
+      drawTwoColumnRow(jobTitle, dates, {
+        leftFont: 'Helvetica-Bold',
+        leftFontSize: 10,
+        rightFont: 'Helvetica',
+        rightFontSize: 9,
+        color: COLORS.dark
+      });
+
+      if (hasText(company) || hasText(location)) {
+        drawTwoColumnRow(company, location, {
+          leftFont: 'Helvetica',
+          leftFontSize: 9,
+          rightFont: 'Helvetica',
+          rightFontSize: 9,
+          color: COLORS.muted
+        });
+      }
+
+      bullets.forEach((bullet) => drawBullet(bullet));
+
+      doc.y += 6;
+    };
+
+    // ---------------------------------------------------------
+    // Project
+    // ---------------------------------------------------------
+
+    const drawProjectItem = (item = {}) => {
+      const name = safeText(item.name || item.title);
+      const dates = safeText(item.dates || item.date);
+      const description = safeText(item.description);
+
+      const bullets = Array.isArray(item.bullets)
+        ? item.bullets.filter(hasText)
+        : [];
+
+      const estimatedHeight = estimateEntryHeight({
+        title: name,
+        rightText: dates,
+        bullets,
+        description
+      });
+
+      const usablePageHeight = PAGE_HEIGHT - TOP - BOTTOM;
+
+      if (
+        estimatedHeight <= usablePageHeight - 20 &&
+        estimatedHeight > availableHeight()
+      ) {
+        addPage();
+      }
+
+      drawTwoColumnRow(name || 'Project', dates, {
+        leftFont: 'Helvetica-Bold',
+        leftFontSize: 10,
+        rightFont: 'Helvetica',
+        rightFontSize: 9,
+        color: COLORS.dark
+      });
+
+      if (hasText(description)) {
+        drawBodyText(description, {
+          font: 'Helvetica',
+          fontSize: 9.3,
+          color: COLORS.text,
+          lineGap: 1.5
+        });
+
+        doc.y += 2;
+      }
+
+      bullets.forEach((bullet) => drawBullet(bullet));
+
+      doc.y += 5;
+    };
+
+    // ---------------------------------------------------------
+    // Education
+    // ---------------------------------------------------------
+
+    const drawEducationItem = (item = {}) => {
+      const degree = safeText(item.degree);
+      const institution = safeText(item.institution);
+      const dates = safeText(item.dates);
+      const details = safeText(item.details);
+
+      const title = [degree, institution]
+        .filter(Boolean)
+        .join(' — ');
+
+      const estimatedHeight = estimateEntryHeight({
+        title,
+        rightText: dates,
+        description: details
+      });
+
+      const usablePageHeight = PAGE_HEIGHT - TOP - BOTTOM;
+
+      if (
+        estimatedHeight <= usablePageHeight - 20 &&
+        estimatedHeight > availableHeight()
+      ) {
+        addPage();
+      }
+
+      drawTwoColumnRow(title, dates, {
+        leftFont: 'Helvetica-Bold',
+        leftFontSize: 9.8,
+        rightFont: 'Helvetica',
+        rightFontSize: 9,
+        color: COLORS.dark
+      });
+
+      if (hasText(details)) {
+        drawBodyText(details, {
+          fontSize: 9,
+          color: COLORS.muted,
+          lineGap: 1.5
+        });
+      }
+
+      doc.y += 5;
+    };
+
+    // ---------------------------------------------------------
+    // Certification
+    // ---------------------------------------------------------
+
+    const drawCertificationItem = (item = {}) => {
+      const name = safeText(item.name);
+      const issuer = safeText(item.issuer);
+      const date = safeText(item.date);
+
+      const left = [name, issuer]
+        .filter(Boolean)
+        .join(' — ');
+
+      const estimatedHeight = estimateEntryHeight({
+        title: left,
+        rightText: date
+      });
+
+      const usablePageHeight = PAGE_HEIGHT - TOP - BOTTOM;
+
+      if (
+        estimatedHeight <= usablePageHeight - 20 &&
+        estimatedHeight > availableHeight()
+      ) {
+        addPage();
+      }
+
+      drawTwoColumnRow(left, date, {
+        leftFont: 'Helvetica',
+        leftFontSize: 9.3,
+        rightFont: 'Helvetica',
+        rightFontSize: 9,
+        color: COLORS.text
+      });
+
+      doc.y += 4;
+    };
+
+    // ---------------------------------------------------------
+    // Skills
+    // ---------------------------------------------------------
+
+    const getAllSkills = () => {
+      const skills = [];
+
+      if (Array.isArray(resume.skills)) {
+        resume.skills.forEach((skill) => {
+          if (hasText(skill)) skills.push(safeText(skill));
+        });
+      }
+
+      if (Array.isArray(resume.skillCategories)) {
+        resume.skillCategories.forEach((category) => {
+          if (!category) return;
+
+          if (Array.isArray(category.skills)) {
+            category.skills.forEach((skill) => {
+              if (hasText(skill)) skills.push(safeText(skill));
+            });
+          }
+        });
+      }
+
+      return [...new Set(skills)];
+    };
+
+    const drawSkills = () => {
+      const categories = Array.isArray(resume.skillCategories)
+        ? resume.skillCategories.filter(Boolean)
+        : [];
+
+      const hasCategories = categories.some(
+        (category) =>
+          hasText(category.category) &&
+          Array.isArray(category.skills) &&
+          category.skills.length
+      );
+
+      if (hasCategories) {
+        const columnGap = 16;
+        const columnWidth =
+          (CONTENT_WIDTH - columnGap * 2) / 3;
+
+        const rows = [];
+
+        categories.forEach((category) => {
+          const categoryName = safeText(category.category);
+
+          const categorySkills = Array.isArray(category.skills)
+            ? category.skills.filter(hasText).map(safeText)
+            : [];
+
+          if (!categoryName || !categorySkills.length) return;
+
+          rows.push({
+            title: categoryName,
+            skills: categorySkills
+          });
+        });
+
+        if (!rows.length) return;
+
+        // Arrange categories into 3 columns.
+        const columns = [[], [], []];
+
+        rows.forEach((row, index) => {
+          columns[index % 3].push(row);
+        });
+
+        const columnHeights = columns.map((column) => {
+          return column.reduce((total, row) => {
+            doc.font('Helvetica-Bold').fontSize(8.7);
+
+            const titleHeight = measureText(row.title, {
+              width: columnWidth,
+              font: 'Helvetica-Bold',
+              fontSize: 8.7,
+              lineGap: 1
+            });
+
+            doc.font('Helvetica').fontSize(8.7);
+
+            const skillsHeight = measureText(
+              row.skills.join(', '),
+              {
+                width: columnWidth,
+                font: 'Helvetica',
+                fontSize: 8.7,
+                lineGap: 1.5
+              }
+            );
+
+            return total + titleHeight + skillsHeight + 8;
+          }, 0);
+        });
+
+        const requiredHeight = Math.max(...columnHeights);
+
+        ensureSpace(requiredHeight + 4);
+
+        const startY = doc.y;
+
+        columns.forEach((column, columnIndex) => {
+          let columnY = startY;
+
+          column.forEach((row) => {
+            doc
+              .font('Helvetica-Bold')
+              .fontSize(8.7)
+              .fillColor(COLORS.dark)
+              .text(row.title, LEFT + columnIndex * (columnWidth + columnGap), columnY, {
+                width: columnWidth,
+                lineGap: 1
+              });
+
+            columnY = doc.y + 1;
+
+            doc
+              .font('Helvetica')
+              .fontSize(8.7)
+              .fillColor(COLORS.text)
+              .text(
+                row.skills.join(', '),
+                LEFT + columnIndex * (columnWidth + columnGap),
+                columnY,
+                {
+                  width: columnWidth,
+                  lineGap: 1.5
+                }
+              );
+
+            columnY = doc.y + 6;
+          });
+        });
+
+        doc.y = startY + requiredHeight;
+
+        return;
+      }
+
+      // Fallback for a flat skills array.
+      const skills = getAllSkills();
+
+      if (!skills.length) return;
+
+      const columnCount = 3;
+      const columnGap = 16;
+
+      const columnWidth =
+        (CONTENT_WIDTH - columnGap * 2) / columnCount;
+
+      const columns = [[], [], []];
+
+      skills.forEach((skill, index) => {
+        columns[index % columnCount].push(skill);
+      });
+
+      const columnHeights = columns.map((column) => {
+        return column.reduce((total, skill) => {
+          doc.font('Helvetica').fontSize(8.8);
+
+          return (
+            total +
+            measureText(`• ${skill}`, {
+              width: columnWidth,
+              font: 'Helvetica',
+              fontSize: 8.8,
+              lineGap: 1.5
+            }) +
+            3
+          );
+        }, 0);
+      });
+
+      const requiredHeight = Math.max(...columnHeights);
+
+      ensureSpace(requiredHeight + 4);
+
+      const startY = doc.y;
+
+      columns.forEach((column, columnIndex) => {
+        let columnY = startY;
+
+        column.forEach((skill) => {
+          doc
+            .font('Helvetica')
+            .fontSize(8.8)
+            .fillColor(COLORS.text)
+            .text(
+              `• ${skill}`,
+              LEFT + columnIndex * (columnWidth + columnGap),
+              columnY,
+              {
+                width: columnWidth,
+                lineGap: 1.5
+              }
+            );
+
+          columnY = doc.y + 3;
+        });
+      });
+
+      doc.y = startY + requiredHeight;
+    };
+
+    // =========================================================
+    // HEADER
+    // =========================================================
+
+    const contact = resume.contact || {};
+
+    const name =
+      safeText(contact.name) ||
+      safeText(resume.headline) ||
+      safeText(targetJob?.target_job_role) ||
+      'Targeted Resume';
+
+    const headline = safeText(resume.headline);
+
+    const contactItems = [
+      contact.email,
+      contact.phone,
+      contact.location,
+      ...(Array.isArray(contact.links) ? contact.links : [])
+    ]
+      .filter(hasText)
+      .map(safeText);
+
+    const targetRole = safeText(targetJob?.target_job_role);
+    const targetCompany = safeText(targetJob?.target_company);
+
+    // Name
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(21)
+      .fillColor(COLORS.black)
+      .text(name, {
+        width: CONTENT_WIDTH,
+        align: 'center'
+      });
+
+    // Headline
+    if (headline && headline !== name) {
+      doc.moveDown(0.15);
+
+      doc
+        .font('Helvetica')
+        .fontSize(10.5)
+        .fillColor(COLORS.muted)
+        .text(headline, {
+          width: CONTENT_WIDTH,
+          align: 'center'
+        });
+    }
+
+    // Contact row
+    if (contactItems.length) {
+      doc.moveDown(0.2);
+
+      doc
+        .font('Helvetica')
+        .fontSize(8.5)
+        .fillColor(COLORS.muted)
+        .text(contactItems.join('  |  '), {
+          width: CONTENT_WIDTH,
+          align: 'center',
+          lineGap: 1
+        });
+    }
+
+    // Target role
+    if (targetRole) {
+      doc.moveDown(0.2);
+
+      const tailoredFor = [
+        `Tailored for ${targetRole}`,
+        targetCompany ? `at ${targetCompany}` : ''
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      doc
+        .font('Helvetica')
+        .fontSize(8.2)
+        .fillColor(COLORS.light)
+        .text(tailoredFor, {
+          width: CONTENT_WIDTH,
+          align: 'center'
+        });
+    }
+
+    doc.moveDown(0.6);
+
+    // =========================================================
+    // PROFESSIONAL SUMMARY
+    // =========================================================
+
+    if (hasText(resume.professionalSummary)) {
+      drawSectionHeading('Professional Summary');
+
+      drawBodyText(resume.professionalSummary, {
+        fontSize: 9.4,
+        color: COLORS.text,
+        lineGap: 2
+      });
+
+      doc.y += 5;
+    }
+
+    // =========================================================
+    // TECHNICAL SKILLS
+    // =========================================================
+
+    if (
+      (Array.isArray(resume.skills) && resume.skills.length) ||
+      (Array.isArray(resume.skillCategories) &&
+        resume.skillCategories.length)
+    ) {
+      drawSectionHeading('Technical Skills');
+
+      drawSkills();
+
+      doc.y += 6;
+    }
+
+    // =========================================================
+    // EXPERIENCE
+    // =========================================================
+
+    if (
+      Array.isArray(resume.experience) &&
+      resume.experience.length
+    ) {
+      drawSectionHeading('Experience');
+
+      resume.experience.forEach((item) => {
+        drawExperienceItem(item);
+      });
+    }
+
+    // =========================================================
+    // PROJECTS
+    // =========================================================
+
+    if (
+      Array.isArray(resume.projects) &&
+      resume.projects.length
+    ) {
+      drawSectionHeading('Projects');
+
+      resume.projects.forEach((item) => {
+        drawProjectItem(item);
+      });
+    }
+
+    // =========================================================
+    // EDUCATION
+    // =========================================================
+
+    if (
+      Array.isArray(resume.education) &&
+      resume.education.length
+    ) {
+      drawSectionHeading('Education');
+
+      resume.education.forEach((item) => {
+        drawEducationItem(item);
+      });
+    }
+
+    // =========================================================
+    // CERTIFICATIONS
+    // =========================================================
+
+    if (
+      Array.isArray(resume.certifications) &&
+      resume.certifications.length
+    ) {
+      drawSectionHeading('Certifications');
+
+      resume.certifications.forEach((item) => {
+        drawCertificationItem(item);
+      });
+    }
+
+    // =========================================================
+    // ADDITIONAL SECTIONS
+    // =========================================================
+
+    if (
+      Array.isArray(resume.additionalSections) &&
+      resume.additionalSections.length
+    ) {
+      resume.additionalSections.forEach((item) => {
+        if (!item) return;
+
+        const title = safeText(item.title);
+        const content = safeText(item.content);
+
+        if (!title || !content) return;
+
+        drawSectionHeading(title);
+
+        drawBodyText(content, {
+          fontSize: 9.3,
+          color: COLORS.text,
+          lineGap: 2
+        });
+
+        doc.y += 6;
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Finish PDF
+    // ---------------------------------------------------------
+
+    doc.end();
+  });
 
 const optimizeScan = async (req, res, next) => {
   try {
