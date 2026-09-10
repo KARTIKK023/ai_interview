@@ -272,7 +272,7 @@ const getAdminDashboard = async (req, res, next) => {
         value: totalCertificates.toLocaleString(),
         trend: '',
         trendUp: true,
-        timeframe: 'All issued certificates',
+        timeframe: 'All issued certificates with score >= 75%  ',
         color: '#7C3AED',
         bgLight: 'rgba(124, 58, 237, 0.1)',
         route: '/super-admin/certificates'
