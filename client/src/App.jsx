@@ -53,6 +53,8 @@ import SuperAdminMockInterviews from './pages/super-admin/SuperAdminMockIntervie
 import SuperAdminCertificates from './pages/super-admin/SuperAdminCertificates';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
 import SuperAdminInquiryDetails from './pages/super-admin/InquiryDetails';
+import SuperAdminAtsAnalysis from './pages/super-admin/SuperAdminAtsAnalysis';
+import SuperAdminAtsResumeScans from './pages/super-admin/SuperAdminAtsResumeScans';
 
 function App() {
   return (
@@ -88,6 +90,8 @@ function App() {
         <Route path="/super-admin/mock-interviews" element={<SuperAdminMockInterviews />} />
         <Route path="/super-admin/certificates" element={<SuperAdminCertificates />} />
         <Route path="/super-admin/inquiry-details" element={<SuperAdminInquiryDetails />} />
+        <Route path="/super-admin/ats-analysis" element={<SuperAdminAtsAnalysis />} />
+        <Route path="/super-admin/ats-resume-scans" element={<SuperAdminAtsResumeScans />} />
 
         {/* Additional Super Admin Resource Routes */}
         <Route path="/super-admin/users" element={<SuperAdminUsers />} />
@@ -96,6 +100,15 @@ function App() {
         <Route path="/super-admin/ai-interview-engine" element={<SuperAdminInterviews />} />
         <Route path="/super-admin/resume-scans" element={<SuperAdminResumeScans />} />
       </Route>
+      <Route path="/admin/ats-analysis" element={<Navigate to="/super-admin/ats-analysis" replace />} />
+      <Route
+        path="/admin/ats-resume-scans"
+        element={
+          <AdminProtectedRoute>
+            <SuperAdminAtsResumeScans />
+          </AdminProtectedRoute>
+        }
+      />
 
       {/* Student Routes */}
       <Route

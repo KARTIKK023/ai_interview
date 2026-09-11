@@ -9,6 +9,8 @@ const TargetJob = require('../models/TargetJob');
 const Evaluation = require('../models/Evaluation');
 const Certificate = require('../models/Certificate');
 const SupportMessage = require('../models/SupportMessage');
+const AtsScan = require('../models/AtsScan');
+const AtsArtifact = require('../models/AtsArtifact');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure', {
@@ -158,7 +160,9 @@ const getAdminDashboard = async (req, res, next) => {
       newResumeScans30d,
       totalCertificates,
       totalInquiries,
-      avgScoreAgg
+      avgScoreAgg,
+      totalAtsAnalyses,
+      newAtsAnalyses30d
     ] = await Promise.all([
       User.countDocuments(studentFilter),
       User.countDocuments({ ...studentFilter, createdAt: { $gte: thirtyDaysAgo } }),
@@ -182,7 +186,9 @@ const getAdminDashboard = async (req, res, next) => {
             }
           }
         }
-      ]).catch(() => [])
+      ]).catch(() => []),
+      AtsScan.countDocuments().catch(() => 0),
+      AtsScan.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0)
     ]);
 
     const rawAvgScore = (avgScoreAgg && avgScoreAgg.length > 0 && avgScoreAgg[0].avgScore)
@@ -276,7 +282,19 @@ const getAdminDashboard = async (req, res, next) => {
         color: '#7C3AED',
         bgLight: 'rgba(124, 58, 237, 0.1)',
         route: '/super-admin/certificates'
+      },
+       {
+        id: 'ats-resumes',
+        title: 'ATS RESUMES',
+        value: totalAtsAnalyses.toLocaleString(),
+        trend: calcTrend(newAtsAnalyses30d, totalAtsAnalyses),
+        trendUp: newAtsAnalyses30d >= 0,
+        timeframe: `${newAtsAnalyses30d} scan(s) in last 30d`,
+        color: '#06B6D4',
+        bgLight: 'rgba(6, 182, 212, 0.1)',
+        route: '/admin/ats-resume-scans'
       }
+      
       
     ];
 
@@ -1021,6 +1039,115 @@ const getAdminCertificates = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get All ATS Analysis Records for Super Admin
+ * @route   GET /api/admin/ats/analysis-history
+ * @access  Private (Super Admin)
+ */
+const getAdminAtsAnalysisHistory = async (req, res, next) => {
+  try {
+    const scans = await AtsScan.find()
+      .populate('userId', 'fullName name email studentId')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const analysisHistory = scans.map((scan) => {
+      const user = scan.userId || {};
+      const studentName = user.fullName || user.name || 'Student';
+      const studentId = user.studentId || (user._id ? String(user._id).substring(0, 8) : 'N/A');
+      const targetJobRole = scan.targetJob?.target_job_role || 'Target Job';
+      const company = scan.targetJob?.target_company || '—';
+      const atsScore = scan.overallScore ?? 0;
+      const projectedScore = Number.isFinite(scan.optimization?.projectedScore)
+        ? scan.optimization.projectedScore
+        : null;
+
+      return {
+        ...scan,
+        _id: scan._id,
+        studentName,
+        studentId,
+        targetJobRole,
+        company,
+        atsScore,
+        projectedScore,
+        analyzedAt: scan.createdAt
+      };
+    });
+
+    res.json({
+      success: true,
+      count: analysisHistory.length,
+      scans: analysisHistory,
+      analysisHistory
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Get All ATS Resume Scans for Super Admin
+ * @route   GET /api/admin/ats-resume-scans
+ * @access  Private (Super Admin)
+ */
+const getAdminAtsResumeScans = async (req, res, next) => {
+  try {
+    const scans = await AtsScan.find()
+      .populate('userId', 'fullName name email studentId')
+      .populate('resumeId', 'fileName originalName')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const scanIds = scans.map((s) => s._id);
+    const artifacts = await AtsArtifact.find({ scanId: { $in: scanIds } })
+      .select('scanId fileName contentType')
+      .lean()
+      .catch(() => []);
+
+    const artifactMap = new Map();
+    artifacts.forEach((art) => {
+      artifactMap.set(String(art.scanId), art);
+    });
+
+    const records = scans.map((scan, index) => {
+      const user = scan.userId || {};
+      const studentName = user.fullName || user.name || 'Student';
+      const studentId = user.studentId || (user._id ? String(user._id).substring(0, 8) : 'N/A');
+      const artifact = artifactMap.get(String(scan._id));
+      const fileName = artifact?.fileName || scan.resumeId?.fileName || scan.resumeId?.originalName || 'ATS-Resume.pdf';
+      const targetJob = scan.targetJob?.target_job_role || 'Target Job';
+      const company = scan.targetJob?.target_company || '—';
+      const atsScore = scan.overallScore ?? 0;
+      const projectedScore = Number.isFinite(scan.optimization?.projectedScore)
+        ? scan.optimization.projectedScore
+        : null;
+
+      return {
+        _id: scan._id,
+        serialNumber: index + 1,
+        studentName,
+        studentId,
+        fileName,
+        targetJob,
+        company,
+        atsScore,
+        projectedScore,
+        analyzedAt: scan.createdAt,
+        status: scan.status === 'completed' ? 'Parsed' : (scan.status || 'Parsed')
+      };
+    });
+
+    res.json({
+      success: true,
+      count: records.length,
+      records
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   adminLogin,
   getAdminMe,
@@ -1039,5 +1166,7 @@ module.exports = {
   getAdminTargetJobs,
   getAdminMockInterviews,
   getAdminCertificates,
-  issueAdminCertificate
+  issueAdminCertificate,
+  getAdminAtsAnalysisHistory,
+  getAdminAtsResumeScans
 };

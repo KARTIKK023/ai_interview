@@ -211,7 +211,9 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
     'avg-score': '/super-admin/mock-interviews',
     'resume-scans': '/super-admin/resumes',
     'total-certificates': '/super-admin/certificates',
-    'total-inquiries': '/super-admin/inquiry-details'
+    'total-inquiries': '/super-admin/inquiry-details',
+    'ats-resumes': '/admin/ats-resume-scans'
+
   };
 
   const kpiStyleMap = {
@@ -258,6 +260,10 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
     'total-inquiries': {
       bg: 'linear-gradient(135deg, #06B6D4 0%, #0891B2 60%, #0E7490 100%)',
       shadow: '0 6px 18px -3px rgba(8, 145, 178, 0.35)'
+    },
+      'ats-resumes':{
+      bg: 'linear-gradient(135deg, #06B6D4 0%, #0891B2 60%, #0E7490 100%)',
+      shadow: '0 6px 18px -3px rgba(8, 145, 178, 0.35)'
     }
   };
 
@@ -272,7 +278,8 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
       { id: 'avg-score', title: 'AVERAGE SCORE', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' },
       { id: 'total-inquiries', title: 'TOTAL INQUIRIES', value: '0', trend: '', trendUp: true, timeframe: 'Total support inquiries', color: '#0284C7', bgLight: 'rgba(2, 132, 199, 0.1)', route: '/super-admin/inquiry-details' },
       { id: 'total-certificates', title: 'TOTAL CERTIFICATES', value: '0', trend: '', trendUp: true, timeframe: 'All issued certificates with score >= 75%', color: '#7C3AED', bgLight: 'rgba(124, 58, 237, 0.1)', route: '/super-admin/certificates' },
-      
+      { id: 'ats-resumes', title: 'ATS RESUMES', value: '0', trend: '', trendUp: true, timeframe: 'ATS SCAN RESUMES', bgLight: 'rgba(6, 182, 212, 0.1)', route: '/admin/ats-resume-scans'}
+
     ];
 
   const interviewActivityData = dashboardData.interviewActivityData || [];

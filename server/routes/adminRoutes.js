@@ -18,7 +18,9 @@ const {
   getAdminTargetJobs,
   getAdminMockInterviews,
   getAdminCertificates,
-  issueAdminCertificate
+  issueAdminCertificate,
+  getAdminAtsAnalysisHistory,
+  getAdminAtsResumeScans
 } = require('../controllers/adminController');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
@@ -49,5 +51,7 @@ router.get('/target-jobs', protectAdmin, getAdminTargetJobs);
 router.get('/mock-interviews', protectAdmin, getAdminMockInterviews);
 router.get('/certificates', protectAdmin, getAdminCertificates);
 router.post('/certificates/issue', protectAdmin, issueAdminCertificate);
+router.get('/ats/analysis-history', protectAdmin, getAdminAtsAnalysisHistory);
+router.get('/ats-resume-scans', protectAdmin, getAdminAtsResumeScans);
 
 module.exports = router;

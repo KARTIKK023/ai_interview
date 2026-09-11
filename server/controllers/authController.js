@@ -8,7 +8,8 @@ const { calculateProfileProgress } = require('../services/profileProgressService
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure', {
-    expiresIn: '1m'
+    expiresIn: '30d'
+
   });
 };
 
