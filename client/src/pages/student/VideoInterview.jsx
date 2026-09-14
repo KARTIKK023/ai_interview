@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import VideoRecorder from '../../components/VideoRecorder';
 import Loading from '../../components/Loading';
 import API from '../../services/api';
 import {
@@ -9,220 +8,736 @@ import {
   FaArrowLeft,
   FaVolumeUp,
   FaMicrophone,
-  FaStop,
-  FaRedo,
   FaRobot,
   FaCheckCircle,
   FaExclamationTriangle,
   FaPaperPlane,
   FaTimes,
-  FaPlay,
-  FaSave
+  FaRedo,
+  FaVideo,
+  FaCircle,
+  FaStop
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const VideoInterview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const recorderRef = useRef(null);
-  const audioPlayerRef = useRef(null);
 
+  // Interview / navigation state
   const [interview, setInterview] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const [recordedVideo, setRecordedVideo] = useState(null);
   const [savedAnswers, setSavedAnswers] = useState({});
   const [visitedSet, setVisitedSet] = useState(new Set([0]));
-  const [evaluating, setEvaluating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
+
+  // UI state
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [recordingReady, setRecordingReady] = useState(false);
+  const [recordingError, setRecordingError] = useState('');
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+
+  // Continuous interview recording
+  const cameraVideoRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordingChunksRef = useRef([]);
+  const recordingStartRef = useRef(null);
+  const recordingStopPromiseRef = useRef(null);
+  const recordingBlobRef = useRef(null);
+  const isRecordingRef = useRef(false);
+
+  // Speech recognition
+  const recognitionRef = useRef(null);
+  const shouldListenRef = useRef(false);
+  const isAiSpeakingRef = useRef(false);
+  const currentIndexRef = useRef(0);
+  const transcriptRef = useRef('');
+  const speechBaseRef = useRef('');
+  const speechSupportedRef = useRef(false);
 
   const autoSubmittedRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  const totalQuestions = interview?.questions?.length || 0;
+  const currentQ = interview?.questions?.[currentIndex];
+  const isLastQuestion = currentIndex === totalQuestions - 1;
 
   useEffect(() => {
-    fetchInterviewDetails();
-  }, [id]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
-    if (!interview || !interview.startedAt) return;
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
-    const updateTimer = () => {
-      const startTime = new Date(interview.startedAt).getTime();
-      const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
-      setTimerSeconds(elapsed);
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
+  useEffect(() => {
+    isAiSpeakingRef.current = isAiSpeaking;
+  }, [isAiSpeaking]);
+
+  const formatTimer = (secs) => {
+    const safe = Math.max(0, Number(secs) || 0);
+    const m = Math.floor(safe / 60);
+    const s = safe % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const getRecordingMimeType = () => {
+    if (typeof MediaRecorder === 'undefined') return '';
+
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4'
+    ];
+
+    return candidates.find((type) => MediaRecorder.isTypeSupported?.(type)) || '';
+  };
+
+  const stopSpeechRecognition = useCallback(() => {
+    shouldListenRef.current = false;
+
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    try {
+      recognition.stop();
+    } catch (err) {
+      // Recognition may already be stopped.
+    }
+
+    recognitionRef.current = null;
+
+    if (isMountedRef.current) {
+      setIsListening(false);
+    }
+  }, []);
+
+  const startSpeechRecognition = useCallback((baseText = '') => {
+    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+      speechSupportedRef.current = false;
+      return;
+    }
+
+    stopSpeechRecognition();
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+
+    speechSupportedRef.current = true;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    const startingBase = baseText.trim();
+    speechBaseRef.current = startingBase;
+    shouldListenRef.current = true;
+
+    recognition.onstart = () => {
+      // Recognition is armed silently. The UI only reports actual detected
+      // student speech, not the browser listening state.
     };
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 1000);
-    return () => clearInterval(interval);
-  }, [interview?.startedAt]);
+    recognition.onresult = (event) => {
+      let finalText = speechBaseRef.current;
+      let interimText = '';
 
-  // Auto-submit when video interview duration is reached
-  useEffect(() => {
-    if (!interview || evaluating || isSaving || autoSubmittedRef.current) return;
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const text = result[0]?.transcript || '';
 
-    const maxSeconds = (interview.duration || 30) * 60;
-    if (timerSeconds >= maxSeconds) {
-      autoSubmittedRef.current = true;
-      if (recorderRef.current?.isRecording) {
-        recorderRef.current.stopRecording();
+        if (result.isFinal) {
+          finalText = `${finalText} ${text}`.trim();
+        } else {
+          interimText = `${interimText} ${text}`.trim();
+        }
       }
-      toast.error(`⏰ ${interview.duration || 30}-minute time limit reached! Auto-submitting your video interview...`, { duration: 6000 });
-      executeFinalSubmission(savedAnswers);
+
+      const combined = `${finalText} ${interimText}`.trim();
+      transcriptRef.current = combined;
+
+      if (isMountedRef.current) {
+        setTranscript(combined);
+        setIsListening(true);
+
+        if (voiceDetectedTimerRef.current) {
+          window.clearTimeout(voiceDetectedTimerRef.current);
+        }
+
+        voiceDetectedTimerRef.current = window.setTimeout(() => {
+          if (isMountedRef.current) setIsListening(false);
+        }, 900);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'aborted' || event.error === 'no-speech') return;
+
+      console.warn('[VIDEO INTERVIEW] Speech recognition error:', event.error);
+
+      if (isMountedRef.current) {
+        setIsListening(false);
+      }
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+
+      if (isMountedRef.current) {
+        setIsListening(false);
+      }
+
+      // Chrome/Safari can end recognition automatically. Restart it while
+      // the candidate is still answering, but never while AI is speaking.
+      if (
+        shouldListenRef.current &&
+        !isAiSpeakingRef.current &&
+        !evaluating &&
+        !isSaving
+      ) {
+        window.setTimeout(() => {
+          if (
+            shouldListenRef.current &&
+            !isAiSpeakingRef.current &&
+            isMountedRef.current
+          ) {
+            startSpeechRecognition(transcriptRef.current);
+          }
+        }, 250);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.warn('[VIDEO INTERVIEW] Could not start speech recognition:', err);
+      recognitionRef.current = null;
+      shouldListenRef.current = false;
+      setIsListening(false);
     }
-  }, [timerSeconds, interview, evaluating, isSaving]);
+  }, [evaluating, isSaving, stopSpeechRecognition]);
+
+  const speakQuestion = useCallback((text) => {
+    if (!text || !('speechSynthesis' in window)) {
+      setIsAiSpeaking(false);
+
+      if (!isRecordingRef.current) {
+        startSpeechRecognition(transcriptRef.current);
+      }
+
+      return;
+    }
+
+    stopSpeechRecognition();
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.lang = 'en-US';
+
+    utterance.onstart = () => {
+      isAiSpeakingRef.current = true;
+      setIsAiSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      isAiSpeakingRef.current = false;
+      setIsAiSpeaking(false);
+
+      if (isRecordingRef.current && !evaluating && !isSaving) {
+        startSpeechRecognition(transcriptRef.current);
+      }
+    };
+
+    utterance.onerror = () => {
+      isAiSpeakingRef.current = false;
+      setIsAiSpeaking(false);
+
+      if (isRecordingRef.current && !evaluating && !isSaving) {
+        startSpeechRecognition(transcriptRef.current);
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, [evaluating, isSaving, startSpeechRecognition, stopSpeechRecognition]);
+
+  const startContinuousRecording = useCallback(async () => {
+    if (isRecordingRef.current) return true;
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setRecordingError('Your browser does not support continuous video recording. Please use a current Chrome, Edge, or Safari browser.');
+      return false;
+    }
+
+    try {
+      setRecordingError('');
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      mediaStreamRef.current = stream;
+
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+        cameraVideoRef.current.muted = true;
+        await cameraVideoRef.current.play().catch(() => {});
+      }
+
+      const mimeType = getRecordingMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      recordingChunksRef.current = [];
+      recordingBlobRef.current = null;
+      recordingStopPromiseRef.current = null;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstart = () => {
+        isRecordingRef.current = true;
+        recordingStartRef.current = Date.now();
+
+        if (isMountedRef.current) {
+          setRecordingReady(true);
+        }
+      };
+
+      recorder.onerror = (event) => {
+        console.error('[VIDEO INTERVIEW] MediaRecorder error:', event.error);
+        if (isMountedRef.current) {
+          setRecordingError('The browser could not continue recording. Please check camera and microphone permissions.');
+        }
+      };
+
+      recorder.onstop = () => {
+        const actualType = recorder.mimeType || mimeType || 'video/webm';
+        const blob = new Blob(recordingChunksRef.current, { type: actualType });
+
+        recordingBlobRef.current = blob;
+        isRecordingRef.current = false;
+        recordingStopPromiseRef.current = null;
+
+        if (isMountedRef.current) {
+          setRecordingReady(true);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+
+      // Small timeslices keep the recording data flowing instead of waiting
+      // until the entire interview finishes.
+      recorder.start(1000);
+
+      return true;
+    } catch (err) {
+      console.error('[VIDEO INTERVIEW] Camera/microphone initialization failed:', err);
+
+      if (isMountedRef.current) {
+        setRecordingReady(false);
+        setRecordingError(
+          err?.name === 'NotAllowedError'
+            ? 'Camera and microphone permission was denied. Please allow access and try again.'
+            : 'Could not start the camera and microphone. Please check your devices and try again.'
+        );
+      }
+
+      return false;
+    }
+  }, []);
+
+  const stopContinuousRecording = useCallback(() => {
+    if (!mediaRecorderRef.current) {
+      return Promise.resolve(recordingBlobRef.current);
+    }
+
+    if (recordingStopPromiseRef.current) {
+      return recordingStopPromiseRef.current;
+    }
+
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder.state === 'inactive') {
+      isRecordingRef.current = false;
+      return Promise.resolve(recordingBlobRef.current);
+    }
+
+    recordingStopPromiseRef.current = new Promise((resolve) => {
+      const finish = () => {
+        const actualType = recorder.mimeType || 'video/webm';
+        const blob = new Blob(recordingChunksRef.current, { type: actualType });
+
+        recordingBlobRef.current = blob;
+        isRecordingRef.current = false;
+
+        if (isMountedRef.current) {
+          setRecordingReady(true);
+        }
+
+        resolve(blob);
+      };
+
+      recorder.addEventListener('stop', finish, { once: true });
+
+      try {
+        recorder.stop();
+      } catch (err) {
+        finish();
+      }
+    });
+
+    return recordingStopPromiseRef.current;
+  }, []);
+
+  const releaseMediaResources = useCallback(() => {
+    stopSpeechRecognition();
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    const stream = mediaStreamRef.current;
+
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    isRecordingRef.current = false;
+
+    if (cameraVideoRef.current) {
+      cameraVideoRef.current.srcObject = null;
+    }
+  }, [stopSpeechRecognition]);
 
   const fetchInterviewDetails = async () => {
     try {
       setLoading(true);
       setErrorMessage(null);
+
       const res = await API.get(`/interviews/${id}`);
-      if (res.data.interview) {
-        let activeInterview = res.data.interview;
-        if (activeInterview.status === 'Completed') {
-          navigate(`/student/result/${id}`, { replace: true });
-          return;
+
+      if (!res.data.interview) {
+        throw new Error('Interview was not found.');
+      }
+
+      let activeInterview = res.data.interview;
+
+      if (activeInterview.status === 'Completed') {
+        navigate(`/student/result/${id}`, { replace: true });
+        return;
+      }
+
+      if (activeInterview.status === 'Pending') {
+        const startRes = await API.post(`/interviews/${id}/start`);
+
+        if (startRes.data?.interview) {
+          activeInterview = startRes.data.interview;
         }
-        if (activeInterview.status === 'Pending') {
-          const startRes = await API.post(`/interviews/${id}/start`);
-          if (startRes.data?.interview) {
-            activeInterview = startRes.data.interview;
-          }
-        }
-        setInterview(activeInterview);
+      }
+
+      setInterview(activeInterview);
+
+      if (!activeInterview.questions?.length) {
+        setErrorMessage('No interview questions are available for this session.');
       }
     } catch (err) {
       console.error('Failed to load video interview:', err);
-      setErrorMessage(err.response?.data?.message || 'Could not load interview session. Please check network connection.');
+      setErrorMessage(
+        err.response?.data?.message ||
+          err.message ||
+          'Could not load interview session. Please check your network connection.'
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const currentQ = interview?.questions?.[currentIndex];
-  const totalQuestions = interview?.questions?.length || 0;
-
-  // Speak question aloud via browser Speech Synthesis (TTS)
-  const speakQuestion = (text) => {
-    if ('speechSynthesis' in window && text) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.lang = 'en-US';
-
-      utterance.onstart = () => {
-        setIsAiSpeaking(true);
-      };
-
-      utterance.onend = () => {
-        setIsAiSpeaking(false);
-      };
-
-      utterance.onerror = () => {
-        setIsAiSpeaking(false);
-      };
-
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  // Auto-speak question whenever current question changes
+  // Load interview once.
   useEffect(() => {
-    if (currentQ) {
-      const qText = currentQ.questionText || currentQ.question;
-      speakQuestion(qText);
-    }
+    fetchInterviewDetails();
+
     return () => {
+      releaseMediaResources();
+    };
+  }, [id]);
+
+  // Start one continuous recording for the complete interview.
+  useEffect(() => {
+    if (!interview || !interview.questions?.length) return;
+
+    let cancelled = false;
+
+    const initializeRecording = async () => {
+      const started = await startContinuousRecording();
+
+      if (cancelled && started) {
+        await stopContinuousRecording();
+      }
+    };
+
+    initializeRecording();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [interview, startContinuousRecording, stopContinuousRecording]);
+
+  // Interview timer comes from the server-side interview start time.
+  useEffect(() => {
+    if (!interview?.startedAt) return;
+
+    const updateTimer = () => {
+      const startTime = new Date(interview.startedAt).getTime();
+      const elapsed = Math.max(
+        0,
+        Math.floor((Date.now() - startTime) / 1000)
+      );
+
+      setTimerSeconds(elapsed);
+    };
+
+    updateTimer();
+
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [interview?.startedAt]);
+
+  // Recording timer is independent from the interview timer.
+  useEffect(() => {
+    if (!recordingReady) return;
+
+    const interval = setInterval(() => {
+      if (recordingStartRef.current && isRecordingRef.current) {
+        setRecordingSeconds(
+          Math.max(0, Math.floor((Date.now() - recordingStartRef.current) / 1000))
+        );
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [recordingReady]);
+
+  // Speak each server-generated question. Question generation itself is not
+  // changed here; this page only consumes interview.questions[].
+  useEffect(() => {
+    if (!currentQ || !recordingReady) return;
+
+    const qText = currentQ.questionText || currentQ.question;
+
+    transcriptRef.current = savedAnswers[currentIndex] || '';
+    speechBaseRef.current = savedAnswers[currentIndex] || '';
+
+    setTranscript(savedAnswers[currentIndex] || '');
+    stopSpeechRecognition();
+
+    const timeout = window.setTimeout(() => {
+      speakQuestion(qText);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeout);
+      stopSpeechRecognition();
+
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
     };
-  }, [currentIndex, currentQ]);
+  }, [
+    currentIndex,
+    currentQ,
+    recordingReady,
+    speakQuestion,
+    stopSpeechRecognition
+  ]);
 
-  const handleJumpToQuestion = (targetIndex) => {
-    if (targetIndex === currentIndex) return;
+  // Auto-submit at the configured interview duration.
+  useEffect(() => {
+    if (
+      !interview ||
+      evaluating ||
+      isSaving ||
+      autoSubmittedRef.current
+    ) {
+      return;
+    }
 
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    const maxSeconds = (interview.duration || 30) * 60;
 
-    setErrorMessage(null);
-    setCurrentIndex(targetIndex);
-    setTranscript(savedAnswers[targetIndex] || '');
-    setRecordedVideo(null);
+    if (timerSeconds >= maxSeconds) {
+      autoSubmittedRef.current = true;
+
+      toast.error(
+        `⏰ ${interview.duration || 30}-minute time limit reached. Finalizing your interview...`,
+        { duration: 6000 }
+      );
+
+      handleTriggerSubmit(true);
+    }
+  }, [timerSeconds, interview, evaluating, isSaving]);
+
+  const saveCurrentAnswer = () => {
+    const value = transcriptRef.current.trim();
+
+    const updatedAnswers = {
+      ...savedAnswers,
+      [currentIndexRef.current]: value
+    };
+
+    setSavedAnswers(updatedAnswers);
+    return updatedAnswers;
   };
 
-  const handleReRecordAnswer = () => {
-    if (recorderRef.current?.resetRecording) {
-      recorderRef.current.resetRecording();
+  const handleJumpToQuestion = (targetIndex) => {
+    if (
+      targetIndex === currentIndex ||
+      evaluating ||
+      isSaving
+    ) {
+      return;
     }
-    setTranscript('');
-    setRecordedVideo(null);
-    setSavedAnswers((prev) => {
-      const updated = { ...prev };
-      delete updated[currentIndex];
-      return updated;
-    });
-    setErrorMessage(null);
-    toast.success('Response reset. Ready to start fresh recording.');
+
+    saveCurrentAnswer();
+
+    setVisitedSet((prev) => new Set(prev).add(currentIndex));
+
+    setCurrentIndex(targetIndex);
   };
 
   const handlePrevious = () => {
-    if (currentIndex === 0) return;
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (currentIndex === 0 || evaluating || isSaving) return;
 
-    const prevIndex = currentIndex - 1;
-    setCurrentIndex(prevIndex);
-    setTranscript(savedAnswers[prevIndex] || '');
-    setRecordedVideo(null);
+    saveCurrentAnswer();
+
+    setVisitedSet((prev) => new Set(prev).add(currentIndex));
+    setCurrentIndex((prev) => prev - 1);
   };
 
-  // Save & Next CTA Handler
-  const handleSaveAndNext = async () => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  const handleResetCurrentAnswer = () => {
+    if (evaluating || isSaving) return;
 
-    const textToSave = transcript.trim();
+    stopSpeechRecognition();
+
+    const updated = { ...savedAnswers };
+    delete updated[currentIndex];
+
+    setSavedAnswers(updated);
+    setTranscript('');
+    transcriptRef.current = '';
+    speechBaseRef.current = '';
+
+    toast.success(
+      'Current response cleared. The interview recording continues.'
+    );
+
+    if (isRecordingRef.current && !isAiSpeakingRef.current) {
+      startSpeechRecognition('');
+    }
+  };
+
+  const handleSaveAndNext = async () => {
+    if (evaluating || isSaving) return;
+
+    setIsSaving(true);
+    stopSpeechRecognition();
 
     try {
-      setIsSaving(true);
-      setErrorMessage(null);
+      const updatedAnswers = saveCurrentAnswer();
 
-      // Store in savedAnswers map
-      const updatedAnswers = { ...savedAnswers, [currentIndex]: textToSave };
-      setSavedAnswers(updatedAnswers);
       setVisitedSet((prev) => new Set(prev).add(currentIndex));
 
-      const nextIndex = currentIndex + 1;
-      if (nextIndex < totalQuestions) {
-        if (recorderRef.current?.resetRecording) {
-          recorderRef.current.resetRecording();
-        }
-        setTranscript(updatedAnswers[nextIndex] || '');
-        setRecordedVideo(null);
-        setCurrentIndex(nextIndex);
-        setVisitedSet((prev) => new Set(prev).add(nextIndex));
-        toast.success(`Question ${currentIndex + 1} saved!`);
-      } else {
-        // Last question -> Execute submission & evaluation
-        toast.success('Final question saved! Evaluating interview...');
+      if (isLastQuestion) {
+        toast.success('Final response captured. Finalizing your interview...');
         await executeFinalSubmission(updatedAnswers);
+        return;
       }
-    } catch (err) {
-      console.error('Error saving answer:', err);
-      toast.error('Unable to save your answer. Please try again.');
+
+      const nextIndex = currentIndex + 1;
+
+      setVisitedSet((prev) => new Set(prev).add(nextIndex));
+      setCurrentIndex(nextIndex);
+
+      toast.success(`Question ${currentIndex + 1} saved.`);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleTriggerSubmit = async (fromAutoSubmit = false) => {
+    if (evaluating) return;
+
+    const updatedAnswers = saveCurrentAnswer();
+    setSavedAnswers(updatedAnswers);
+
+    const answeredCount = Object.values(updatedAnswers).filter(
+      (answer) => answer && answer.trim().length > 0
+    ).length;
+
+    const unansweredCount = totalQuestions - answeredCount;
+
+    if (fromAutoSubmit || unansweredCount === 0) {
+      await executeFinalSubmission(updatedAnswers);
+      return;
+    }
+
+    setShowConfirmModal(true);
+  };
+
   const executeFinalSubmission = async (finalAnswersMap) => {
+    if (evaluating) return;
+
     setShowConfirmModal(false);
+    stopSpeechRecognition();
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
     try {
       setEvaluating(true);
+
+      // IMPORTANT:
+      // Stop the one continuous recording first and wait for MediaRecorder's
+      // final Blob. The Blob is kept in memory for this page-only phase.
+      // No backend recording upload is performed yet.
+      await stopContinuousRecording();
 
       const formattedAnswersPayload = interview.questions.map((q, idx) => ({
         questionIndex: idx,
@@ -236,21 +751,37 @@ const VideoInterview = () => {
 
       if (res.data.success) {
         toast.success('Interview submitted and evaluated successfully!');
+        releaseMediaResources();
         navigate(`/student/result/${id}`);
       }
     } catch (err) {
       console.error('Video interview submission error:', err);
-      toast.error(err.response?.data?.message || 'Failed to submit interview.');
+
+      toast.error(
+        err.response?.data?.message ||
+          'Failed to submit interview. Please try again.'
+      );
+
       setEvaluating(false);
     }
   };
 
   const handleStopInterview = async () => {
     try {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
       setShowStopModal(false);
+
+      stopSpeechRecognition();
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+
+      await stopContinuousRecording();
+      releaseMediaResources();
+
       await API.post(`/interviews/${id}/stop`);
-      toast.success('Interview session stopped');
+
+      toast.success('Interview session stopped.');
       navigate('/student/dashboard');
     } catch (err) {
       console.error('Error stopping video interview:', err);
@@ -258,473 +789,657 @@ const VideoInterview = () => {
     }
   };
 
-  const handlePlayVoiceAnswer = async () => {
-    if (audioPlayerRef.current) {
-      try {
-        audioPlayerRef.current.muted = false;
-        audioPlayerRef.current.volume = 1.0;
-        if (typeof audioPlayerRef.current.setSinkId === 'function') {
-          try {
-            await audioPlayerRef.current.setSinkId('');
-          } catch (e) {
-            console.warn('[AUDIO] Default output device sinkId note:', e);
-          }
-        }
-        const playPromise = audioPlayerRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.warn('[AUDIO] Voice answer playback error/interrupted:', err);
-          });
-        }
-      } catch (err) {
-        console.warn('[AUDIO] Error playing voice answer:', err);
-      }
+  const handleRetryRecording = async () => {
+    const started = await startContinuousRecording();
+
+    if (started) {
+      toast.success('Camera and microphone are ready. Interview recording resumed.');
     }
   };
 
-  const formatTimer = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
   if (loading || !interview) {
-    return <Loading message="Preparing Conversational AI Video Interview..." />;
+    return <Loading message="Preparing your interview..." />;
+  }
+
+  if (errorMessage) {
+    return (
+      <div
+        className="min-vh-100 d-flex align-items-center justify-content-center p-4 text-white"
+        style={{ background: '#080a0f' }}
+      >
+        <div
+          className="p-5 text-center rounded-4 border"
+          style={{
+            maxWidth: 620,
+            background: '#10131a',
+            borderColor: 'rgba(255,255,255,.09)'
+          }}
+        >
+          <FaExclamationTriangle className="text-warning mb-3" size={36} />
+          <h4 className="fw-bold mb-2">We couldn't start your interview</h4>
+          <p className="text-white-50 mb-4">{errorMessage}</p>
+          <button
+            className="btn btn-light rounded-pill px-4 fw-semibold"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const roleTitle = interview.jobRole || interview.topic || 'Software Engineer';
   const difficulty = interview.difficulty || 'Intermediate';
-  const progressPercent = Math.round(((currentIndex + 1) / totalQuestions) * 100);
-  const isRecordingState = recorderRef.current?.isRecording || false;
-  const isLastQuestion = currentIndex === totalQuestions - 1;
-  const hasCapturedAnswer = Boolean(transcript.trim() || recordedVideo);
+  const remainingSecs = Math.max(
+    0,
+    (interview.duration || 30) * 60 - timerSeconds
+  );
+  const isTimeLow = remainingSecs <= 60;
+  const hasCurrentAnswer = Boolean(transcript.trim());
+  const answeredCount = Object.values(savedAnswers).filter(
+    (answer) => answer && answer.trim().length > 0
+  ).length;
+  const progressPercent =
+    totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
   return (
-    <div className="bg-futuristic-dark text-white min-vh-100 d-flex flex-column" style={{ backgroundColor: '#060817' }}>
-      {/* TOP HEADER BAR */}
-      <header className="px-4 py-3 border-bottom border-secondary border-opacity-25 glass-card position-sticky top-0" style={{ zIndex: 1040, background: 'rgba(13, 18, 38, 0.85)' }}>
-        <div className="container-fluid d-flex flex-wrap align-items-center justify-content-between gap-3">
-          {/* Left Metadata & Role Badges */}
-          <div className="d-flex align-items-center gap-3">
-            <div className="bg-primary bg-opacity-25 border border-primary text-primary p-2 rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px' }}>
-              <FaRobot size={22} className="text-info" />
-            </div>
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-1">
-                <span className="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-25 extra-small fw-bold">
-                  Technical
-                </span>
-                <span className="badge bg-purple bg-opacity-25 text-primary border border-primary border-opacity-25 extra-small fw-bold" style={{ color: '#a855f7' }}>
-                  {roleTitle}
-                </span>
-                <span className="badge bg-secondary bg-opacity-25 text-white-50 extra-small">
-                  {difficulty}
-                </span>
+    <div
+      className="min-vh-100 text-white"
+      style={{
+        background:
+          'radial-gradient(circle at 50% -20%, rgba(61,67,88,.22), transparent 35%), #080a0f',
+        fontFamily:
+          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+      }}
+    >
+      <style>{`
+        @keyframes aiOrbPulse {
+          0%, 100% { transform: scale(0.94); opacity: 0.86; }
+          50% { transform: scale(1.08); opacity: 1; }
+        }
+      `}</style>
+      {/* TOP BAR — intentionally restrained, not dashboard-like */}
+      <header
+        className="sticky-top border-bottom"
+        style={{
+          zIndex: 1040,
+          background: 'rgba(8,10,15,.92)',
+          backdropFilter: 'blur(18px)',
+          borderColor: 'rgba(255,255,255,.07)'
+        }}
+      >
+        <div className="container-fluid px-4 py-3">
+          <div className="d-flex align-items-center justify-content-between gap-3">
+            <div className="d-flex align-items-center gap-3">
+              <div
+                className="d-flex align-items-center justify-content-center rounded-3"
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: '#171a22',
+                  border: '1px solid rgba(255,255,255,.08)'
+                }}
+              >
+                <FaRobot size={18} className="text-white-50" />
               </div>
-              <h5 className="fw-bold mb-0 text-white fs-6">
-                AI Mock Interview — <span className="text-gradient-purple-blue">{roleTitle}</span>
-              </h5>
-            </div>
-          </div>
 
-          {/* Center Timer & Question Counter */}
-          <div className="d-flex align-items-center gap-4">
-            {(() => {
-              const maxSecs = (interview?.duration || 30) * 60;
-              const remainingSecs = Math.max(0, maxSecs - timerSeconds);
-              const isTimeLow = remainingSecs <= 60;
-              return (
-                <div className={`d-flex align-items-center gap-2 px-3 py-1 bg-black bg-opacity-50 border ${isTimeLow ? 'border-danger' : 'border-secondary border-opacity-25'} rounded-pill`}>
-                  <FaClock className={isTimeLow ? 'text-danger extra-small' : 'text-info extra-small'} />
-                  <span className={`fw-mono fw-bold small ${isTimeLow ? 'text-danger' : 'text-info'}`}>
-                    {formatTimer(remainingSecs)}
-                  </span>
-                  <span className="extra-small text-white-50">/ {interview?.duration || 30}m</span>
+              <div>
+                <div className="small fw-semibold">{roleTitle}</div>
+                <div className="text-white-50" style={{ fontSize: 11 }}>
+                  AI interview · {difficulty}
                 </div>
-              );
-            })()}
-
-            <div className="d-flex align-items-center gap-2">
-              <span className="extra-small text-white-50 fw-bold">Question {currentIndex + 1} / {totalQuestions}</span>
-              <div className="progress" style={{ width: '120px', height: '6px', backgroundColor: '#1e293b' }}>
-                <div className="progress-bar bg-gradient-primary" style={{ width: `${progressPercent}%` }}></div>
               </div>
             </div>
-          </div>
 
-          {/* Right Exit Action */}
-          <button
-            onClick={() => setShowStopModal(true)}
-            className="btn btn-outline-danger btn-sm rounded-pill px-3 d-flex align-items-center gap-2 extra-small fw-bold"
-          >
-            <FaTimes size={12} /> Stop Interview
-          </button>
+            <div className="d-flex align-items-center gap-3">
+              <div
+                className="d-flex align-items-center gap-2 px-3 py-2 rounded-pill"
+                style={{
+                  background: 'rgba(255,255,255,.035)',
+                  border: '1px solid rgba(255,255,255,.07)'
+                }}
+              >
+                <FaCircle
+                  size={7}
+                  className={recordingReady ? 'text-danger' : 'text-secondary'}
+                />
+                <span className="small fw-semibold">
+                  {recordingReady ? 'Recording' : 'Connecting'}
+                </span>
+                <span className="text-white-50 small font-monospace">
+                  {formatTimer(recordingSeconds)}
+                </span>
+              </div>
+
+              <div className="text-end d-none d-sm-block">
+                <div
+                  className={`small fw-bold font-monospace ${
+                    isTimeLow ? 'text-danger' : 'text-white'
+                  }`}
+                >
+                  {formatTimer(remainingSecs)}
+                </div>
+                <div className="text-white-50" style={{ fontSize: 10 }}>
+                  remaining
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowStopModal(true)}
+                disabled={evaluating}
+                className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center"
+                style={{
+                  width: 36,
+                  height: 36,
+                  background: 'rgba(255,255,255,.04)',
+                  border: '1px solid rgba(255,255,255,.08)',
+                  color: '#aeb4c0'
+                }}
+                title="Exit interview"
+              >
+                <FaTimes size={13} />
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* MAIN TWO-COLUMN CONVERSATIONAL LAYOUT */}
-      <main className="container-fluid flex-grow-1 p-4">
-        <div className="row g-4">
-          {/* LEFT COLUMN: STACKED VIDEO PANELS (38% Desktop) */}
-          <div className="col-lg-4 d-flex flex-column gap-3">
-            {/* AI INTERVIEWER AVATAR PANEL */}
-            <div className="glass-card p-3 position-relative overflow-hidden border border-primary border-opacity-25" style={{ background: 'rgba(13, 18, 38, 0.9)' }}>
-              <div className="d-flex align-items-center justify-content-between mb-3 border-bottom border-secondary border-opacity-25 pb-2">
-                <span className="extra-small text-uppercase fw-bold text-info tracking-wider d-flex align-items-center gap-2">
-                  <FaRobot /> AI INTERVIEWER
-                </span>
-                {isAiSpeaking ? (
-                  <span className="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 extra-small fw-bold d-flex align-items-center gap-1">
-                    <span className="spinner-grow spinner-grow-sm" style={{ width: '8px', height: '8px' }}></span>
-                    ● AI IS SPEAKING
-                  </span>
-                ) : (
-                  <span className="badge bg-success bg-opacity-25 text-success extra-small fw-bold">
-                    ✓ READY FOR YOUR ANSWER
-                  </span>
-                )}
-              </div>
-
-              {/* Holographic Visualizer */}
-              <div className="d-flex flex-column align-items-center justify-content-center py-4 position-relative rounded-3 bg-black bg-opacity-50 border border-secondary border-opacity-25">
-                <div
-                  className="rounded-circle p-3 mb-3 d-flex align-items-center justify-content-center position-relative"
-                  style={{
-                    width: '90px',
-                    height: '90px',
-                    background: isAiSpeaking
-                      ? 'radial-gradient(circle, rgba(124, 58, 237, 0.6) 0%, rgba(37, 99, 235, 0.2) 70%)'
-                      : 'radial-gradient(circle, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.4) 70%)',
-                    boxShadow: isAiSpeaking ? '0 0 25px rgba(124, 58, 237, 0.5)' : 'none',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  <FaRobot size={44} className={isAiSpeaking ? 'text-info' : 'text-white-50'} />
-                </div>
-
-                <h6 className="fw-bold text-white small mb-1">HireSmart AI Evaluator</h6>
-                <span className="extra-small text-white-50 mb-3">Conversational Audio & Video Intelligence</span>
-
-                {/* Animated Waveform Visualizer */}
-                <div className="d-flex align-items-center justify-content-center gap-1" style={{ height: '24px' }}>
-                  <div className="waveform-bar" style={{ animationPlayState: isAiSpeaking ? 'running' : 'paused' }}></div>
-                  <div className="waveform-bar" style={{ animationPlayState: isAiSpeaking ? 'running' : 'paused', animationDelay: '0.2s' }}></div>
-                  <div className="waveform-bar" style={{ animationPlayState: isAiSpeaking ? 'running' : 'paused', animationDelay: '0.4s' }}></div>
-                  <div className="waveform-bar" style={{ animationPlayState: isAiSpeaking ? 'running' : 'paused', animationDelay: '0.1s' }}></div>
-                  <div className="waveform-bar" style={{ animationPlayState: isAiSpeaking ? 'running' : 'paused', animationDelay: '0.3s' }}></div>
-                </div>
-              </div>
+      {/* CAMERA / PERMISSION STATUS */}
+      {(!recordingReady || recordingError) && (
+        <div className="container-fluid px-4 pt-3">
+          <div
+            className={`d-flex align-items-center justify-content-between gap-3 px-3 py-2 rounded-3 ${
+              recordingError ? 'text-danger' : 'text-white-50'
+            }`}
+            style={{
+              background: recordingError
+                ? 'rgba(220,53,69,.08)'
+                : 'rgba(255,255,255,.035)',
+              border: `1px solid ${
+                recordingError
+                  ? 'rgba(220,53,69,.22)'
+                  : 'rgba(255,255,255,.07)'
+              }`
+            }}
+          >
+            <div className="d-flex align-items-center gap-2 small">
+              <FaVideo size={12} />
+              <span>
+                {recordingError ||
+                  'Checking your camera and microphone. Your interview will be recorded continuously.'}
+              </span>
             </div>
 
-            {/* CANDIDATE WEBCAM PANEL */}
-            <div className="glass-card p-3 border border-secondary border-opacity-25" style={{ background: 'rgba(13, 18, 38, 0.9)' }}>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="extra-small text-uppercase fw-bold text-white-50 tracking-wider">
-                  YOU (CANDIDATE)
-                </span>
-                <span className="extra-small text-success fw-bold d-flex align-items-center gap-1">
-                  <FaCheckCircle size={10} /> Live Webcam Stream
-                </span>
+            {recordingError && (
+              <button
+                className="btn btn-sm btn-outline-light rounded-pill px-3"
+                onClick={handleRetryRecording}
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <main className="container-fluid px-4 py-4 pb-5">
+        <div className="row g-4">
+          {/* LEFT COLUMN — CAMERA */}
+          <div className="col-xl-5">
+            <div className="position-sticky" style={{ top: 92 }}>
+              <div
+                className="rounded-4 overflow-hidden"
+                style={{
+                  background: '#10131a',
+                  border: '1px solid rgba(255,255,255,.08)',
+                  boxShadow: '0 24px 70px rgba(0,0,0,.28)'
+                }}
+              >
+                <div className="position-relative" style={{ aspectRatio: '4 / 3' }}>
+                  <video
+                    ref={cameraVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-100 h-100"
+                    style={{
+                      objectFit: 'cover',
+                      transform: 'scaleX(-1)',
+                      background: '#050609'
+                    }}
+                  />
+
+                  {/* subtle cinematic overlay */}
+                  <div
+                    className="position-absolute top-0 start-0 end-0 p-3 d-flex justify-content-between"
+                    style={{
+                      background:
+                        'linear-gradient(rgba(0,0,0,.42), transparent)'
+                    }}
+                  >
+                    <div
+                      className="px-2 py-1 rounded-pill d-flex align-items-center gap-2"
+                      style={{
+                        background: 'rgba(0,0,0,.48)',
+                        backdropFilter: 'blur(10px)',
+                        fontSize: 11
+                      }}
+                    >
+                      <FaCircle
+                        size={7}
+                        className={
+                          recordingReady ? 'text-danger' : 'text-secondary'
+                        }
+                      />
+                      {recordingReady ? 'REC' : 'READYING'}
+                    </div>
+
+                    <div
+                      className="px-2 py-1 rounded-pill text-white-50"
+                      style={{
+                        background: 'rgba(0,0,0,.48)',
+                        backdropFilter: 'blur(10px)',
+                        fontSize: 11
+                      }}
+                    >
+                      Camera
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="px-3 py-3">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div className="small fw-semibold">Your interview</div>
+                      <div className="text-white-50" style={{ fontSize: 11 }}>
+                        Stay natural. The recording continues between questions.
+                      </div>
+                    </div>
+
+                    <div className="text-end">
+                      <div className="small fw-bold font-monospace">
+                        {formatTimer(recordingSeconds)}
+                      </div>
+                      <div className="text-white-50" style={{ fontSize: 10 }}>
+                        session
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Embedded Candidate Camera Preview */}
-              <VideoRecorder
-                ref={recorderRef}
-                questionIndex={currentIndex}
-                isSubmitting={evaluating || isSaving}
-                isAiSpeaking={isAiSpeaking}
-                onTranscriptChange={(txt) => setTranscript(txt)}
-                onVideoRecorded={(rec) => setRecordedVideo(rec)}
-              />
+              {/* compact progress — no badge soup */}
+              <div className="mt-3 px-1">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <span className="text-white-50" style={{ fontSize: 11 }}>
+                    Interview progress
+                  </span>
+                  <span className="small fw-semibold">
+                    {answeredCount}/{totalQuestions}
+                  </span>
+                </div>
+
+                <div
+                  className="progress"
+                  style={{
+                    height: 3,
+                    background: 'rgba(255,255,255,.08)'
+                  }}
+                >
+                  <div
+                    className="progress-bar"
+                    style={{
+                      width: `${progressPercent}%`,
+                      background: '#e9ecef'
+                    }}
+                  />
+                </div>
+
+                <div className="d-flex gap-1 mt-3">
+                  {interview.questions.map((_, idx) => {
+                    const isCurrent = idx === currentIndex;
+                    const isSaved = Boolean(
+                      savedAnswers[idx] && savedAnswers[idx].trim()
+                    );
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleJumpToQuestion(idx)}
+                        disabled={evaluating || isSaving}
+                        className="border-0 p-0 flex-grow-1"
+                        style={{
+                          height: 4,
+                          borderRadius: 20,
+                          background: isCurrent
+                            ? '#f1f3f5'
+                            : isSaved
+                              ? '#6c757d'
+                              : 'rgba(255,255,255,.08)',
+                          opacity: isCurrent || isSaved ? 1 : .7
+                        }}
+                        title={`Question ${idx + 1}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* RIGHT COLUMN: QUESTION + LIVE TRANSCRIPT + ANSWER REVIEW + SAVE & NEXT (62% Desktop) */}
-          <div className="col-lg-8 d-flex flex-column gap-3">
-            {/* CURRENT QUESTION CARD */}
-            <div className="glass-card p-4 border border-secondary border-opacity-25" style={{ background: 'rgba(13, 18, 38, 0.95)' }}>
-              <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <span className="extra-small text-uppercase fw-bold text-info tracking-wider">
-                  CURRENT QUESTION • QUESTION {currentIndex + 1} OF {totalQuestions}
-                </span>
+          {/* RIGHT COLUMN — INTERVIEW */}
+          <div className="col-xl-7">
+            <div
+              className="mb-3 text-uppercase fw-semibold text-white-50"
+              style={{ fontSize: 10, letterSpacing: '.14em' }}
+            >
+              Question {currentIndex + 1} of {totalQuestions}
+            </div>
+
+            {/* QUESTION CARD — editorial, spacious */}
+            <section
+              className="rounded-4 p-4 p-md-5 mb-3"
+              style={{
+                minHeight: 300,
+                background: '#10131a',
+                border: '1px solid rgba(255,255,255,.08)'
+              }}
+            >
+              <div className="d-flex align-items-start justify-content-between gap-3 mb-5">
+                <div
+                  className="d-flex align-items-center justify-content-center rounded-circle"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    background: 'rgba(255,255,255,.06)',
+                    color: '#cbd0d8',
+                    flexShrink: 0
+                  }}
+                >
+                  <span className="small fw-bold">
+                    {String(currentIndex + 1).padStart(2, '0')}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    speakQuestion(currentQ?.questionText || currentQ?.question)
+                  }
+                  disabled={evaluating || isSaving}
+                  className="btn btn-sm rounded-pill px-3"
+                  style={{
+                    background: 'rgba(255,255,255,.05)',
+                    border: '1px solid rgba(255,255,255,.08)',
+                    color: '#d7dbe1'
+                  }}
+                >
+                  <FaVolumeUp size={11} className="me-2" />
+                  Replay
+                </button>
+              </div>
+
+              <div
+                className="mb-4"
+                style={{
+                  fontSize: 'clamp(1.45rem, 2.5vw, 2.35rem)',
+                  lineHeight: 1.22,
+                  letterSpacing: '-.025em',
+                  fontWeight: 650,
+                  maxWidth: 850
+                }}
+              >
+                {currentQ?.questionText || currentQ?.question}
+              </div>
+
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-2 text-white-50">
+                  <span
+                    className="rounded-circle"
+                    style={{
+                      width: 6,
+                      height: 6,
+                      background: isAiSpeaking ? '#6ea8fe' : '#6c757d'
+                    }}
+                  />
+                  <span style={{ fontSize: 12 }}>
+                    {isAiSpeaking ? 'AI is asking the question' : 'Take your time and answer naturally'}
+                  </span>
+                </div>
+
+                {isAiSpeaking && (
+                  <div
+                    className="ai-speaking-orb"
+                    aria-label="AI is speaking"
+                    title="AI is speaking"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      background: 'radial-gradient(circle at 35% 30%, #dcecff 0%, #8db9ff 18%, #4f7cff 42%, #202b59 70%, #0d1224 100%)',
+                      boxShadow: '0 0 0 1px rgba(120,170,255,.28), 0 0 28px rgba(91,139,255,.48), inset 0 0 18px rgba(255,255,255,.22)',
+                      animation: 'aiOrbPulse 1.35s ease-in-out infinite'
+                    }}
+                  >
+                    <FaRobot size={16} style={{ color: '#fff', filter: 'drop-shadow(0 0 7px rgba(255,255,255,.65))' }} />
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* RESPONSE CARD */}
+            <section
+              className="rounded-4 p-3 p-md-4"
+              style={{
+                background: '#0e1117',
+                border: '1px solid rgba(255,255,255,.08)'
+              }}
+            >
+              <div className="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                  <div className="small fw-semibold">Your response</div>
+                  <div className="text-white-50" style={{ fontSize: 11 }}>
+                    {isListening
+                      ? 'Student voice detected'
+                      : hasCurrentAnswer
+                        ? 'Response captured'
+                        : 'Speak naturally when you are ready'}
+                  </div>
+                </div>
 
                 <div className="d-flex align-items-center gap-2">
-                  <button
-                    onClick={() => speakQuestion(currentQ?.questionText || currentQ?.question)}
-                    className="btn btn-outline-info btn-xs py-1 px-3 rounded-pill extra-small fw-bold d-flex align-items-center gap-2"
-                  >
-                    <FaVolumeUp /> Replay Question
-                  </button>
+                  {isListening && (
+                    <span
+                      className="d-flex align-items-center gap-2 text-danger fw-semibold"
+                      style={{ fontSize: 11 }}
+                    >
+                      <FaMicrophone size={10} />
+                      Voice detected
+                    </span>
+                  )}
 
-                  {isAiSpeaking ? (
-                    <span className="extra-small text-info fw-bold">🔊 Speaking...</span>
-                  ) : (
-                    <span className="extra-small text-success fw-bold">✓ Question Ready</span>
+                  {hasCurrentAnswer && (
+                    <span
+                      className="text-success"
+                      style={{ fontSize: 11 }}
+                    >
+                      <FaCheckCircle className="me-1" size={10} />
+                      captured
+                    </span>
                   )}
                 </div>
               </div>
 
-              <h4 className="fw-bold text-white mb-4 lh-base">
-                "{currentQ?.questionText || currentQ?.question}"
-              </h4>
-
-              {/* ANSWER STRUCTURE GUIDANCE BAR */}
-              <div className="p-2 px-3 rounded-3 bg-black bg-opacity-40 border border-secondary border-opacity-25 d-flex flex-wrap align-items-center gap-2 extra-small text-white-50">
-                <span className="fw-bold text-info">ANSWER STRUCTURE GUIDANCE:</span>
-                <span>Problem</span>
-                <span>→</span>
-                <span>Approach</span>
-                <span>→</span>
-                <span>Reasoning</span>
-                <span>→</span>
-                <span>Conclusion</span>
-              </div>
-            </div>
-
-            {/* LIVE TRANSCRIPT & ANSWER REVIEW PANEL */}
-            <div className="glass-card p-4 flex-grow-1 border border-secondary border-opacity-25" style={{ background: 'rgba(13, 18, 38, 0.95)' }}>
-              <div className="d-flex align-items-center justify-content-between mb-3">
-                <span className="extra-small text-uppercase fw-bold text-white-50 tracking-wider">
-                  {hasCapturedAnswer && !isRecordingState ? '✓ ANSWER RECORDED — YOUR RESPONSE' : 'LIVE TRANSCRIPT & RESPONSE TEXT'}
-                </span>
-                {isRecordingState ? (
-                  <span className="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 extra-small fw-bold d-flex align-items-center gap-1">
-                    <span className="spinner-grow spinner-grow-sm" style={{ width: '8px', height: '8px' }}></span>
-                    ● LISTENING & TRANSCRIBING...
-                  </span>
-                ) : hasCapturedAnswer ? (
-                  <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 extra-small fw-bold d-flex align-items-center gap-1">
-                    <FaCheckCircle size={10} /> Answer Captured & Ready for Review
-                  </span>
-                ) : (
-                  <span className="extra-small text-muted">Microphone Ready</span>
-                )}
-              </div>
-
-              {/* Recorded Voice Audio Player */}
-              {recordedVideo?.audioUrl && !isRecordingState && (
-                <div className="p-2 px-3 mb-3 bg-black bg-opacity-50 border border-info border-opacity-30 rounded-3 d-flex align-items-center justify-content-between gap-3">
-                  <button
-                    type="button"
-                    onClick={handlePlayVoiceAnswer}
-                    className="btn btn-outline-info btn-xs py-1 px-2 rounded-pill extra-small fw-bold d-flex align-items-center gap-1 border-0 bg-transparent text-info p-0"
-                    title="Click to play recorded voice answer"
-                  >
-                    <FaPlay size={10} /> PLAY VOICE ANSWER:
-                  </button>
-                  <audio
-                    ref={audioPlayerRef}
-                    src={recordedVideo.audioUrl}
-                    controls
-                    preload="auto"
-                    className="flex-grow-1"
-                    style={{ height: '32px' }}
-                    onPlay={(e) => {
-                      e.target.muted = false;
-                      e.target.volume = 1.0;
-                    }}
-                  />
-                </div>
-              )}
-
               <textarea
-                className="form-control text-white rounded-3 mb-2 p-3 extra-small shadow-sm"
-                rows="5"
+                className="form-control border-0 rounded-3"
+                rows="7"
                 placeholder={
                   isAiSpeaking
-                    ? "AI is speaking question aloud... Microphone speech recognition will start automatically when AI finishes."
-                    : "Click 'Start Answer' and speak naturally. Your spoken response will appear here automatically in real time, or you can type directly."
+                    ? 'Listen to the question…'
+                    : 'Your spoken answer will appear here. You can edit the transcript if needed.'
                 }
                 value={transcript}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  setTranscript(val);
-                  if (recorderRef.current?.syncManualTranscript) {
-                    recorderRef.current.syncManualTranscript(val);
-                  }
+                  const value = e.target.value;
+                  setTranscript(value);
+                  transcriptRef.current = value;
+                  speechBaseRef.current = value;
                 }}
                 disabled={evaluating || isSaving}
                 style={{
                   resize: 'vertical',
-                  fontSize: '0.95rem',
-                  color: '#f8fafc',
-                  backgroundColor: '#090d1f',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
-                  boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.5)'
+                  color: '#eef1f5',
+                  background: '#080a0f',
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  boxShadow: 'none',
+                  outline: 'none'
                 }}
-              ></textarea>
-            </div>
+              />
 
-            {/* VOICE INTERACTION & SAVE & NEXT CONTROL BAR */}
-            <div className="glass-card p-3 border border-secondary border-opacity-25 d-flex flex-wrap align-items-center justify-content-between gap-3" style={{ background: 'rgba(13, 18, 38, 0.95)' }}>
-              {/* Left Voice Status indicator */}
-              <div>
-                {isAiSpeaking ? (
-                  <span className="extra-small text-info fw-bold d-flex align-items-center gap-2">
-                    <FaVolumeUp className="spinner-grow spinner-grow-sm" /> AI is speaking question...
-                  </span>
-                ) : isRecordingState ? (
-                  <span className="extra-small text-danger fw-bold d-flex align-items-center gap-2">
-                    <span className="spinner-grow spinner-grow-sm text-danger"></span> Recording Candidate Response...
-                  </span>
-                ) : isSaving ? (
-                  <span className="extra-small text-info fw-bold d-flex align-items-center gap-2">
-                    <span className="spinner-border spinner-border-sm text-info"></span> Saving Answer...
-                  </span>
-                ) : hasCapturedAnswer ? (
-                  <span className="extra-small text-success fw-bold d-flex align-items-center gap-2">
-                    <FaCheckCircle /> Answer recorded. Click Save & Next to proceed.
-                  </span>
-                ) : (
-                  <span className="extra-small text-white-50 d-flex align-items-center gap-2">
-                    <FaMicrophone className="text-info" /> Click Start Answer when ready
-                  </span>
-                )}
-              </div>
-
-              {/* Center / Right Control Buttons */}
-              <div className="d-flex flex-wrap align-items-center gap-2 ms-auto">
-                {/* Back / Prev Button */}
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentIndex === 0 || evaluating || isSaving || isRecordingState}
-                  className="btn btn-outline-secondary btn-sm px-3 rounded-pill extra-small fw-bold"
-                >
-                  <FaArrowLeft /> Prev
-                </button>
-
-                {/* State 1: AI Speaking -> Locked */}
-                {isAiSpeaking && (
-                  <button disabled className="btn btn-secondary btn-sm px-4 rounded-pill extra-small fw-bold">
-                    Listening to Question...
-                  </button>
-                )}
-
-                {/* State 2: Ready -> Start Recording */}
-                {!isAiSpeaking && !isRecordingState && !hasCapturedAnswer && (
-                  <button
-                    onClick={() => recorderRef.current?.startRecording(transcript)}
-                    disabled={evaluating || isSaving}
-                    className="btn btn-glow-primary btn-sm px-4 rounded-pill extra-small fw-bold d-flex align-items-center gap-2"
-                  >
-                    <FaMicrophone /> Start Answer
-                  </button>
-                )}
-
-                {/* State 3: Recording -> Stop Recording */}
-                {!isAiSpeaking && isRecordingState && (
-                  <button
-                    onClick={() => recorderRef.current?.stopRecording()}
-                    className="btn btn-warning btn-sm px-4 rounded-pill extra-small fw-bold d-flex align-items-center gap-2"
-                  >
-                    <FaStop /> Stop Recording
-                  </button>
-                )}
-
-                {/* State 4 & 5: Answer Recorded / Last Question -> Re-record & Save & Next / Submit Interview */}
-                {!isAiSpeaking && !isRecordingState && (hasCapturedAnswer || isLastQuestion) && (
-                  <>
-                    {hasCapturedAnswer && (
-                      <button
-                        onClick={handleReRecordAnswer}
-                        disabled={evaluating || isSaving}
-                        className="btn btn-outline-light btn-sm px-3 rounded-pill extra-small fw-bold"
-                      >
-                        <FaRedo /> Re-record
-                      </button>
-                    )}
-
-                    <button
-                      onClick={handleSaveAndNext}
-                      disabled={evaluating || isSaving}
-                      className={`btn ${isLastQuestion ? 'btn-success bg-gradient-success text-white' : 'btn-glow-primary'} btn-sm px-4 rounded-pill extra-small fw-bold d-flex align-items-center gap-2 shadow`}
-                    >
-                      {evaluating ? (
-                        <>Evaluating Interview...</>
-                      ) : isSaving ? (
-                        <>Saving Answer...</>
-                      ) : isLastQuestion ? (
-                        <>Submit Interview <FaPaperPlane size={12} /></>
-                      ) : (
-                        <>Save & Next <FaArrowRight size={12} /></>
-                      )}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* COMPACT QUESTION PROGRESS GRID */}
-            <div className="glass-card p-3 border border-secondary border-opacity-25" style={{ background: 'rgba(13, 18, 38, 0.95)' }}>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <span className="extra-small text-uppercase fw-bold text-white-50 tracking-wider">
-                  QUESTION PROGRESS
-                </span>
+              <div className="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-3">
                 <div className="d-flex align-items-center gap-3">
-                  <span className="extra-small text-info fw-bold">
-                    {Object.keys(savedAnswers).length} / {totalQuestions} Saved
+                  <span className="text-white-50" style={{ fontSize: 11 }}>
+                    {hasCurrentAnswer
+                      ? `${transcript.trim().split(/\s+/).filter(Boolean).length} words`
+                      : '0 words'}
                   </span>
-                  {isLastQuestion && (
+
+                  {hasCurrentAnswer && (
                     <button
-                      onClick={() => setShowConfirmModal(true)}
-                      disabled={evaluating || isSaving || isRecordingState}
-                      className="btn btn-success btn-xs rounded-pill extra-small px-3 py-1 fw-bold shadow-sm d-flex align-items-center gap-1"
+                      type="button"
+                      onClick={handleResetCurrentAnswer}
+                      disabled={evaluating || isSaving}
+                      className="btn btn-sm border-0 text-white-50 p-0"
+                      style={{ fontSize: 11 }}
                     >
-                      <FaPaperPlane size={10} /> Submit Interview
+                      Clear
                     </button>
                   )}
                 </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrevious}
+                    disabled={currentIndex === 0 || evaluating || isSaving}
+                    className="btn btn-sm rounded-pill px-3"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(255,255,255,.1)',
+                      color: '#b9bec7'
+                    }}
+                  >
+                    <FaArrowLeft size={10} className="me-2" />
+                    Back
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveAndNext}
+                    disabled={evaluating || isSaving}
+                    className="btn btn-sm rounded-pill px-4 fw-semibold"
+                    style={{
+                      background: '#f1f3f5',
+                      color: '#090b10',
+                      border: 'none',
+                      minWidth: 145
+                    }}
+                  >
+                    {evaluating ? (
+                      'Finalizing…'
+                    ) : isLastQuestion ? (
+                      <>
+                        Finish interview <FaPaperPlane size={10} className="ms-2" />
+                      </>
+                    ) : (
+                      <>
+                        Continue <FaArrowRight size={10} className="ms-2" />
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
+            </section>
 
-              <div className="d-flex flex-wrap gap-2">
-                {interview.questions.map((_, idx) => {
-                  const isCurrent = idx === currentIndex;
-                  const isSaved = Boolean(savedAnswers[idx] && savedAnswers[idx].trim().length > 0);
-
-                  let badgeClass = 'bg-secondary bg-opacity-25 text-white-50 border-secondary';
-                  if (isCurrent) {
-                    badgeClass = 'bg-primary border-primary text-white shadow-sm';
-                  } else if (isSaved) {
-                    badgeClass = 'bg-success bg-opacity-25 border-success text-success';
-                  }
-
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleJumpToQuestion(idx)}
-                      disabled={isSaving || isRecordingState}
-                      className={`btn btn-xs rounded-3 border extra-small px-3 py-1 fw-bold transition-all ${badgeClass}`}
-                    >
-                      Q{idx + 1} {isSaved && '✓'}
-                    </button>
-                  );
-                })}
-              </div>
+            {/* tiny reassurance — avoids marketing copy */}
+            <div className="d-flex align-items-center justify-content-center gap-2 mt-4 text-white-50">
+              <FaMicrophone size={9} />
+              <span style={{ fontSize: 10 }}>
+                Camera and microphone remain active throughout the interview
+              </span>
             </div>
           </div>
         </div>
       </main>
 
-      {/* STOP INTERVIEW MODAL */}
+      {/* STOP MODAL */}
       {showStopModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+        <div
+          className="modal show d-block"
+          style={{
+            backgroundColor: 'rgba(0,0,0,.82)',
+            backdropFilter: 'blur(12px)'
+          }}
+        >
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content glass-card border border-danger border-opacity-50 text-white p-4" style={{ background: '#0d1226' }}>
+            <div
+              className="modal-content p-4 rounded-4 text-white"
+              style={{
+                background: '#11141b',
+                border: '1px solid rgba(255,255,255,.1)'
+              }}
+            >
               <div className="d-flex align-items-center gap-3 mb-3">
-                <div className="p-3 bg-danger bg-opacity-25 rounded-circle text-danger">
-                  <FaExclamationTriangle size={24} />
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 42,
+                    height: 42,
+                    background: 'rgba(220,53,69,.1)'
+                  }}
+                >
+                  <FaExclamationTriangle className="text-danger" size={17} />
                 </div>
-                <h5 className="fw-bold mb-0 text-white">Stop AI Interview Session?</h5>
+                <div>
+                  <h6 className="fw-bold mb-1">Leave this interview?</h6>
+                  <div className="text-white-50" style={{ fontSize: 11 }}>
+                    Your current session will be stopped.
+                  </div>
+                </div>
               </div>
+
               <p className="text-white-50 small mb-4">
-                Are you sure you want to stop this AI mock interview? Progress will be saved up to your last saved question.
+                The continuous recording will stop. Any answers already saved
+                through the interview flow remain subject to the existing
+                server-side behavior.
               </p>
+
               <div className="d-flex justify-content-end gap-2">
-                <button className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setShowStopModal(false)}>
-                  Cancel
+                <button
+                  className="btn btn-sm rounded-pill px-4"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,.1)',
+                    color: '#d8dce2'
+                  }}
+                  onClick={() => setShowStopModal(false)}
+                >
+                  Continue
                 </button>
-                <button className="btn btn-danger btn-sm rounded-pill px-4 fw-bold" onClick={handleStopInterview}>
-                  Yes, Stop Interview
+
+                <button
+                  className="btn btn-danger btn-sm rounded-pill px-4 fw-semibold"
+                  onClick={handleStopInterview}
+                >
+                  Leave interview
                 </button>
               </div>
             </div>
@@ -732,26 +1447,65 @@ const VideoInterview = () => {
         </div>
       )}
 
-      {/* CONFIRM SUBMISSION MODAL */}
+      {/* SUBMIT MODAL */}
       {showConfirmModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+        <div
+          className="modal show d-block"
+          style={{
+            backgroundColor: 'rgba(0,0,0,.82)',
+            backdropFilter: 'blur(12px)'
+          }}
+        >
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content glass-card border border-primary border-opacity-50 text-white p-4" style={{ background: '#0d1226' }}>
+            <div
+              className="modal-content p-4 rounded-4 text-white"
+              style={{
+                background: '#11141b',
+                border: '1px solid rgba(255,255,255,.1)'
+              }}
+            >
               <div className="d-flex align-items-center gap-3 mb-3">
-                <div className="p-3 bg-primary bg-opacity-25 rounded-circle text-primary">
-                  <FaPaperPlane size={24} />
+                <div
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{
+                    width: 42,
+                    height: 42,
+                    background: 'rgba(255,255,255,.06)'
+                  }}
+                >
+                  <FaPaperPlane size={15} />
                 </div>
-                <h5 className="fw-bold mb-0 text-white">Submit Interview & Evaluate?</h5>
+                <div>
+                  <h6 className="fw-bold mb-1">Finish interview?</h6>
+                  <div className="text-white-50" style={{ fontSize: 11 }}>
+                    Review your answers before submitting.
+                  </div>
+                </div>
               </div>
+
               <p className="text-white-50 small mb-4">
-                You have saved {Object.keys(savedAnswers).length} out of {totalQuestions} questions. Would you like to proceed with AI evaluation?
+                Your continuous recording will be finalized and the existing
+                AI evaluation flow will evaluate the submitted answers.
               </p>
+
               <div className="d-flex justify-content-end gap-2">
-                <button className="btn btn-outline-light btn-sm rounded-pill px-4" onClick={() => setShowConfirmModal(false)}>
-                  Review Answers
+                <button
+                  className="btn btn-sm rounded-pill px-4"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,.1)',
+                    color: '#d8dce2'
+                  }}
+                  onClick={() => setShowConfirmModal(false)}
+                >
+                  Review
                 </button>
-                <button className="btn btn-glow-primary btn-sm rounded-pill px-4 fw-bold" onClick={() => executeFinalSubmission(savedAnswers)}>
-                  Submit Now
+
+                <button
+                  className="btn btn-light btn-sm rounded-pill px-4 fw-semibold"
+                  onClick={() => executeFinalSubmission(savedAnswers)}
+                >
+                  Submit interview
                 </button>
               </div>
             </div>
