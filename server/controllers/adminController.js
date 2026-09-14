@@ -1114,6 +1114,7 @@ const getAdminAtsResumeScans = async (req, res, next) => {
       const user = scan.userId || {};
       const studentName = user.fullName || user.name || 'Student';
       const studentId = user.studentId || (user._id ? String(user._id).substring(0, 8) : 'N/A');
+      const studentUserId = user._id || scan.userId;
       const artifact = artifactMap.get(String(scan._id));
       const fileName = artifact?.fileName || scan.resumeId?.fileName || scan.resumeId?.originalName || 'ATS-Resume.pdf';
       const targetJob = scan.targetJob?.target_job_role || 'Target Job';
@@ -1128,6 +1129,7 @@ const getAdminAtsResumeScans = async (req, res, next) => {
         serialNumber: index + 1,
         studentName,
         studentId,
+        studentUserId,
         fileName,
         targetJob,
         company,

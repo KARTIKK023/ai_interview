@@ -212,7 +212,7 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
     'resume-scans': '/super-admin/resumes',
     'total-certificates': '/super-admin/certificates',
     'total-inquiries': '/super-admin/inquiry-details',
-    'ats-resumes': '/admin/ats-resume-scans'
+    'ats-resumes': '/super-admin/ats-resume-scans'
 
   };
 
