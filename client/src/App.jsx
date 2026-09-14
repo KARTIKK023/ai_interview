@@ -101,14 +101,7 @@ function App() {
         <Route path="/super-admin/resume-scans" element={<SuperAdminResumeScans />} />
       </Route>
       <Route path="/admin/ats-analysis" element={<Navigate to="/super-admin/ats-analysis" replace />} />
-      <Route
-        path="/admin/ats-resume-scans"
-        element={
-          <AdminProtectedRoute>
-            <SuperAdminAtsResumeScans />
-          </AdminProtectedRoute>
-        }
-      />
+      <Route path="/admin/ats-resume-scans" element={<Navigate to="/super-admin/ats-resume-scans" replace />} />
 
       {/* Student Routes */}
       <Route

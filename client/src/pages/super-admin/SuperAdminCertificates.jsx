@@ -22,6 +22,11 @@ const SuperAdminCertificates = () => {
   const [loading, setLoading] = useState(true);
   const [selectedStudentId, setSelectedStudentId] = useState(null);
 
+    /* FILTER STATES */
+  const [monthFilter, setMonthFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
   // Certificate Generator Modal States
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedInterviewId, setSelectedInterviewId] = useState('');
@@ -240,6 +245,43 @@ setMockInterviews(eligibleInterviews);
     }
   };
 
+  /* ================= CERTIFICATES DATE & MONTH FILTER ================= */
+  const filteredCertificates = certificates.filter((cert) => {
+    const dateStr = cert.issueDate || cert.createdAt || cert.issuedAt;
+    if (!dateStr) return false;
+
+    const certDate = new Date(dateStr);
+    if (isNaN(certDate.getTime())) return false;
+
+    // Search by Month (YYYY-MM)
+    if (monthFilter) {
+      const year = certDate.getFullYear();
+      const month = String(certDate.getMonth() + 1).padStart(2, '0');
+      const certMonth = `${year}-${month}`;
+      if (certMonth !== monthFilter) {
+        return false;
+      }
+    }
+
+    // From Date
+    if (fromDate) {
+      const start = new Date(`${fromDate}T00:00:00`);
+      if (certDate < start) {
+        return false;
+      }
+    }
+
+    // To Date
+    if (toDate) {
+      const end = new Date(`${toDate}T23:59:59.999`);
+      if (certDate > end) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   const columns = [
     {
       title: 'Certificate ID',
@@ -440,18 +482,103 @@ setMockInterviews(eligibleInterviews);
         </div>
       </div>
 
+      {/* ================= CERTIFICATES DATE FILTER ================= */}
+      <div className="card border-0 shadow-sm mb-3 rounded-3">
+        <div className="card-body py-3">
+          <div className="row g-3 align-items-end">
+            {/* Search by Month */}
+            <div className="col-md-3">
+              <label className="form-label fw-semibold">
+                Search by Month
+              </label>
+              <input
+                type="month"
+                className="form-control"
+                value={monthFilter}
+                onChange={(e) => {
+                  setMonthFilter(e.target.value);
+                  setFromDate('');
+                  setToDate('');
+                }}
+              />
+            </div>
+
+            {/* From Date */}
+            <div className="col-md-3">
+              <label className="form-label fw-semibold">
+                From Date
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setMonthFilter('');
+                  if (toDate && e.target.value > toDate) {
+                    setToDate('');
+                  }
+                }}
+              />
+            </div>
+
+            {/* To Date */}
+            <div className="col-md-3">
+              <label className="form-label fw-semibold">
+                To Date
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                value={toDate}
+                min={fromDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setMonthFilter('');
+                }}
+              />
+            </div>
+
+            {/* Clear Filters */}
+            <div className="col-md-2">
+              <button
+                type="button"
+                className="btn btn-outline-secondary w-100"
+                onClick={() => {
+                  setMonthFilter('');
+                  setFromDate('');
+                  setToDate('');
+                }}
+              >
+                Clear Filters
+              </button>
+            </div>
+
+            {/* Certificates Count */}
+            <div className="col-md-1">
+              <div className="text-muted small">
+                Records
+              </div>
+              <div className="fw-bold fs-5 text-primary">
+                {filteredCertificates.length}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Certificates Master Table */}
-   <DataTable
-  title="Student Certificate Records Master Table"
-  columns={columns}
-  data={certificates}
-  loading={loading}
-  onStudentClick={(id) => setSelectedStudentId(id)}
-  onGenerateClick={handleRowGenerateCert}
-  options={{
-    order: [[6, 'desc']]
-  }}
-/>
+      <DataTable
+        title="Student Certificate Records Master Table"
+        columns={columns}
+        data={filteredCertificates}
+        loading={loading}
+        onStudentClick={(id) => setSelectedStudentId(id)}
+        onGenerateClick={handleRowGenerateCert}
+        options={{
+          order: [[6, 'desc']]
+        }}
+      />
 
       {/* GENERATE CERTIFICATE MODAL */}
       {showGenerateModal && (
