@@ -81,9 +81,13 @@ const SuperAdminAtsResumeScans = () => {
     try {
       setOpeningResume(scanId);
       toast.loading(`Opening ${fileName || 'resume'}...`, { id: 'pdf-load' });
-      const res = await API.get(`/ats/scans/${scanId}/optimized-resume`, {
+      const res = await API.get(`/admin/ats/scans/${scanId}/optimized-resume`, {
         responseType: 'blob'
-      });
+      }).catch(() =>
+        API.get(`/ats/scans/${scanId}/optimized-resume`, {
+          responseType: 'blob'
+        })
+      );
       const fileBlob = new Blob([res.data], { type: 'application/pdf' });
       const fileURL = URL.createObjectURL(fileBlob);
       window.open(fileURL, '_blank', 'noopener,noreferrer');

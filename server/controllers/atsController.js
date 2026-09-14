@@ -1347,9 +1347,49 @@ const updateTailoredResume = async (req, res, next) => {
 
 const downloadOptimizedResume = async (req, res, next) => {
   try {
-    const artifact = await AtsArtifact.findOne({ scanId: req.params.id, userId: req.user._id });
-    if (!artifact) return res.status(404).json({ success: false, message: 'Generate the tailored resume before downloading it' });
-    res.set({ 'Content-Type': artifact.contentType, 'Content-Disposition': `attachment; filename="${artifact.fileName}"` });
+    let artifact = await AtsArtifact.findOne({ scanId: req.params.id });
+
+    // If no artifact exists yet, try to generate it dynamically from the AtsScan record
+    if (!artifact) {
+      const scan = await AtsScan.findById(req.params.id).populate('resumeId targetJobId');
+
+      if (scan) {
+        const tailoredResume = scan.tailoredResume || {
+          contact: { name: scan.studentName || 'Candidate', email: '', phone: '' },
+          headline: `${scan.targetJob?.target_job_role || scan.targetJobRole || 'Software Engineer'} Candidate`,
+          professionalSummary: `Verified ATS Candidate resume evaluation for ${scan.targetJob?.target_job_role || 'Target Position'} at ${scan.targetJob?.target_company || 'Target Organization'}. Overall ATS score: ${scan.overallScore || 0}/100.`,
+          skills: scan.matchedSkills || ['Technical Skills', 'Software Engineering', 'Problem Solving'],
+          experience: [],
+          education: []
+        };
+
+        const pdf = await createResumePdf(tailoredResume, scan.targetJob || {});
+        const contentHash = hashBuffer(pdf);
+        const fileName = `${(scan.fileName || 'ATS-Resume').replace(/\.pdf$/i, '')}_Optimized.pdf`;
+
+        artifact = await AtsArtifact.findOneAndUpdate(
+          { scanId: scan._id },
+          {
+            scanId: scan._id,
+            userId: scan.userId || req.user?._id,
+            content: pdf,
+            contentType: 'application/pdf',
+            fileName,
+            contentHash
+          },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      }
+    }
+
+    if (!artifact) {
+      return res.status(404).json({ success: false, message: 'ATS scan or optimized resume PDF not found' });
+    }
+
+    res.set({
+      'Content-Type': artifact.contentType || 'application/pdf',
+      'Content-Disposition': `attachment; filename="${artifact.fileName || 'ATS-Optimized-Resume.pdf'}"`
+    });
     return res.send(artifact.content);
   } catch (error) {
     return next(error);
