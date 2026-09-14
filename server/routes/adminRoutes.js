@@ -24,6 +24,8 @@ const {
 } = require('../controllers/adminController');
 const { protectAdmin } = require('../middleware/adminMiddleware');
 
+const { downloadOptimizedResume } = require('../controllers/atsController');
+
 // Super Admin Public Auth Endpoint
 router.post('/login', adminLogin);
 
@@ -53,5 +55,6 @@ router.get('/certificates', protectAdmin, getAdminCertificates);
 router.post('/certificates/issue', protectAdmin, issueAdminCertificate);
 router.get('/ats/analysis-history', protectAdmin, getAdminAtsAnalysisHistory);
 router.get('/ats-resume-scans', protectAdmin, getAdminAtsResumeScans);
+router.get('/ats/scans/:id/optimized-resume', protectAdmin, downloadOptimizedResume);
 
 module.exports = router;
