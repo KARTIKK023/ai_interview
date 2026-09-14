@@ -33,6 +33,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'dashboard', label: 'Dashboard', icon: FaChartLine, route: '/super-admin/dashboard' },
     { id: 'students', label: 'Students Records', icon: FaUserGraduate, route: '/super-admin/students', badge: 'Live' },
     { id: 'registrations', label: 'Registration Records', icon: FaUserPlus, route: '/super-admin/registrations', badge: 'Records' },
+    { id: 'ats-analysis', label: 'ATS Analysis History', icon: FaChartLine, route: '/admin/ats-resume-scans', badge: 'History' },
     { id: 'resumes', label: 'Resume Records', icon: FaFileAlt, route: '/super-admin/resumes', badge: 'ATS' },
     { id: 'target-jobs', label: 'Target Jobs Records', icon: FaBriefcase, route: '/super-admin/target-jobs', badge: 'Jobs' },
     { id: 'mock-interviews', label: 'Mock Interviews', icon: FaBrain, route: '/super-admin/mock-interviews', badge: 'AI' },
