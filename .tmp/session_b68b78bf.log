@@ -1,0 +1,16 @@
+=== CODE-GRAPH RAG SESSION LOG ===
+
+USER: hi
+ASSISTANT: Hello! Welcome! I can see you're working on a project called `Ai-Interview_main__73985950`. 
+
+How would you like me to help with your codebase today? I'm ready to:
+- Analyze the project structure and entry points
+- Search for specific functions or classes
+- Explore dependencies between components
+- Review source code implementations
+- Find duplications or similar patterns
+- Answer questions about any aspect of your AI interview system
+
+Just let me know what you'd like to explore!
+USER: can you point me to the piece of code where the resume is being created in ats part
+USER: can you tell me the framework its uses?

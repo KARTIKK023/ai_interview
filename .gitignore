@@ -1,1 +1,5 @@
 server/.env
+.cgr-dir-mtimes.json
+.cgr-exclusion-state.json
+.cgr-hash-cache.json
+.cgr-parser-fingerprint
