@@ -25,6 +25,7 @@ const SuperAdminLayout = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [themeMode, setThemeMode] = useState('light');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -40,9 +41,16 @@ const SuperAdminLayout = () => {
   ];
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
     localStorage.removeItem('superAdminToken');
     localStorage.removeItem('superAdminUser');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
     toast.success('Super Admin session ended successfully.');
+    setShowLogoutConfirm(false);
     navigate('/super-admin/login', { replace: true });
   };
 
@@ -106,125 +114,11 @@ const SuperAdminLayout = () => {
           </div>
         </div>
 
-        {/* Center: Search & System Status */}
-        <div className="d-none d-md-flex align-items-center gap-3">
-          <div
-            className="position-relative d-flex align-items-center"
-            style={{
-              width: '350px',
-              background: 'rgba(255, 255, 255, 0.07)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '9999px',
-              height: '34px'
-            }}
-          >
-            <FaSearch className="ms-3 text-white-50 flex-shrink-0" size={12} />
-            <input
-              type="text"
-              className="form-control bg-transparent border-0 text-white ps-2 pe-5 py-1 shadow-none"
-              placeholder="Search candidates, orgs, logs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ fontSize: '0.8rem', color: '#FFFFFF' }}
-            />
-            {searchQuery ? (
-              <button
-                className="btn btn-link p-0 me-2 text-white-50 border-0"
-                onClick={() => setSearchQuery('')}
-              >
-                <FaTimes size={12} />
-              </button>
-            ) : (
-              <span
-                className="position-absolute end-0 me-2 badge text-white-50 border border-white border-opacity-10 px-1.5 py-0.5 rounded"
-                style={{ fontSize: '0.625rem', fontFamily: 'monospace', background: 'rgba(255, 255, 255, 0.08)' }}
-              >
-                ⌘ K
-              </span>
-            )}
-          </div>
-
-          <div
-            className="d-flex align-items-center gap-2 text-white-50 px-2.5 py-1 rounded-pill cursor-pointer transition-all hover-glow"
-            onClick={() => setShowHealthModal(!showHealthModal)}
-            style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)' }}
-          >
-            <span className="rounded-circle" style={{ width: '8px', height: '8px', background: '#10B981', boxShadow: '0 0 8px #10B981' }}></span>
-            <strong className="text-white" style={{ fontSize: '0.775rem' }}>All Systems Operational</strong>
-            <FaChevronDown size={9} className="text-white-50 ms-0.5" />
-          </div>
-        </div>
+     
 
         {/* Right Actions */}
         <div className="d-flex align-items-center gap-2">
-          {/* Notifications */}
-          <div className="position-relative">
-            <button
-              className="btn btn-link text-white-50 p-1.5 position-relative border-0 shadow-none"
-              onClick={() => { setShowNotifications(!showNotifications); setShowProfileMenu(false); }}
-              title="Notifications"
-            >
-              <FaBell size={16} className="text-white-50" />
-              {notificationsList.some(n => !n.read) && (
-                <span
-                  className="position-absolute top-0 start-100 translate-middle badge rounded-circle"
-                  style={{ fontSize: '0.55rem', padding: '3px 5px', background: '#8B5CF6', color: '#FFFFFF' }}
-                >
-                  {notificationsList.filter(n => !n.read).length}
-                </span>
-              )}
-            </button>
-
-            {showNotifications && (
-              <div
-                className="position-absolute end-0 mt-2 card border-0 shadow-lg text-white p-3 z-3"
-                style={{
-                  width: '320px',
-                  background: '#120F33',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(129, 140, 248, 0.3)'
-                }}
-              >
-                <div className="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom border-secondary border-opacity-30">
-                  <span className="fw-bold small">System Notifications</span>
-                  <button className="btn btn-link p-0 text-info small" onClick={markAllNotificationsRead} style={{ fontSize: '0.7rem' }}>
-                    Mark all read
-                  </button>
-                </div>
-                <div className="d-flex flex-column gap-2 max-h-60 overflow-auto">
-                  {notificationsList.map(n => (
-                    <div key={n.id} className={`p-2 rounded ${n.read ? 'bg-dark bg-opacity-40' : 'bg-primary bg-opacity-20 border border-primary border-opacity-30'}`}>
-                      <p className="small mb-1 leading-snug" style={{ fontSize: '0.75rem' }}>{n.text}</p>
-                      <span className="text-white-50" style={{ fontSize: '0.65rem' }}>{n.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Theme Switcher */}
-          <button
-            className="btn btn-link text-white-50 p-1.5 border-0 shadow-none ms-1"
-            onClick={() => {
-              const nextMode = isDarkMode ? 'light' : 'dark';
-              setThemeMode(nextMode);
-              toast.success(`Switched to ${nextMode} mode`);
-            }}
-            title={`Toggle Theme (Current: ${themeMode})`}
-          >
-            {isDarkMode ? <FaSun size={15} className="text-warning" /> : <FaMoon size={15} className="text-white-50" />}
-          </button>
-
-          {/* Refresh Button */}
-          <button
-            className={`btn btn-link text-white-50 p-1.5 border-0 shadow-none ${isRefreshing ? 'spin-anim' : ''}`}
-            onClick={handleRefresh}
-            title="Refresh Analytics from Database"
-          >
-            <FaSync size={13} className="text-white-50" />
-          </button>
-
+    
           <div className="vr bg-white bg-opacity-20 mx-1.5 d-none d-sm-block" style={{ height: '22px' }}></div>
 
           {/* Admin Profile Dropdown */}
@@ -257,7 +151,7 @@ const SuperAdminLayout = () => {
                 }}
               >
                 <div className="p-2 border-bottom border-secondary border-opacity-30">
-                  <span className="d-block fw-bold text-white small">Master Administrator</span>
+                  <span className="d-block fw-bold text-white small">Super Admin</span>
                   <span className="text-white-50" style={{ fontSize: '0.68rem' }}>superadmin@hiresmart.ai</span>
                 </div>
                 <div className="pt-2">
@@ -295,12 +189,63 @@ const SuperAdminLayout = () => {
               borderColor: 'rgba(0,0,0,0.08)'
             }}
           >
-            <p className="mb-0 text-center fw-medium text-secondary" style={{ fontSize: '0.85rem', letterSpacing: '0.2px' }}>
-              © {new Date().getFullYear()} HireSmart AI. All rights reserved.
-            </p>
+                <p
+                className="mb-0 text-center fw-medium"
+                style={{
+                  fontSize: '0.85rem',
+                  letterSpacing: '0.2px'
+                }}
+              >
+                <span style={{ color: '#6f42c1' }}>
+                  © {new Date().getFullYear()}
+                </span>{' '}
+
+                <span style={{ color: '#6f42c1' }}>Hire</span>
+                <span style={{ color: '#0d6efd' }}>Smart</span>{' '}
+                <span style={{ color: '#198754' }}>AI</span>
+
+                <span style={{ color: '#6c757d' }}>
+                  . All rights reserved.
+                </span>
+              </p>
           </footer>
         </main>
       </div>
+
+      {showLogoutConfirm && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: 'rgba(15, 23, 42, 0.65)', zIndex: 2000 }}>
+          <div className="card border-0 shadow-lg" style={{ width: '420px', borderRadius: '18px', background: '#ffffff' }}>
+            <div className="card-body p-4">
+              <div className="d-flex align-items-center gap-3 mb-3">
+                <div className="d-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style={{ width: '48px', height: '48px' }}>
+                  <FaSignOutAlt className="text-danger" size={22} />
+                </div>
+                <div>
+                  <h5 className="mb-1 fw-bold text-dark">Log out Super Admin?</h5>
+                  <p className="mb-0 text-muted small">This will end your admin session and redirect you to the login page.</p>
+                </div>
+              </div>
+
+              <div className="d-flex justify-content-end gap-2 mt-4">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => setShowLogoutConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={confirmLogout}
+                >
+                  Log Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SYSTEM HEALTH DIAGNOSTICS MODAL POPUP */}
       {showHealthModal && (

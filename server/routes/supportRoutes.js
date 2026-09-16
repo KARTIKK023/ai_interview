@@ -6,7 +6,8 @@ const {
   createSupportMessage,
   getMySupportMessages,
   getAllSupportMessages,
-  sendSupportReply
+  sendSupportReply,
+  deleteSupportMessage
 } = require('../controllers/supportController');
 
 // IMPORTANT:
@@ -42,11 +43,19 @@ router.get(
   protect,
   getAllSupportMessages
 );
+
 // reply 
 router.post(
   '/messages/reply',
   protect,
   sendSupportReply
+);
+
+// delete inquiry
+router.delete(
+  '/messages/:id',
+  protect,
+  deleteSupportMessage
 );
 
 module.exports = router;

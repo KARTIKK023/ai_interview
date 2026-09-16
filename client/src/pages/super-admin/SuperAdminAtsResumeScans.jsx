@@ -407,7 +407,7 @@ const SuperAdminAtsResumeScans = () => {
 
       {/* 3. REUSABLE DATA TABLE */}
       <DataTable
-        title="ATS Resume Scans Master Table"
+        title="ATS Resume Scans Records"
         columns={columns}
         data={filteredRecords}
         loading={loading}

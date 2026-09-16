@@ -297,7 +297,7 @@ const SuperAdminTargetJobs = () => {
 </div>
 
       <DataTable
-        title="Target Jobs Master Table"
+        title="Target Jobs Records"
         columns={columns}
         data={filteredTargetJobs}
         loading={loading}

@@ -8,6 +8,18 @@ const userSchema = new mongoose.Schema(
       sparse: true,
       trim: true
     },
+    adminId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true
+    },
+    username: {
+      type: String,
+      sparse: true,
+      trim: true,
+      lowercase: true
+    },
     fullName: {
       type: String,
       trim: true
@@ -38,6 +50,11 @@ const userSchema = new mongoose.Schema(
       enum: ['student', 'admin', 'hr', 'super_admin', 'STUDENT', 'ADMIN', 'HR', 'SUPER_ADMIN'],
       default: 'student'
     },
+    permissions: [
+      {
+        type: String
+      }
+    ],
     emailVerified: {
       type: Boolean,
       default: false

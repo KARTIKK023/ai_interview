@@ -514,23 +514,42 @@ setReplyMessage(
       ) => {
 
         return `
-          <button
-            type="button"
-            class="inquiry-reply-btn"
-            data-id="${row._id}"
-            style="
-              border: none;
-              background: #2563EB;
-              color: #fff;
-              padding: 6px 14px;
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 600;
-              cursor: pointer;
-            "
-          >
-            Reply
-          </button>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button
+              type="button"
+              class="inquiry-reply-btn"
+              data-id="${row._id}"
+              style="
+                border: none;
+                background: #2563EB;
+                color: #fff;
+                padding: 6px 14px;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                cursor: pointer;
+              "
+            >
+              Reply
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-danger btn-sm datatable-delete-btn"
+              data-id="${row._id}"
+              title="Delete Inquiry"
+              aria-label="Delete Inquiry"
+              style="
+                width: 32px;
+                height: 30px;
+                padding: 0;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
         `;
       }
     }
@@ -738,8 +757,12 @@ setReplyMessage(
   columns={columns}
   data={filteredInquiries}
   loading={loading}
-  title="Inquiry Details"
+  title="Inquiry Details records"
   onStudentClick={(id) => setSelectedStudentId(id)}
+  deleteEndpoint="/support/messages"
+  onDeleteSuccess={(deletedId) => {
+    setInquiries(prev => prev.filter(item => String(item._id) !== String(deletedId)));
+  }}
 />
 
       </div>

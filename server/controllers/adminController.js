@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Role = require('../models/Role');
 const Interview = require('../models/Interview');
 const Resume = require('../models/Resume');
 const JobRole = require('../models/JobRole');
@@ -16,6 +17,18 @@ const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure', {
     expiresIn: '30d'
   });
+};
+
+const escapeRegex = (value = '') => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const caseInsensitiveExactMatch = (value) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return null;
+
+  return {
+    $regex: `^${escapeRegex(trimmed)}$`,
+    $options: 'i'
+  };
 };
 
 /**
@@ -34,47 +47,75 @@ const formatTimeAgo = (date) => {
 };
 
 /**
- * @desc    Super Admin Login
+ * @desc    Super Admin & Admin Login
  * @route   POST /api/admin/login
  * @access  Public
  */
 const adminLogin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const loginIdentifier = (email || username || '').trim();
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide admin email and password' });
+    if (!loginIdentifier || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide admin email or username and password' });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedIdentifier = loginIdentifier.toLowerCase();
+    const usernameMatch = caseInsensitiveExactMatch(loginIdentifier);
+    const nameMatch = caseInsensitiveExactMatch(loginIdentifier);
 
-    // 1. Find user by email (including password field)
-    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    // 1. First check User collection for Super Admin
+    let user = await User.findOne({
+      $or: [
+        { email: normalizedIdentifier },
+        { username: usernameMatch },
+        { name: nameMatch }
+      ]
+    }).select('+password');
+
+    let isFromRoleCollection = false;
+
+    // 2. If not found in User collection, search Role model ('roles' collection)
+    if (!user) {
+      user = await Role.findOne({
+        $or: [
+          { email: normalizedIdentifier },
+          { username: usernameMatch }
+        ]
+      }).select('+password');
+      if (user) {
+        isFromRoleCollection = true;
+      }
+    }
+
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
     }
 
-    // 2. Verify password with bcrypt
+    // 3. Verify password with bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid admin credentials' });
     }
 
-    // 3. Verify Account Status
-    if (!user.isActive) {
-      return res.status(403).json({ success: false, message: 'Admin account is deactivated' });
-    }
-
-    // 4. Strict Role Verification: Must be SUPER_ADMIN
-    const roleUpper = (user.role || '').toUpperCase();
-    if (roleUpper !== 'SUPER_ADMIN') {
+    // 4. Verify Account Status
+    if (user.isActive === false) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied. You do not have Super Admin privileges.'
+        message: 'Your admin account has been deactivated. Contact Super Admin.'
       });
     }
 
-    // 5. Login Tracking
+    // 5. Role Verification: Must be SUPER_ADMIN or ADMIN
+    const roleUpper = (user.role || '').toUpperCase();
+    if (roleUpper !== 'SUPER_ADMIN' && roleUpper !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You do not have admin privileges.'
+      });
+    }
+
+    // 6. Login Tracking
     const loginTime = new Date();
     user.lastLogin = loginTime;
     user.loginStartedAt = loginTime;
@@ -83,20 +124,25 @@ const adminLogin = async (req, res, next) => {
     user.isOnline = true;
     await user.save();
 
-    // 6. Generate JWT Token
+    // 7. Generate JWT Token
     const token = generateToken(user._id);
 
     const adminObj = {
       id: user._id,
       _id: user._id,
-      fullName: user.fullName || user.name || 'Super Admin',
+      adminId: user.adminId,
+      username: user.username || user.fullName || user.name || 'Admin',
+      fullName: user.fullName || user.name || 'Admin',
+      name: user.fullName || user.name || 'Admin',
       email: user.email,
-      role: 'SUPER_ADMIN'
+      role: user.role,
+      permissions: user.permissions || [],
+      isActive: user.isActive
     };
 
     return res.json({
       success: true,
-      message: 'Super Admin authentication successful',
+      message: `${roleUpper === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'} authentication successful`,
       token,
       user: adminObj
     });
@@ -106,21 +152,38 @@ const adminLogin = async (req, res, next) => {
 };
 
 /**
- * @desc    Get Current Super Admin Session
+ * @desc    Get Current Admin / Super Admin Session
  * @route   GET /api/admin/me
- * @access  Private (Super Admin)
+ * @access  Private (Super Admin / Admin)
  */
-const getAdminMe = async (req, res) => {
-  return res.json({
-    success: true,
-    user: {
+const getAdminMe = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Admin not authenticated' });
+    }
+
+    const userIdStr = req.user._id ? String(req.user._id) : '';
+    const adminObj = {
       id: req.user._id,
       _id: req.user._id,
-      fullName: req.user.fullName || req.user.name || 'Super Admin',
-      email: req.user.email,
-      role: 'SUPER_ADMIN'
-    }
-  });
+      adminId: req.user.adminId || (userIdStr ? userIdStr.substring(0, 8) : 'N/A'),
+      username: req.user.username || req.user.fullName || req.user.name || 'Admin',
+      fullName: req.user.fullName || req.user.name || 'Admin',
+      name: req.user.fullName || req.user.name || 'Admin',
+      email: req.user.email || '',
+      role: req.user.role || 'ADMIN',
+      permissions: Array.isArray(req.user.permissions) ? req.user.permissions : [],
+      isActive: req.user.isActive !== false
+    };
+
+    return res.json({
+      success: true,
+      user: adminObj
+    });
+  } catch (err) {
+    console.error('getAdminMe Error:', err);
+    return res.status(500).json({ success: false, message: 'Server error loading admin session' });
+  }
 };
 
 /**
@@ -194,7 +257,7 @@ const getAdminDashboard = async (req, res, next) => {
     const rawAvgScore = (avgScoreAgg && avgScoreAgg.length > 0 && avgScoreAgg[0].avgScore)
       ? Math.round(avgScoreAgg[0].avgScore * 10) / 10
       : 0;
-    const avgScoreDisplay = rawAvgScore > 0 ? `${rawAvgScore}%` : '85%';
+    const avgScoreDisplay = rawAvgScore > 0 ? `${rawAvgScore}%` : '0%';
 
     // Growth percentage helper
     const calcTrend = (newCount, totalCount) => {
@@ -795,18 +858,10 @@ const getStudentLoginHistory = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Student not found in database' });
     }
 
-    const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
-    );
+    let history = [...(student.loginHistory || [])];
 
-    let history = (student.loginHistory || []).filter(
-      session =>
-        session.loginAt &&
-        new Date(session.loginAt) >= twentyFourHoursAgo
-    );
-
-    // Fallback if student logged in within 24h but loginHistory array was empty
-    if (history.length === 0 && student.lastLogin && new Date(student.lastLogin) >= twentyFourHoursAgo) {
+    // Fallback if student logged in but loginHistory array was empty
+    if (history.length === 0 && student.lastLogin) {
       history = [
         {
           loginAt: student.lastLogin,
@@ -816,29 +871,57 @@ const getStudentLoginHistory = async (req, res, next) => {
       ];
     }
 
-    // Sort newest first
-    history.sort((a, b) => new Date(b.loginAt).getTime() - new Date(a.loginAt).getTime());
+    // Sort oldest first to resolve missing logoutAt/duration for historical sessions
+    history.sort((a, b) => new Date(a.loginAt).getTime() - new Date(b.loginAt).getTime());
 
-    // Calculate live duration for currently active session if online
-    const formattedHistory = history.map((session, index) => {
-      const isSessionActive = Boolean(student.isOnline) && !session.logoutAt && index === 0;
-      let sessionDuration = session.duration || 0;
+    const isUserCurrentlyOnline = Boolean(student.isOnline);
 
-      if (isSessionActive && (session.loginAt || student.loginStartedAt)) {
+    const processedHistory = history.map((session, idx) => {
+      const isLastEntry = idx === history.length - 1;
+      const isSessionActive = isUserCurrentlyOnline && isLastEntry && !session.logoutAt;
+
+      let logoutAt = session.logoutAt;
+      let sessionDuration = Number(session.duration) || 0;
+
+      if (isSessionActive) {
+        logoutAt = null;
         const startMs = new Date(session.loginAt || student.loginStartedAt).getTime();
         if (!isNaN(startMs)) {
           sessionDuration = Math.max(0, Math.floor((Date.now() - startMs) / 1000));
+        }
+      } else {
+        // If an old session was left unclosed (logoutAt is null)
+        if (!logoutAt) {
+          if (!isLastEntry && history[idx + 1] && history[idx + 1].loginAt) {
+            // Next session's login time becomes this session's logout time
+            logoutAt = history[idx + 1].loginAt;
+          } else if (student.lastLogout && new Date(student.lastLogout) > new Date(session.loginAt)) {
+            logoutAt = student.lastLogout;
+          } else {
+            logoutAt = session.loginAt;
+          }
+        }
+
+        if (session.loginAt && logoutAt) {
+          const startMs = new Date(session.loginAt).getTime();
+          const endMs = new Date(logoutAt).getTime();
+          if (!isNaN(startMs) && !isNaN(endMs) && endMs >= startMs) {
+            sessionDuration = Math.floor((endMs - startMs) / 1000);
+          }
         }
       }
 
       return {
         _id: session._id,
         loginAt: session.loginAt,
-        logoutAt: isSessionActive ? null : session.logoutAt,
+        logoutAt: isSessionActive ? null : logoutAt,
         duration: sessionDuration,
         isOnline: isSessionActive
       };
     });
+
+    // Sort newest first for display
+    processedHistory.sort((a, b) => new Date(b.loginAt).getTime() - new Date(a.loginAt).getTime());
 
     return res.json({
       success: true,
@@ -850,7 +933,7 @@ const getStudentLoginHistory = async (req, res, next) => {
         studentId: student.studentId || student.student_id || (student._id ? String(student._id).substring(0, 8) : 'N/A'),
         isOnline: Boolean(student.isOnline)
       },
-      history: formattedHistory
+      history: processedHistory
     });
   } catch (err) {
     next(err);
@@ -896,6 +979,56 @@ const updateStudentServiceStatus = async (req, res, next) => {
       success: true,
       message: `Student HireSmart AI service access updated to ${serviceStatus}`,
       student: studentObj
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Delete Student Record by ID (Super Admin)
+ * @route   DELETE /api/admin/students/:id
+ * @access  Private (Super Admin)
+ */
+const deleteAdminStudent = async (req, res, next) => {
+  try {
+    const studentIdParam = req.params.id;
+    let student = null;
+
+    if (mongoose.Types.ObjectId.isValid(studentIdParam)) {
+      student = await User.findById(studentIdParam);
+    }
+    if (!student) {
+      student = await User.findOne({
+        $or: [
+          { studentId: studentIdParam },
+          { student_id: studentIdParam }
+        ]
+      });
+    }
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student record not found in MongoDB' });
+    }
+
+    const targetUserId = student._id;
+
+    // Delete student user record
+    await User.findByIdAndDelete(targetUserId);
+
+    // Clean up related user data gracefully
+    await Promise.all([
+      Interview.deleteMany({ candidateId: targetUserId }).catch(() => {}),
+      Resume.deleteMany({ userId: targetUserId }).catch(() => {}),
+      TargetJob.deleteMany({ $or: [{ student_id: String(targetUserId) }, { student_id: student.studentId }] }).catch(() => {}),
+      AtsScan.deleteMany({ userId: targetUserId }).catch(() => {}),
+      Certificate.deleteMany({ studentUserId: targetUserId }).catch(() => {}),
+      SupportMessage.deleteMany({ $or: [{ studentId: targetUserId }, { studentEmail: student.email }] }).catch(() => {})
+    ]);
+
+    res.json({
+      success: true,
+      message: 'Student record deleted successfully from database'
     });
   } catch (err) {
     next(err);
@@ -1150,6 +1283,232 @@ const getAdminAtsResumeScans = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Assign Admin Role & Feature Permissions (Super Admin)
+ * @route   POST /api/admin/assign-role
+ * @access  Private (Super Admin)
+ */
+const assignAdmin = async (req, res, next) => {
+  try {
+    const { username, email, password, role = 'admin', permissions = [] } = req.body;
+
+    // Validation
+    if (!username || !username.trim()) {
+      return res.status(400).json({ success: false, message: 'Username is required' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid email address' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+    }
+    if (!Array.isArray(permissions) || permissions.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please select at least one assigned feature' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const cleanUsername = username.trim();
+
+    // Check duplicate email in Role collection ('roles')
+    const existingRoleEmail = await Role.findOne({ email: normalizedEmail });
+    const existingUserEmail = await User.findOne({ email: normalizedEmail });
+    if (existingRoleEmail || existingUserEmail) {
+      return res.status(400).json({ success: false, message: 'Email is already registered' });
+    }
+
+    // Check duplicate username in Role collection ('roles')
+    const existingRoleUsername = await Role.findOne({ username: cleanUsername });
+    const existingUserUsername = await User.findOne({ username: cleanUsername });
+    if (existingRoleUsername || existingUserUsername) {
+      return res.status(400).json({ success: false, message: 'Username is already taken' });
+    }
+
+    // Hash password using bcrypt
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Auto-generate Admin ID (ADM-00001 format)
+    const adminCount = await Role.countDocuments({});
+    const adminId = `ADM-${String(adminCount + 1).padStart(5, '0')}`;
+
+    // Create Admin record in dedicated 'roles' MongoDB collection
+    const newAdmin = await Role.create({
+      adminId,
+      username: cleanUsername,
+      email: normalizedEmail,
+      password: passwordHash,
+      role: 'admin',
+      permissions,
+      isActive: true
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin assigned successfully in roles collection',
+      admin: {
+        id: newAdmin._id,
+        _id: newAdmin._id,
+        adminId: newAdmin.adminId,
+        username: newAdmin.username,
+        email: newAdmin.email,
+        role: newAdmin.role,
+        permissions: newAdmin.permissions,
+        isActive: newAdmin.isActive,
+        createdAt: newAdmin.createdAt
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Get List of Assigned Admins from 'roles' MongoDB Collection
+ * @route   GET /api/admin/assigned-admins
+ * @access  Private (Super Admin)
+ */
+const getAssignedAdmins = async (req, res, next) => {
+  try {
+    const admins = await Role.find({})
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formattedAdmins = admins.map((adm, index) => ({
+      ...adm,
+      id: adm._id,
+      adminId: adm.adminId || `ADM-${String(index + 1).padStart(5, '0')}`,
+      username: adm.username || adm.email || 'Admin',
+      permissions: adm.permissions || []
+    }));
+
+    res.json({
+      success: true,
+      count: formattedAdmins.length,
+      admins: formattedAdmins
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Update Admin Permissions & Info in 'roles' Collection
+ * @route   PUT /api/admin/assigned-admins/:id
+ * @access  Private (Super Admin)
+ */
+const updateAdminPermissions = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { username, email, role, permissions } = req.body;
+
+    const admin = await Role.findById(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found in roles collection' });
+    }
+
+    if (username && username.trim() !== admin.username) {
+      const existingUser = await Role.findOne({ username: username.trim(), _id: { $ne: id } });
+      if (existingUser) {
+        return res.status(400).json({ success: false, message: 'Username is already taken' });
+      }
+      admin.username = username.trim();
+    }
+
+    if (email && email.toLowerCase().trim() !== admin.email) {
+      const existingEmail = await Role.findOne({ email: email.toLowerCase().trim(), _id: { $ne: id } });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: 'Email is already in use' });
+      }
+      admin.email = email.toLowerCase().trim();
+    }
+
+    if (Array.isArray(permissions)) {
+      admin.permissions = permissions;
+    }
+
+    if (role) {
+      admin.role = role.toLowerCase();
+    }
+
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: 'Admin permissions updated successfully',
+      admin: {
+        id: admin._id,
+        _id: admin._id,
+        adminId: admin.adminId,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+        isActive: admin.isActive,
+        updatedAt: admin.updatedAt
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Toggle Admin Active Status in 'roles' Collection
+ * @route   PUT /api/admin/assigned-admins/:id/toggle-status
+ * @access  Private (Super Admin)
+ */
+const toggleAdminStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const admin = await Role.findById(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found in roles collection' });
+    }
+
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    res.json({
+      success: true,
+      message: `Admin ${admin.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: admin.isActive
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Delete Admin Account from 'roles' Collection
+ * @route   DELETE /api/admin/assigned-admins/:id
+ * @access  Private (Super Admin)
+ */
+const deleteAdminUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const admin = await Role.findById(id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found in roles collection' });
+    }
+
+    await Role.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: 'Admin deleted successfully from roles collection'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   adminLogin,
   getAdminMe,
@@ -1163,6 +1522,7 @@ module.exports = {
   getAdminStudentProfile,
   getStudentLoginHistory,
   updateStudentServiceStatus,
+  deleteAdminStudent,
   getAdminRegistrations,
   getAdminResumes,
   getAdminTargetJobs,
@@ -1170,5 +1530,10 @@ module.exports = {
   getAdminCertificates,
   issueAdminCertificate,
   getAdminAtsAnalysisHistory,
-  getAdminAtsResumeScans
+  getAdminAtsResumeScans,
+  assignAdmin,
+  getAssignedAdmins,
+  updateAdminPermissions,
+  toggleAdminStatus,
+  deleteAdminUser
 };

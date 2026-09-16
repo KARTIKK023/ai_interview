@@ -8,9 +8,9 @@ const AdminProtectedRoute = ({ children }) => {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const verifySuperAdmin = async () => {
-      const superAdminTok = localStorage.getItem('superAdminToken');
-      if (!superAdminTok) {
+    const verifyAdminAccess = async () => {
+      const token = localStorage.getItem('superAdminToken') || localStorage.getItem('adminToken');
+      if (!token) {
         setIsAuthorized(false);
         setIsVerifying(false);
         return;
@@ -20,8 +20,12 @@ const AdminProtectedRoute = ({ children }) => {
         const res = await API.get('/admin/me');
         if (res.data && res.data.success && res.data.user) {
           const roleUpper = (res.data.user.role || '').toUpperCase();
-          if (roleUpper === 'SUPER_ADMIN') {
-            localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+          if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'ADMIN') {
+            if (roleUpper === 'SUPER_ADMIN') {
+              localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+            } else {
+              localStorage.setItem('adminUser', JSON.stringify(res.data.user));
+            }
             setIsAuthorized(true);
           } else {
             toast.error('Access denied. Super Admin privileges required.');
@@ -31,16 +35,18 @@ const AdminProtectedRoute = ({ children }) => {
           setIsAuthorized(false);
         }
       } catch (err) {
-        console.error('Super Admin session verification failed:', err);
+        console.error('Admin session verification failed:', err);
         localStorage.removeItem('superAdminToken');
         localStorage.removeItem('superAdminUser');
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
         setIsAuthorized(false);
       } finally {
         setIsVerifying(false);
       }
     };
 
-    verifySuperAdmin();
+    verifyAdminAccess();
   }, []);
 
   if (isVerifying) {

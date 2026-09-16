@@ -2,8 +2,10 @@ import React, { useEffect } from 'react';
 import DataTable from 'datatables.net-react';
 import DT from 'datatables.net-dt';
 import 'datatables.net-dt/css/dataTables.dataTables.css';
-import { FaFileCsv, FaFileExcel, FaPrint } from 'react-icons/fa';
+import { FaFileCsv, FaFileExcel, FaPrint, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
+import API from '../../../services/api';
 import * as XLSX from 'xlsx';
 
 // Register DataTables core module
@@ -13,6 +15,8 @@ const ReusableDataTable = ({
   columns = [],
   data = [],
   loading = false,
+  deleteEndpoint = null,
+  onDeleteSuccess = null,
   title = 'Data Records',
   selectedStudentIds = [],
   onStudentSelect = null,
@@ -49,6 +53,72 @@ const ReusableDataTable = ({
       }
     }
   }, [selectedStudentIds, data]);
+
+  const handleDelete = async (row) => {
+  if (!deleteEndpoint) {
+    toast.error('Delete action is not configured.');
+    return;
+  }
+
+  const recordId = row?._id;
+
+  if (!recordId) {
+    toast.error('Record ID not found.');
+    return;
+  }
+
+  const recordName =
+    row?.fullName ||
+    row?.studentName ||
+    row?.name ||
+    row?.fileName ||
+    row?.title ||
+    'this record';
+
+  const result = await Swal.fire({
+    title: 'Delete Record?',
+    text: `Are you sure you want to delete ${recordName}?.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Delete',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    reverseButtons: true
+  });
+
+  if (!result.isConfirmed) {
+    return;
+  }
+
+  try {
+    toast.loading('Deleting record...', {
+      id: 'datatable-delete'
+    });
+
+    await API.delete(`${deleteEndpoint}/${recordId}`);
+
+    toast.success('Record deleted successfully.', {
+      id: 'datatable-delete'
+    });
+
+    // Tell parent page that deletion succeeded
+    if (onDeleteSuccess) {
+      onDeleteSuccess(recordId, row);
+    }
+
+  } catch (error) {
+    console.error('DataTable delete error:', error);
+
+    toast.error(
+      error.response?.data?.message ||
+      'Failed to delete record.',
+      {
+        id: 'datatable-delete'
+      }
+    );
+  }
+};
 
   // Export handlers
 const exportToCSV = () => {
@@ -959,7 +1029,7 @@ const exportToExcel = () => {
           <div className="d-flex align-items-center gap-2">
             <h6 className="fw-bold mb-0 text-white me-2">{title}</h6>
             <span className="badge rounded-pill px-2.5 py-1" style={{ background: '#8B5CF6', color: '#FFFFFF', fontSize: '0.7rem' }}>
-              {data.length} MongoDB Records
+              {data.length} Records
             </span>
           </div>
 
@@ -1043,6 +1113,25 @@ const exportToExcel = () => {
                   onGenerateClick(id);
                 }
               }
+              const deleteBtn = e.target.closest('.datatable-delete-btn');
+
+if (deleteBtn) {
+  e.preventDefault();
+
+  const id = deleteBtn.getAttribute('data-id');
+
+  if (id) {
+    const row = data.find(
+      item => String(item._id) === String(id)
+    );
+
+    if (row) {
+      handleDelete(row);
+    }
+  }
+
+  return;
+}
             }}
           >
             <DataTable

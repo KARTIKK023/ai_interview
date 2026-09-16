@@ -18,8 +18,8 @@ API.interceptors.request.use(
       url.includes('/super-admin/');
 
     const token = isSuperAdminRequest
-      ? localStorage.getItem('superAdminToken')
-      : (localStorage.getItem('studentToken') || localStorage.getItem('token') || localStorage.getItem('superAdminToken'));
+      ? (localStorage.getItem('superAdminToken') || localStorage.getItem('adminToken'))
+      : (localStorage.getItem('studentToken') || localStorage.getItem('token') || localStorage.getItem('superAdminToken') || localStorage.getItem('adminToken'));
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

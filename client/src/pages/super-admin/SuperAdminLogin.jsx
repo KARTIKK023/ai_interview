@@ -18,26 +18,34 @@ const SuperAdminLogin = () => {
   const navigate = useNavigate();
   const { setUser, token } = useContext(AuthContext);
 
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // If already authenticated as Super Admin, redirect immediately
+  // If already authenticated, redirect immediately based on role
   React.useEffect(() => {
-    const existingToken = localStorage.getItem('superAdminToken');
+    const existingToken = localStorage.getItem('superAdminToken') || localStorage.getItem('adminToken');
     if (existingToken) {
       API.get('/admin/me')
         .then((res) => {
-          if (res.data.success && (res.data.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
-            localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
-            navigate('/super-admin/dashboard', { replace: true });
+          if (res.data.success && res.data.user) {
+            const roleUpper = (res.data.user.role || '').toUpperCase();
+            if (roleUpper === 'SUPER_ADMIN') {
+              localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+              navigate('/super-admin/dashboard', { replace: true });
+            } else if (roleUpper === 'ADMIN') {
+              localStorage.setItem('adminUser', JSON.stringify(res.data.user));
+              navigate('/admin/dashboard', { replace: true });
+            }
           }
         })
         .catch(() => {
           localStorage.removeItem('superAdminToken');
           localStorage.removeItem('superAdminUser');
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('adminUser');
         });
     }
   }, [navigate]);
@@ -46,32 +54,44 @@ const SuperAdminLogin = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    const cleanEmail = email.trim();
-    if (!cleanEmail || !password) {
-      setErrorMessage('Please enter both admin email and password.');
+    const cleanInput = emailOrUsername.trim();
+    if (!cleanInput || !password) {
+      setErrorMessage('Please enter both username/email and password.');
       return;
     }
 
     try {
       setLoading(true);
       const res = await API.post('/admin/login', {
-        email: cleanEmail,
+        email: cleanInput,
+        username: cleanInput,
         password
       });
 
       if (res.data && res.data.success && res.data.token) {
-        // Save Super Admin token & user profile independently
-        localStorage.setItem('superAdminToken', res.data.token);
-        localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+        const userRole = (res.data.user?.role || '').toUpperCase();
 
-        toast.success('Super Admin authentication successful!');
-        navigate('/super-admin/dashboard', { replace: true });
+        if (userRole === 'SUPER_ADMIN') {
+          localStorage.setItem('superAdminToken', res.data.token);
+          localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+          toast.success('Super Admin authentication successful!');
+          navigate('/super-admin/dashboard', { replace: true });
+        } else if (userRole === 'ADMIN') {
+          localStorage.setItem('adminToken', res.data.token);
+          localStorage.setItem('adminUser', JSON.stringify(res.data.user));
+          localStorage.removeItem('superAdminToken');
+          localStorage.removeItem('superAdminUser');
+          toast.success(`Welcome back, ${res.data.user.username || res.data.user.fullName || 'Admin'}!`);
+          navigate('/admin/dashboard', { replace: true });
+        } else {
+          setErrorMessage('Unauthorized account role.');
+        }
       } else {
-        setErrorMessage(res.data.message || 'Super Admin login failed.');
+        setErrorMessage(res.data.message || 'Login failed.');
       }
     } catch (err) {
-      console.error('Super Admin Login Error:', err);
-      const msg = err.response?.data?.message || 'Invalid admin credentials or network error.';
+      console.error('Admin Login Error:', err);
+      const msg = err.response?.data?.message || 'Invalid credentials or network error.';
       setErrorMessage(msg);
       toast.error(msg);
     } finally {
@@ -129,21 +149,21 @@ const SuperAdminLogin = () => {
 
           {/* LOGIN FORM */}
           <form onSubmit={handleSubmit}>
-            {/* Email Field */}
+            {/* Email or Username Field */}
             <div className="mb-3.5">
               <label className="form-label fw-semibold small mb-1.5" style={{ color: '#E0E7FF' }}>
-                Admin Email Address
+                Username or Email Address
               </label>
               <div className="position-relative">
                 <FaEnvelope className="position-absolute start-0 top-50 translate-middle-y ms-3" style={{ color: '#A5B4FC' }} size={15} />
                 <input
-                  type="email"
+                  type="text"
                   className="form-control text-white ps-5 py-2.5 rounded-3 fw-medium"
-                  placeholder="superadmin@hiresmart.ai"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter username or email"
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   style={{
                     background: 'rgba(15, 13, 38, 0.65)',
                     border: '1px solid rgba(129, 140, 248, 0.35)',

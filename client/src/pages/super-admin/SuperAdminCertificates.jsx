@@ -569,7 +569,7 @@ setMockInterviews(eligibleInterviews);
 
       {/* Main Certificates Master Table */}
       <DataTable
-        title="Student Certificate Records Master Table"
+        title="Student Certificate Records (Eligible AI Performance ≥ 75%)"
         columns={columns}
         data={filteredCertificates}
         loading={loading}
