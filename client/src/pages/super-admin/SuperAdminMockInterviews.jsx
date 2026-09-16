@@ -672,7 +672,7 @@ const handleSendScoreNotification = async (targetIds = null) => {
 </div>
 
       <DataTable
-        title="Mock Interviews Master Table"
+        title="Mock Interviews Records"
         columns={columns}
         data={filteredInterviews}
         loading={loading}

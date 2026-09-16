@@ -55,6 +55,12 @@ import AdminProtectedRoute from './components/AdminProtectedRoute';
 import SuperAdminInquiryDetails from './pages/super-admin/InquiryDetails';
 import SuperAdminAtsAnalysis from './pages/super-admin/SuperAdminAtsAnalysis';
 import SuperAdminAtsResumeScans from './pages/super-admin/SuperAdminAtsResumeScans';
+import AssignRole from './pages/super-admin/AssignRole';
+
+// Admin Pages & Guard
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminPermissionGuard from './components/AdminPermissionGuard';
+import AdminLayout from './components/AdminLayout';
 
 function App() {
   return (
@@ -66,14 +72,6 @@ function App() {
 
       {/* Super Admin Routes */}
       <Route path="/super-admin/login" element={<SuperAdminLogin />} />
-      <Route
-        path="/super-admin/dashboard"
-        element={
-          <AdminProtectedRoute>
-            <SuperAdminDashboard />
-          </AdminProtectedRoute>
-        }
-      />
 
       {/* Super Admin Layout Sub-Routes */}
       <Route
@@ -83,6 +81,8 @@ function App() {
           </AdminProtectedRoute>
         }
       >
+        <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
+        <Route path="/super-admin/assign-role" element={<AssignRole />} />
         <Route path="/super-admin/students" element={<SuperAdminStudents />} />
         <Route path="/super-admin/registrations" element={<SuperAdminRegistrations />} />
         <Route path="/super-admin/resumes" element={<SuperAdminResumes />} />
@@ -100,8 +100,96 @@ function App() {
         <Route path="/super-admin/ai-interview-engine" element={<SuperAdminInterviews />} />
         <Route path="/super-admin/resume-scans" element={<SuperAdminResumeScans />} />
       </Route>
-      <Route path="/admin/ats-analysis" element={<Navigate to="/super-admin/ats-analysis" replace />} />
-      <Route path="/admin/ats-resume-scans" element={<Navigate to="/super-admin/ats-resume-scans" replace />} />
+
+      {/* Admin Feature-Protected Routes */}
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <AdminLayout />
+          </AdminProtectedRoute>
+        }
+      >
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminPermissionGuard featureKey="dashboard">
+              <AdminDashboard />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/students"
+          element={
+            <AdminPermissionGuard featureKey="students">
+              <SuperAdminStudents />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/registrations"
+          element={
+            <AdminPermissionGuard featureKey="registrations">
+              <SuperAdminRegistrations />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/resumes"
+          element={
+            <AdminPermissionGuard featureKey="resumes">
+              <SuperAdminResumes />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/target-jobs"
+          element={
+            <AdminPermissionGuard featureKey="target-jobs">
+              <SuperAdminTargetJobs />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/mock-interviews"
+          element={
+            <AdminPermissionGuard featureKey="mock-interviews">
+              <SuperAdminMockInterviews />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/certificates"
+          element={
+            <AdminPermissionGuard featureKey="certificates">
+              <SuperAdminCertificates />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/inquiry-details"
+          element={
+            <AdminPermissionGuard featureKey="inquiries">
+              <SuperAdminInquiryDetails />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/ats-analysis"
+          element={
+            <AdminPermissionGuard featureKey="ats-analysis">
+              <SuperAdminAtsAnalysis />
+            </AdminPermissionGuard>
+          }
+        />
+        <Route
+          path="/admin/ats-resume-scans"
+          element={
+            <AdminPermissionGuard featureKey="ats-analysis">
+              <SuperAdminAtsResumeScans />
+            </AdminPermissionGuard>
+          }
+        />
+      </Route>
 
       {/* Student Routes */}
       <Route

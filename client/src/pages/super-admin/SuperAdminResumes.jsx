@@ -318,7 +318,7 @@ const SuperAdminResumes = () => {
 </div>
 
       <DataTable
-        title="Student Resumes Master Table"
+        title="Student Resumes Records"
         columns={columns}
         data={filteredResumes}
         loading={loading}

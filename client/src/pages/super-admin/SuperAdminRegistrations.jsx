@@ -452,7 +452,7 @@ const SuperAdminRegistrations = () => {
       </div>
 
       <DataTable
-        title="Account Registrations Master Table"
+        title="Account Registrations"
         columns={columns}
         data={filteredRegistrations}
         loading={loading}

@@ -620,8 +620,8 @@ HireSmart AI Team 🚀`;
     const subscriptionStatus = (
       data ||
       row.subscriptionStatus ||
-      'UNPAID'
-    ).toLowerCase();
+      'Unpaid'
+    );
 
     let badgeClass = '';
 
@@ -679,7 +679,34 @@ HireSmart AI Team 🚀`;
         </span>
       `;
     }
-  }
+  },
+
+  {
+  title: 'Actions',
+  data: null,
+  orderable: false,
+  searchable: false,
+
+  render: (_data, _type, row) => `
+    <button
+      type="button"
+      class="btn btn-outline-danger btn-sm datatable-delete-btn"
+      data-id="${row._id}"
+      title="Delete Student"
+      aria-label="Delete Student"
+      style="
+        width: 36px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <i class="fas fa-trash"></i>
+    </button>
+  `
+}
 ];
 
   if (selectedStudentId) {
@@ -703,7 +730,7 @@ HireSmart AI Team 🚀`;
             <h5 className="fw-bold mb-0 text-white">Students Records ({students.length})</h5>
           </div>
           <span className="badge rounded-pill px-3 py-1" style={{ background: '#8B5CF6', color: '#FFFFFF' }}>
-            Live MongoDB Sync
+            Live Record of Students & Their Service Access
           </span>
         </div>
       </div>
@@ -813,13 +840,24 @@ HireSmart AI Team 🚀`;
 </div>
 
       <DataTable
-        title="Students Master Table"
-        columns={columns}
-        data={filteredStudents}
-        loading={loading}
-        onStudentClick={(id) => setSelectedStudentId(id)}
-        onStatusToggle={handleStatusToggle}
-      />
+  title="Students Records"
+  columns={columns}
+  data={filteredStudents}
+  loading={loading}
+
+  onStudentClick={(id) => setSelectedStudentId(id)}
+  onStatusToggle={handleStatusToggle}
+
+  deleteEndpoint="/admin/students"
+
+  onDeleteSuccess={(deletedId) => {
+    setStudents(prev =>
+      prev.filter(
+        student => student._id !== deletedId
+      )
+    );
+  }}
+/>
 
       {/* Login Activity — Last 24 Hours Modal */}
       {sessionModalOpen && (
@@ -828,8 +866,8 @@ HireSmart AI Team 🚀`;
             <div className="modal-content border-0 shadow-lg rounded-3">
               <div className="modal-header text-white" style={{ background: '#4C1D95' }}>
                 <div>
-                  <h5 className="modal-title fw-bold mb-0">Login Activity — Last 24 Hours</h5>
-                  <p className="mb-0 small text-white-50">Student session history for the last 24 hours</p>
+                  <h5 className="modal-title fw-bold mb-0">Login Activity History</h5>
+                  <p className="mb-0 small text-white-50">Student login session history and duration records</p>
                 </div>
                 <button
                   type="button"
@@ -846,7 +884,7 @@ HireSmart AI Team 🚀`;
                 {sessionModalLoading ? (
                   <div className="text-center py-4">
                     <div className="spinner-border text-purple" role="status"></div>
-                    <p className="mt-2 text-muted mb-0">Fetching 24-hour login history...</p>
+                    <p className="mt-2 text-muted mb-0">Fetching login session history...</p>
                   </div>
                 ) : modalSessionData ? (
                   <div className="d-flex flex-column gap-3">
@@ -923,7 +961,7 @@ HireSmart AI Team 🚀`;
                       })
                     ) : (
                       <div className="text-center py-4 text-muted bg-light rounded-3 border">
-                        No login activity recorded in the last 24 hours.
+                        No login activity recorded.
                       </div>
                     )}
                   </div>

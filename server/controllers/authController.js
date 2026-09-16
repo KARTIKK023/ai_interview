@@ -264,7 +264,7 @@ const loginUser = async (req, res, next) => {
     }
 
     // ==========================================
-    // LOGIN LOGIC (LAST 24 HOURS ONLY)
+    // LOGIN LOGIC & SESSION HISTORY TRACKING
     // ==========================================
     const loginTime = new Date();
 
@@ -274,16 +274,29 @@ const loginUser = async (req, res, next) => {
     user.loginDuration = 0;
     user.isOnline = true;
 
-    // Filter to remove loginHistory records older than 24 hours
-    const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
-    );
+    // Auto-close any previous unclosed sessions before opening a new session
+    if (user.loginHistory && user.loginHistory.length > 0) {
+      user.loginHistory.forEach(session => {
+        if (!session.logoutAt) {
+          session.logoutAt = loginTime;
+          if (session.loginAt) {
+            session.duration = Math.max(
+              0,
+              Math.floor((loginTime.getTime() - new Date(session.loginAt).getTime()) / 1000)
+            );
+          }
+        }
+      });
+    }
 
-    user.loginHistory = (user.loginHistory || []).filter(
-      session =>
-        session.loginAt &&
-        new Date(session.loginAt) >= twentyFourHoursAgo
-    );
+    if (!Array.isArray(user.loginHistory)) {
+      user.loginHistory = [];
+    }
+
+    // Keep up to 200 session records in history
+    if (user.loginHistory.length >= 200) {
+      user.loginHistory = user.loginHistory.slice(-199);
+    }
 
     // Add the new login session
     user.loginHistory.push({
@@ -575,27 +588,27 @@ const logoutUser = async (req, res, next) => {
     user.loginDuration = duration;
     user.isOnline = false;
 
-    // Find the latest loginHistory session that does not have logoutAt
-    const latestSession =
-      [...(user.loginHistory || [])]
-        .reverse()
-        .find(session => !session.logoutAt);
-
-    if (latestSession) {
-      latestSession.logoutAt = logoutTime;
-      latestSession.duration = duration;
+    // Close any open loginHistory session(s)
+    if (user.loginHistory && user.loginHistory.length > 0) {
+      user.loginHistory.forEach(session => {
+        if (!session.logoutAt) {
+          session.logoutAt = logoutTime;
+          if (session.loginAt) {
+            session.duration = Math.max(
+              0,
+              Math.floor((logoutTime.getTime() - new Date(session.loginAt).getTime()) / 1000)
+            );
+          } else {
+            session.duration = duration;
+          }
+        }
+      });
     }
 
-    // Remove records older than 24 hours
-    const twentyFourHoursAgo = new Date(
-      Date.now() - 24 * 60 * 60 * 1000
-    );
-
-    user.loginHistory = (user.loginHistory || []).filter(
-      session =>
-        session.loginAt &&
-        new Date(session.loginAt) >= twentyFourHoursAgo
-    );
+    // Keep up to 200 session records in history
+    if (Array.isArray(user.loginHistory) && user.loginHistory.length > 200) {
+      user.loginHistory = user.loginHistory.slice(-200);
+    }
 
     await user.save();
 

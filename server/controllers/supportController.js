@@ -420,9 +420,40 @@ const sendSupportReply = async (req, res) => {
   }
 };
 
+// ============================================================
+// DELETE SUPPORT MESSAGE (SUPER ADMIN)
+// ============================================================
+
+const deleteSupportMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const message = await SupportMessage.findByIdAndDelete(id);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: 'Inquiry message not found'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Inquiry message deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete support message error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to delete inquiry message'
+    });
+  }
+};
+
 module.exports = {
   createSupportMessage,
   getMySupportMessages,
   getAllSupportMessages,
-  sendSupportReply
+  sendSupportReply,
+  deleteSupportMessage
 };
