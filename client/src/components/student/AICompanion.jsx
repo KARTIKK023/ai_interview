@@ -13,205 +13,396 @@ import {
   FaChevronRight
 } from 'react-icons/fa';
 
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
+import { processCompanionMessage } from '../student/companion/companionEngine.js';
+import { loadCompanionState } from '../student/companion/companionApi.js';
 
 // ============================================================
 // HIRE SMART AI COMPANION
 // ============================================================
+//
+// IMPORTANT:
+// The visual design below intentionally stays the same as the
+// previous companion. The only meaningful additions are:
+//   1. deterministic companion engine
+//   2. application/user state loading
+//   3. navigation actions returned by the engine
+//   4. action buttons rendered inside AI messages
+//
+// There is NO LLM/API call for generating answers.
+// ============================================================
 
 const AICompanion = () => {
-
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [isOpen, setIsOpen] = useState(false);
-
   const [input, setInput] = useState('');
-
   const [isTyping, setIsTyping] = useState(false);
-
   const [messages, setMessages] = useState([]);
 
+  const [companionState, setCompanionState] = useState({
+    user: null,
+    resume: null,
+    targetJobs: [],
+    interviews: [],
+    achievements: []
+  });
+
+  const [stateLoaded, setStateLoaded] = useState(false);
+
   const chatBodyRef = useRef(null);
-
   const inputRef = useRef(null);
-
+  const responseTimerRef = useRef(null);
 
   // ============================================================
-  // HIRE SMART AI KNOWLEDGE BASE
+  // DISPLAY NAME
   // ============================================================
 
-  const aiKnowledge = [
+  const getDisplayName = () => {
+    return (
+      user?.fullName ||
+      user?.name ||
+      'there'
+    );
+  };
 
-    {
-      keywords: [
-        'interview',
-        'mock interview',
-        'ai interview',
-        'evaluation',
-        'evaluate',
-        'score',
-        'scoring',
-        'answer',
-        'answers',
-        'interview score'
-      ],
+  // ============================================================
+  // TIME
+  // ============================================================
 
-      response:
-        'Your AI Mock Interview responses are evaluated against competency criteria for your target role. HireSmart AI looks at relevance, accuracy, technical knowledge, problem solving, logical structure, clarity, and overall answer quality. You receive a score along with strengths, weaknesses, and improvement suggestions.'
-    },
+  const getCurrentTime = () => {
+    return new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
+  // ============================================================
+  // LOAD CURRENT APPLICATION STATE
+  // ============================================================
+  //
+  // This is deliberately separate from the conversation UI.
+  // The companion does not need to ask the user things the
+  // application already knows.
+  // ============================================================
 
-    {
-      keywords: [
-        'resume',
-        'cv',
-        'upload resume',
-        'upload cv',
-        'resume upload',
-        'pdf',
-        'resume format'
-      ],
+  useEffect(() => {
+    let cancelled = false;
 
-      response:
-        'You can upload your resume as a PDF file. The current maximum file size is 16MB. HireSmart AI extracts the resume content for ATS analysis and uses it to help evaluate your career profile.'
-    },
+    const loadState = async () => {
+      try {
+        const data = await loadCompanionState();
 
+        if (cancelled) return;
 
-    {
-      keywords: [
-        'ats',
-        'ats score',
-        'resume score',
-        'scanner',
-        'resume analysis',
-        'ats scanner'
-      ],
+        setCompanionState({
+          user: user || data?.user || null,
+          resume: data?.resume || null,
+          targetJobs: Array.isArray(data?.targetJobs)
+            ? data.targetJobs
+            : [],
+          interviews: Array.isArray(data?.interviews)
+            ? data.interviews
+            : [],
+          achievements: Array.isArray(data?.achievements)
+            ? data.achievements
+            : []
+        });
+      } catch (error) {
+        console.error(
+          'HireSmart AI Companion: failed to load state',
+          error
+        );
 
-      response:
-        'The ATS scanner analyzes your resume content against important job-related information. It helps identify how well your resume aligns with the skills and requirements relevant to your target career.'
-    },
+        if (!cancelled) {
+          setCompanionState((previous) => ({
+            ...previous,
+            user: user || previous.user
+          }));
+        }
+      } finally {
+        if (!cancelled) {
+          setStateLoaded(true);
+        }
+      }
+    };
 
+    loadState();
 
-    {
-      keywords: [
-        'placement',
-        'placements',
-        'job',
-        'jobs',
-        'job opportunities',
-        'placement opportunities',
-        'job matching',
-        'job match'
-      ],
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
-      response:
-        'Placement Opportunities are matched using your saved Target Jobs, core competencies, required skills, and location preferences. This helps surface opportunities that are more relevant to the career path you are targeting.'
-    },
+  // ============================================================
+  // WELCOME MESSAGE
+  // ============================================================
 
+  const createWelcomeMessage = () => ({
+    id: `welcome-${Date.now()}`,
+    sender: 'ai',
+    text:
+      `Hi ${getDisplayName()}! 👋 I’m HireSmart AI. ` +
+      `How can I help you today?`,
+    time: getCurrentTime()
+  });
 
-    {
-      keywords: [
-        'target job',
-        'target jobs',
-        'career target',
-        'career goal',
-        'target career'
-      ],
+  // ============================================================
+  // INITIALIZE CHAT
+  // ============================================================
 
-      response:
-        'Your Target Jobs help HireSmart AI understand the career direction you are preparing for. They are used to personalize interview preparation, competency matching, and relevant placement opportunities.'
-    },
+  useEffect(() => {
+    if (!stateLoaded && !user) return;
 
+    setMessages([createWelcomeMessage()]);
+  }, [
+    stateLoaded,
+    user?.fullName,
+    user?.name
+  ]);
 
-    {
-      keywords: [
-        'certificate',
-        'certificates',
-        'credential',
-        'achievement',
-        'download certificate',
-        'certificate download'
-      ],
+  // ============================================================
+  // AUTO SCROLL
+  // ============================================================
 
-      response:
-        'You can find your certificates under the Certificates & Achievements section in the sidebar. From there, you can view your certificate and download the PDF version when available.'
-    },
+  useEffect(() => {
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop =
+        chatBodyRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
 
+  // ============================================================
+  // FOCUS INPUT
+  // ============================================================
 
-    {
-      keywords: [
-        'profile',
-        'account',
-        'name',
-        'phone',
-        'profile information',
-        'personal information'
-      ],
+  useEffect(() => {
+    if (!isOpen) return;
 
-      response:
-        'You can manage your personal profile information from the Profile section. Keep your information and professional details updated so your HireSmart AI experience remains personalized.'
-    },
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 150);
 
+    return () => clearTimeout(timer);
+  }, [isOpen]);
 
-    {
-      keywords: [
-        'question bank',
-        'questionbank',
-        'questions',
-        'practice questions',
-        'practice'
-      ],
+  // ============================================================
+  // CLEANUP TIMER
+  // ============================================================
 
-      response:
-        'The Question Bank contains interview questions that you can use for preparation and practice. It is useful for improving your confidence before attempting an actual AI Mock Interview.'
-    },
+  useEffect(() => {
+    return () => {
+      if (responseTimerRef.current) {
+        clearTimeout(responseTimerRef.current);
+      }
+    };
+  }, []);
 
+  // ============================================================
+  // REFRESH APPLICATION STATE
+  // ============================================================
+  //
+  // Useful after navigation or when the user has changed their
+  // resume/target jobs elsewhere in the application.
+  // ============================================================
 
-    {
-      keywords: [
-        'help',
-        'support',
-        'contact',
-        'support team',
-        'ticket',
-        'problem',
-        'issue'
-      ],
+  const refreshCompanionState = async () => {
+    try {
+      const data = await loadCompanionState();
 
-      response:
-        'Of course! 😊 You can use the Help & Support section to find answers to common questions or send a support request to the HireSmart AI support team.'
-    },
+      setCompanionState({
+        user: user || data?.user || null,
+        resume: data?.resume || null,
+        targetJobs: Array.isArray(data?.targetJobs)
+          ? data.targetJobs
+          : [],
+        interviews: Array.isArray(data?.interviews)
+          ? data.interviews
+          : [],
+        achievements: Array.isArray(data?.achievements)
+          ? data.achievements
+          : []
+      });
+    } catch (error) {
+      console.error(
+        'HireSmart AI Companion: state refresh failed',
+        error
+      );
+    }
+  };
 
+  // ============================================================
+  // HANDLE ENGINE ACTION
+  // ============================================================
 
-    {
-      keywords: [
-        'dashboard',
-        'student dashboard',
-        'home'
-      ],
+  const handleAction = async (action) => {
+    if (!action) return;
 
-      response:
-        'Your Student Dashboard gives you an overview of your HireSmart AI activity. From there you can access your profile, resume, target jobs, question bank, interviews, certificates, placements, and AI assistance.'
-    },
+    if (action.type === 'navigate' && action.route) {
+      await refreshCompanionState();
+      navigate(action.route);
+      setIsOpen(false);
+    }
+  };
 
+  // ============================================================
+  // GET ENGINE RESPONSE
+  // ============================================================
 
-    {
-      keywords: [
-        'hello',
-        'hi',
-        'hey',
-        'good morning',
-        'good afternoon',
-        'good evening'
-      ],
+  const getCompanionResponse = async (message) => {
+    const currentState = {
+      ...companionState,
+      user: user || companionState.user
+    };
 
-      response:
-        'Hey there! 👋 I’m HireSmart AI. I can help you with interviews, resumes, ATS scoring, placement opportunities, Target Jobs, certificates, profiles, and other platform features.'
+    return processCompanionMessage(
+      message,
+      currentState
+    );
+  };
+
+  // ============================================================
+  // NORMALIZE ENGINE RESULT
+  // ============================================================
+  //
+  // The UI accepts either:
+  //   "plain string"
+  // or:
+  //   { text: "...", actions: [...] }
+  //
+  // This keeps the UI resilient if the engine implementation is
+  // changed later.
+  // ============================================================
+
+  const normalizeEngineResult = (result) => {
+    if (typeof result === 'string') {
+      return {
+        text: result,
+        actions: []
+      };
     }
 
-  ];
+    if (!result || typeof result !== 'object') {
+      return {
+        text:
+          'I can help you with your HireSmart AI profile, resume, target jobs, ATS, interviews, practice, achievements, and other platform features.',
+        actions: []
+      };
+    }
 
+    return {
+      text:
+        typeof result.text === 'string' && result.text.trim()
+          ? result.text
+          : 'I can help you navigate HireSmart AI and work with the information already available in your account.',
+      actions: Array.isArray(result.actions)
+        ? result.actions.filter(
+            (action) =>
+              action &&
+              action.type === 'navigate' &&
+              typeof action.route === 'string' &&
+              typeof action.label === 'string'
+          )
+        : []
+    };
+  };
+
+  // ============================================================
+  // SEND MESSAGE
+  // ============================================================
+
+  const sendMessage = (messageToSend = input) => {
+    const message = String(messageToSend || '').trim();
+
+    if (!message || isTyping) return;
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: message,
+      time: getCurrentTime()
+    };
+
+    setMessages((previous) => [
+      ...previous,
+      userMessage
+    ]);
+
+    setInput('');
+    setIsTyping(true);
+
+    // Preserve the original companion's small natural delay.
+    responseTimerRef.current = setTimeout(async () => {
+      try {
+        const rawResult = await getCompanionResponse(message);
+        const result = normalizeEngineResult(rawResult);
+
+        const aiMessage = {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          text: result.text,
+          actions: result.actions,
+          time: getCurrentTime()
+        };
+
+        setMessages((previous) => [
+          ...previous,
+          aiMessage
+        ]);
+      } catch (error) {
+        console.error(
+          'HireSmart AI Companion response error:',
+          error
+        );
+
+        setMessages((previous) => [
+          ...previous,
+          {
+            id: `ai-error-${Date.now()}`,
+            sender: 'ai',
+            text:
+              'I ran into a small problem while checking your HireSmart AI information. Please try again.',
+            time: getCurrentTime()
+          }
+        ]);
+      } finally {
+        setIsTyping(false);
+        responseTimerRef.current = null;
+      }
+    }, 400);
+  };
+
+  // ============================================================
+  // ENTER KEY
+  // ============================================================
+
+  const handleKeyDown = (e) => {
+    if (
+      e.key === 'Enter' &&
+      !e.shiftKey
+    ) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  // ============================================================
+  // RESET CHAT
+  // ============================================================
+
+  const resetChat = () => {
+    if (responseTimerRef.current) {
+      clearTimeout(responseTimerRef.current);
+      responseTimerRef.current = null;
+    }
+
+    setMessages([createWelcomeMessage()]);
+    setInput('');
+    setIsTyping(false);
+  };
 
   // ============================================================
   // SUGGESTED QUESTIONS
@@ -219,672 +410,175 @@ const AICompanion = () => {
 
   const suggestedQuestions = [
     'How does AI evaluate my interview?',
-    'How do I upload my resume?',
-    'How are placement jobs matched?',
-    'Where can I find my certificates?'
+    'Do I have a resume?',
+    'What should I do next?',
+    'Run an ATS check'
   ];
-
-
-  // ============================================================
-  // GET DISPLAY NAME
-  // ============================================================
-
-  const getDisplayName = () => {
-
-    return (
-      user?.fullName ||
-      user?.name ||
-      'there'
-    );
-
-  };
-
-
-  // ============================================================
-  // INITIAL MESSAGE
-  // ============================================================
-
-  const createWelcomeMessage = () => {
-
-    return {
-
-      id: `welcome-${Date.now()}`,
-
-      sender: 'ai',
-
-      text:
-        `Hi ${getDisplayName()}! 👋 I’m HireSmart AI. ` +
-        `How can I help you today?`,
-
-      time: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-
-    };
-
-  };
-
-
-  // ============================================================
-  // INITIALIZE CHAT
-  // ============================================================
-
-  useEffect(() => {
-
-    setMessages([
-      createWelcomeMessage()
-    ]);
-
-  }, [
-    user?.fullName,
-    user?.name
-  ]);
-
-
-  // ============================================================
-  // AUTO SCROLL
-  // ============================================================
-
-  useEffect(() => {
-
-    if (chatBodyRef.current) {
-
-      chatBodyRef.current.scrollTop =
-        chatBodyRef.current.scrollHeight;
-
-    }
-
-  }, [
-    messages,
-    isTyping
-  ]);
-
-
-  // ============================================================
-  // FOCUS INPUT
-  // ============================================================
-
-  useEffect(() => {
-
-    if (isOpen) {
-
-      setTimeout(() => {
-
-        inputRef.current?.focus();
-
-      }, 150);
-
-    }
-
-  }, [isOpen]);
-
-
-  // ============================================================
-  // FIND AI RESPONSE
-  // ============================================================
-
-  const getAIResponse = (question) => {
-
-    const normalizedQuestion =
-      question
-        .toLowerCase()
-        .trim();
-
-
-    // ----------------------------------------------------------
-    // Direct keyword matching
-    // ----------------------------------------------------------
-
-    const matchedTopic =
-      aiKnowledge.find((topic) => {
-
-        return topic.keywords.some(
-          (keyword) =>
-            normalizedQuestion.includes(
-              keyword.toLowerCase()
-            )
-        );
-
-      });
-
-
-    if (matchedTopic) {
-
-      return matchedTopic.response;
-
-    }
-
-
-    // ----------------------------------------------------------
-    // Additional combined checks
-    // ----------------------------------------------------------
-
-    if (
-      normalizedQuestion.includes('what') &&
-      normalizedQuestion.includes('hire smart')
-    ) {
-
-      return (
-        'HireSmart AI is an interview and career preparation ' +
-        'platform designed to help students prepare for jobs ' +
-        'through AI Mock Interviews, resume and ATS analysis, ' +
-        'Target Jobs, Question Bank, Certificates, and Placement Opportunities.'
-      );
-
-    }
-
-
-    if (
-      normalizedQuestion.includes('how') &&
-      normalizedQuestion.includes('prepare')
-    ) {
-
-      return (
-        'A good way to prepare on HireSmart AI is to first ' +
-        'keep your Profile and Resume updated, select your Target Jobs, ' +
-        'practice questions from the Question Bank, and then attempt AI Mock Interviews.'
-      );
-
-    }
-
-
-    // ----------------------------------------------------------
-    // Default response
-    // ----------------------------------------------------------
-
-    return (
-      'That’s a great question! 😊 I currently know about ' +
-      'HireSmart AI features such as AI Mock Interviews, ' +
-      'Resume Uploads, ATS Scoring, Target Jobs, Placement ' +
-      'Opportunities, Question Bank, Certificates, Profiles, ' +
-      'and platform Support. Try asking me about one of these.'
-    );
-
-  };
-
-
-  // ============================================================
-  // SEND MESSAGE
-  // ============================================================
-
-  const sendMessage = (
-    messageToSend = input
-  ) => {
-
-    const message =
-      messageToSend.trim();
-
-
-    if (
-      !message ||
-      isTyping
-    ) {
-
-      return;
-
-    }
-
-
-    const currentTime =
-      new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-
-    // ----------------------------------------------------------
-    // USER MESSAGE
-    // ----------------------------------------------------------
-
-    const userMessage = {
-
-      id: `user-${Date.now()}`,
-
-      sender: 'user',
-
-      text: message,
-
-      time: currentTime
-
-    };
-
-
-    setMessages((previous) => [
-      ...previous,
-      userMessage
-    ]);
-
-
-    setInput('');
-
-    setIsTyping(true);
-
-
-    // ----------------------------------------------------------
-    // Small natural delay
-    // ----------------------------------------------------------
-
-    setTimeout(() => {
-
-      const aiMessage = {
-
-        id: `ai-${Date.now()}`,
-
-        sender: 'ai',
-
-        text: getAIResponse(message),
-
-        time: new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-
-      };
-
-
-      setMessages((previous) => [
-        ...previous,
-        aiMessage
-      ]);
-
-
-      setIsTyping(false);
-
-    }, 650);
-
-  };
-
-
-  // ============================================================
-  // ENTER KEY
-  // ============================================================
-
-  const handleKeyDown = (e) => {
-
-    if (
-      e.key === 'Enter' &&
-      !e.shiftKey
-    ) {
-
-      e.preventDefault();
-
-      sendMessage();
-
-    }
-
-  };
-
-
-  // ============================================================
-  // RESET CHAT
-  // ============================================================
-
-  const resetChat = () => {
-
-    setMessages([
-      createWelcomeMessage()
-    ]);
-
-    setInput('');
-
-    setIsTyping(false);
-
-  };
-
 
   // ============================================================
   // RENDER
   // ============================================================
 
   return (
-
     <>
-
-      {/* ======================================================
-          FLOATING COMPANION
-      ======================================================= */}
-
       {!isOpen && (
-
-        <button
-            type="button"
-            className="hs-companion-button"
-            onClick={() => setIsOpen(true)}
-            aria-label="Open HireSmart AI"
-            >
-            {/* Ripple rings */}
-            <span className="hs-ripple hs-ripple-1"></span>
-            <span className="hs-ripple hs-ripple-2"></span>
-            <span className="hs-ripple hs-ripple-3"></span>
-
-            {/* Robot */}
-            <span className="hs-companion-icon">
-                <FaRobot />
-            </span>
+        <button type="button" className="hs-companion-button" onClick={() => setIsOpen(true)} aria-label="Open HireSmart AI">
+          <span className="hs-ripple hs-ripple-1" />
+          <span className="hs-ripple hs-ripple-2" />
+          <span className="hs-ripple hs-ripple-3" />
+          <span className="hs-companion-icon"><FaRobot /></span>
         </button>
-
       )}
-
-
-      {/* ======================================================
-          CHAT WINDOW
-      ======================================================= */}
 
       {isOpen && (
-
         <div className="hs-companion-chat">
-
-
-          {/* ==================================================
-              HEADER
-          ================================================== */}
-
           <div className="hs-companion-header">
-
             <div className="hs-companion-header-left">
-
-              <div className="hs-companion-header-icon">
-
-                <FaRobot />
-
-              </div>
-
-
+              <div className="hs-companion-header-icon"><FaRobot /></div>
               <div>
-
-                <div className="hs-companion-title">
-                  HireSmart AI
-                </div>
-
-                <div className="hs-companion-status">
-
-                  <span />
-
-                  Online · Ready to help
-
-                </div>
-
+                <div className="hs-companion-title">HireSmart AI</div>
+                <div className="hs-companion-status"><span />Online · Ready to help</div>
               </div>
-
             </div>
-
 
             <div className="hs-companion-actions">
-
-              <button
-                type="button"
-                onClick={resetChat}
-                title="Reset chat"
-              >
-
-                <FaRedo />
-
-              </button>
-
-
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                title="Close"
-              >
-
-                <FaTimes />
-
-              </button>
-
+              <button type="button" onClick={resetChat} title="Reset chat" aria-label="Reset chat"><FaRedo /></button>
+              <button type="button" onClick={() => setIsOpen(false)} title="Close" aria-label="Close"><FaTimes /></button>
             </div>
-
           </div>
 
-
-          {/* ==================================================
-              BODY
-          ================================================== */}
-
-          <div
-            className="hs-companion-body"
-            ref={chatBodyRef}
-          >
-
-
-            {/* ------------------------------------------------
-                WELCOME SUGGESTIONS
-            ------------------------------------------------- */}
-
+          <div className="hs-companion-body" ref={chatBodyRef}>
             {messages.length === 1 && (
-
               <div className="hs-companion-welcome">
-
-                <div className="hs-welcome-icon">
-
-                  <FaRobot />
-
-                </div>
-
-
-                <h5>
-                  What can I help you with?
-                </h5>
-
-
-                <p>
-                  Ask me anything about HireSmart AI.
-                </p>
-
-
+                <div className="hs-welcome-icon"><FaRobot /></div>
+                <h5>What can I help you with?</h5>
+                <p>Ask me anything about HireSmart AI.</p>
                 <div className="hs-suggestions">
-
-                  {suggestedQuestions.map(
-                    (question) => (
-
-                      <button
-                        key={question}
-                        type="button"
-                        onClick={() =>
-                          sendMessage(question)
-                        }
-                      >
-
-                        {question}
-
-                      </button>
-
-                    )
-                  )}
-
+                  {suggestedQuestions.map((question) => (
+                    <button key={question} type="button" onClick={() => sendMessage(question)} disabled={isTyping}>
+                      {question}
+                    </button>
+                  ))}
                 </div>
-
               </div>
-
             )}
-
-
-            {/* ------------------------------------------------
-                MESSAGES
-            ------------------------------------------------- */}
 
             {messages.map((message) => (
+              <div key={message.id} className={`hs-message-row ${message.sender === 'user' ? 'user' : ''}`}>
+                {message.sender === 'ai' && <div className="hs-mini-avatar"><FaRobot /></div>}
+                <div className={`hs-message ${message.sender === 'user' ? 'user-message' : 'ai-message'}`}>
+                  <div className="hs-message-text">{message.text}</div>
 
-              <div
-                key={message.id}
-                className={`hs-message-row ${
-                  message.sender === 'user'
-                    ? 'user'
-                    : ''
-                }`}
-              >
+                  {message.sender === 'ai' && Array.isArray(message.actions) && message.actions.length > 0 && (
+                    <div className="hs-message-actions">
+                      {message.actions.map((action, index) => (
+                        <button key={`${message.id}-${action.label}-${index}`} type="button" onClick={() => handleAction(action)}>
+                          <span>{action.label}</span>
+                          <FaChevronRight />
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-
-                {message.sender === 'ai' && (
-
-                  <div className="hs-mini-avatar">
-
-                    <FaRobot />
-
-                  </div>
-
-                )}
-
-
-                <div
-                  className={`hs-message ${
-                    message.sender === 'user'
-                      ? 'user-message'
-                      : 'ai-message'
-                  }`}
-                >
-
-                  <div className="hs-message-text">
-                    {message.text}
-                  </div>
-
-
-                  <span className="hs-message-time">
-                    {message.time}
-                  </span>
-
+                  <span className="hs-message-time">{message.time}</span>
                 </div>
-
               </div>
-
             ))}
 
-
-            {/* ------------------------------------------------
-                TYPING
-            ------------------------------------------------- */}
-
             {isTyping && (
-
               <div className="hs-message-row">
-
-                <div className="hs-mini-avatar">
-
-                  <FaRobot />
-
-                </div>
-
-
-                <div className="hs-typing">
-
-                  <span />
-                  <span />
-                  <span />
-
-                </div>
-
+                <div className="hs-mini-avatar"><FaRobot /></div>
+                <div className="hs-typing"><span /><span /><span /></div>
               </div>
-
             )}
-
           </div>
-
-
-          {/* ==================================================
-              INPUT
-          ================================================== */}
 
           <div className="hs-companion-input">
-
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) =>
-                setInput(e.target.value)
-              }
-              onKeyDown={handleKeyDown}
-              placeholder="Ask anything..."
-              rows="1"
-              disabled={isTyping}
-            />
-
-
-            <button
-              type="button"
-              onClick={() => sendMessage()}
-              disabled={
-                !input.trim() ||
-                isTyping
-              }
-            >
-
+            <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask anything..." rows="1" disabled={isTyping} />
+            <button type="button" onClick={() => sendMessage()} disabled={!input.trim() || isTyping} aria-label="Send message">
               <FaPaperPlane />
-
             </button>
-
           </div>
-
-
-          {/* ==================================================
-              FOOTER
-          ================================================== */}
 
           <div className="hs-companion-footer">
-
             <FaRobot />
-
             HireSmart AI · Platform Assistant
-
           </div>
-
         </div>
-
       )}
 
-
-      {/* ======================================================
-          STYLES
-      ======================================================= */}
-
       <style>{`
+
         /* ====================================================
+
         FLOATING COMPANION
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-button {
+
         position: fixed;
+
         right: 22px;
+
         bottom: 22px;
+
         z-index: 99999;
 
         width: 58px;
+
         height: 58px;
 
         display: flex;
+
         align-items: center;
+
         justify-content: center;
 
         border: none;
+
         border-radius: 50%;
 
         background: #0BDA51;
+
         cursor: pointer;
 
         box-shadow:
+
             0 10px 30px rgba(11, 218, 81, 0.30);
 
         transition:
+
             transform 0.2s ease,
+
             box-shadow 0.2s ease;
+
         }
 
         .hs-companion-button:hover {
+
         transform: translateY(-3px) scale(1.04);
 
         box-shadow:
+
             0 15px 38px rgba(11, 218, 81, 0.38);
+
         }
 
 
+
         /* ====================================================
+
         RIPPLE EFFECT
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-ripple {
+
         position: absolute;
 
         width: 58px;
+
         height: 58px;
 
         border-radius: 50%;
@@ -894,45 +588,67 @@ const AICompanion = () => {
         pointer-events: none;
 
         animation:
+
             hsRipple 2.4s ease-out infinite;
+
         }
+
 
 
         /* First ripple */
+
         .hs-ripple-1 {
+
         animation-delay: 0s;
+
         }
+
 
 
         /* Second ripple */
+
         .hs-ripple-2 {
+
         animation-delay: 0.8s;
+
         }
+
 
 
         /* Third ripple */
+
         .hs-ripple-3 {
+
         animation-delay: 1.6s;
+
         }
+
 
 
         @keyframes hsRipple {
 
         0% {
+
             width: 58px;
+
             height: 58px;
 
             opacity: 0.75;
 
             transform: scale(1);
+
         }
 
         70% {
+
             opacity: 0.15;
+
         }
 
         100% {
+
             width: 105px;
+
             height: 105px;
 
             opacity: 0;
@@ -940,22 +656,31 @@ const AICompanion = () => {
             transform: scale(1);
 
         }
+
         }
 
 
+
         /* ====================================================
+
         ROBOT ICON
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-icon {
+
         position: relative;
+
         z-index: 2;
 
         width: 44px;
+
         height: 44px;
 
         display: flex;
+
         align-items: center;
+
         justify-content: center;
 
         border-radius: 50%;
@@ -967,41 +692,64 @@ const AICompanion = () => {
         font-size: 28px;
 
         animation:
+
             hsRobotFloat 2.7s ease-in-out infinite;
+
         }
+
 
 
         @keyframes hsRobotFloat {
 
         0%,
+
         100% {
+
             transform:
+
             translateY(0)
+
             rotate(0deg);
+
         }
 
         25% {
+
             transform:
+
             translateY(-2px)
+
             rotate(-3deg);
+
         }
 
         50% {
+
             transform:
+
             translateY(-4px)
+
             rotate(0deg);
+
         }
 
         75% {
+
             transform:
+
             translateY(-2px)
+
             rotate(3deg);
+
         }
+
         }
 
         /* ====================================================
+
            CHAT WINDOW
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-chat {
 
@@ -1018,9 +766,11 @@ const AICompanion = () => {
           height: 500px;
 
           max-width:
+
             calc(100vw - 28px);
 
           max-height:
+
             calc(100vh - 35px);
 
           display: flex;
@@ -1030,6 +780,7 @@ const AICompanion = () => {
           overflow: hidden;
 
           border:
+
             1px solid #E1E5EC;
 
           border-radius: 18px;
@@ -1037,13 +788,17 @@ const AICompanion = () => {
           background: #FFFFFF;
 
           box-shadow:
+
             0 25px 70px
+
             rgba(15,23,42,.25);
 
           animation:
+
             hsChatOpen .2s ease-out;
 
         }
+
 
 
         @keyframes hsChatOpen {
@@ -1053,7 +808,9 @@ const AICompanion = () => {
             opacity: 0;
 
             transform:
+
               translateY(10px)
+
               scale(.97);
 
           }
@@ -1063,7 +820,9 @@ const AICompanion = () => {
             opacity: 1;
 
             transform:
+
               translateY(0)
+
               scale(1);
 
           }
@@ -1071,9 +830,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            HEADER
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-header {
 
@@ -1092,6 +854,7 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-header-left {
 
           display: flex;
@@ -1101,6 +864,7 @@ const AICompanion = () => {
           gap: 10px;
 
         }
+
 
 
         .hs-companion-header-icon {
@@ -1120,15 +884,21 @@ const AICompanion = () => {
           color: #FFFFFF;
 
           background:
+
             linear-gradient(
+
               145deg,
+
               #5B4FE8,
+
               #4F46E5
+
             );
 
           font-size: 17px;
 
         }
+
 
 
         .hs-companion-title {
@@ -1140,6 +910,7 @@ const AICompanion = () => {
           font-weight: 800;
 
         }
+
 
 
         .hs-companion-status {
@@ -1159,6 +930,7 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-status span {
 
           width: 5px;
@@ -1172,6 +944,7 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-actions {
 
           display: flex;
@@ -1179,6 +952,7 @@ const AICompanion = () => {
           gap: 4px;
 
         }
+
 
 
         .hs-companion-actions button {
@@ -1200,6 +974,7 @@ const AICompanion = () => {
           color: #AAB2C0;
 
           background:
+
             rgba(255,255,255,.08);
 
           cursor: pointer;
@@ -1207,19 +982,24 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-actions button:hover {
 
           color: #FFFFFF;
 
           background:
+
             rgba(255,255,255,.15);
 
         }
 
 
+
         /* ====================================================
+
            BODY
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-body {
 
@@ -1234,11 +1014,13 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-body::-webkit-scrollbar {
 
           width: 4px;
 
         }
+
 
 
         .hs-companion-body::-webkit-scrollbar-thumb {
@@ -1250,9 +1032,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            WELCOME
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-welcome {
 
@@ -1263,6 +1048,7 @@ const AICompanion = () => {
           text-align: center;
 
           border:
+
             1px solid #E5E8EF;
 
           border-radius: 13px;
@@ -1270,6 +1056,7 @@ const AICompanion = () => {
           background: #FFFFFF;
 
         }
+
 
 
         .hs-welcome-icon {
@@ -1285,6 +1072,7 @@ const AICompanion = () => {
           justify-content: center;
 
           margin:
+
             0 auto 8px;
 
           border-radius: 11px;
@@ -1298,9 +1086,11 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-welcome h5 {
 
           margin:
+
             0 0 4px;
 
           color: #20293A;
@@ -1312,9 +1102,11 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-welcome p {
 
           margin:
+
             0 0 11px;
 
           color: #8A91A0;
@@ -1324,9 +1116,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            SUGGESTIONS
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-suggestions {
 
@@ -1341,12 +1136,15 @@ const AICompanion = () => {
         }
 
 
+
         .hs-suggestions button {
 
           padding:
+
             6px 8px;
 
           border:
+
             1px solid #E0E4F8;
 
           border-radius: 999px;
@@ -1362,9 +1160,11 @@ const AICompanion = () => {
           cursor: pointer;
 
           transition:
+
             background .15s ease;
 
         }
+
 
 
         .hs-suggestions button:hover {
@@ -1374,9 +1174,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            MESSAGE ROW
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-message-row {
 
@@ -1391,16 +1194,20 @@ const AICompanion = () => {
         }
 
 
-        .hs-message-row.user {
+
+        .hs-message-row\.user {
 
           justify-content: flex-end;
 
         }
 
 
+
         /* ====================================================
+
            MINI ROBOT
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-mini-avatar {
 
@@ -1427,15 +1234,19 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            MESSAGE
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-message {
 
           max-width: 79%;
 
           padding:
+
             8px 10px;
 
           border-radius: 11px;
@@ -1447,6 +1258,7 @@ const AICompanion = () => {
         }
 
 
+
         .ai-message {
 
           color: #374151;
@@ -1454,11 +1266,13 @@ const AICompanion = () => {
           background: #FFFFFF;
 
           border:
+
             1px solid #E3E6ED;
 
           border-bottom-left-radius: 3px;
 
         }
+
 
 
         .user-message {
@@ -1470,6 +1284,7 @@ const AICompanion = () => {
           border-bottom-right-radius: 3px;
 
         }
+
 
 
         .hs-message-time {
@@ -1487,9 +1302,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            TYPING
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-typing {
 
@@ -1500,9 +1318,11 @@ const AICompanion = () => {
           gap: 4px;
 
           padding:
+
             9px 11px;
 
           border:
+
             1px solid #E3E6ED;
 
           border-radius: 11px;
@@ -1512,6 +1332,7 @@ const AICompanion = () => {
           background: #FFFFFF;
 
         }
+
 
 
         .hs-typing span {
@@ -1525,9 +1346,11 @@ const AICompanion = () => {
           background: #9299A7;
 
           animation:
+
             hsTyping 1.1s infinite;
 
         }
+
 
 
         .hs-typing span:nth-child(2) {
@@ -1537,6 +1360,7 @@ const AICompanion = () => {
         }
 
 
+
         .hs-typing span:nth-child(3) {
 
           animation-delay: .3s;
@@ -1544,10 +1368,13 @@ const AICompanion = () => {
         }
 
 
+
         @keyframes hsTyping {
 
           0%,
+
           60%,
+
           100% {
 
             transform: translateY(0);
@@ -1567,9 +1394,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            INPUT
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-input {
 
@@ -1582,11 +1412,13 @@ const AICompanion = () => {
           padding: 9px;
 
           border-top:
+
             1px solid #E7E9EE;
 
           background: #FFFFFF;
 
         }
+
 
 
         .hs-companion-input textarea {
@@ -1600,9 +1432,11 @@ const AICompanion = () => {
           resize: none;
 
           padding:
+
             9px 10px;
 
           border:
+
             1px solid #DDE1E8;
 
           border-radius: 9px;
@@ -1620,6 +1454,7 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-input textarea:focus {
 
           border-color: #9EA5F8;
@@ -1627,10 +1462,13 @@ const AICompanion = () => {
           background: #FFFFFF;
 
           box-shadow:
+
             0 0 0 3px
+
             rgba(79,70,229,.06);
 
         }
+
 
 
         .hs-companion-input button {
@@ -1660,11 +1498,13 @@ const AICompanion = () => {
         }
 
 
+
         .hs-companion-input button:hover:not(:disabled) {
 
           background: #4338CA;
 
         }
+
 
 
         .hs-companion-input button:disabled {
@@ -1676,9 +1516,12 @@ const AICompanion = () => {
         }
 
 
+
         /* ====================================================
+
            FOOTER
-        ==================================================== */
+
+        \==================================================== */
 
         .hs-companion-footer {
 
@@ -1693,6 +1536,7 @@ const AICompanion = () => {
           padding: 5px;
 
           border-top:
+
             1px solid #F0F1F4;
 
           color: #9AA1AE;
@@ -1704,69 +1548,141 @@ const AICompanion = () => {
         }
 
 
-        /* ====================================================
-           MOBILE
-        ==================================================== */
 
-       
+        /* ====================================================
+
+           MOBILE
+
+        \==================================================== */
+
+
 
         @media (max-width: 575px) {
 
         .hs-companion-button {
+
             right: 15px;
+
             bottom: 15px;
 
             width: 52px;
+
             height: 52px;
+
         }
 
         .hs-companion-icon {
+
             width: 40px;
+
             height: 40px;
+
             font-size: 18px;
+
         }
 
         .hs-ripple {
+
             width: 52px;
+
             height: 52px;
+
         }
 
         @keyframes hsRipple {
 
             0% {
+
             width: 52px;
+
             height: 52px;
+
             opacity: 0.75;
+
             }
 
             70% {
+
             opacity: 0.15;
+
             }
 
             100% {
+
             width: 92px;
+
             height: 92px;
+
             opacity: 0;
+
             }
+
         }
 
         .hs-companion-chat {
+
             right: 10px;
+
             bottom: 10px;
+
             width: calc(100vw - 20px);
+
             height: calc(100vh - 20px);
+
             max-height: none;
+
             border-radius: 16px;
-        }
+
         }
 
+        }
+
+
+        /* Navigation actions — same visual language as the original UI */
+        .hs-message-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          margin-top: 9px;
+          padding-top: 7px;
+          border-top: 1px solid #EEF0F5;
+        }
+
+        .hs-message-actions button {
+          width: 100%;
+          min-height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 6px 9px;
+          border: 1px solid #E1E4F2;
+          border-radius: 8px;
+          color: #4F46E5;
+          background: #F8F8FF;
+          font-size: 9px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background .18s ease, border-color .18s ease;
+        }
+
+        .hs-message-actions button:hover {
+          background: #F0EFFF;
+          border-color: #CFCBF9;
+        }
+
+        .hs-message-actions button span {
+          flex: 1;
+          text-align: left;
+        }
+
+        .hs-message-actions button svg {
+          flex-shrink: 0;
+          font-size: 8px;
+        }
       `}</style>
-
     </>
-
   );
-
 };
-
 
 export default AICompanion;
