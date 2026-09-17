@@ -56,6 +56,7 @@ import SuperAdminInquiryDetails from './pages/super-admin/InquiryDetails';
 import SuperAdminAtsAnalysis from './pages/super-admin/SuperAdminAtsAnalysis';
 import SuperAdminAtsResumeScans from './pages/super-admin/SuperAdminAtsResumeScans';
 import AssignRole from './pages/super-admin/AssignRole';
+import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 
 // Admin Pages & Guard
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -82,6 +83,7 @@ function App() {
         }
       >
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
+        <Route path="/super-admin/profile" element={<SuperAdminProfile />} />
         <Route path="/super-admin/assign-role" element={<AssignRole />} />
         <Route path="/super-admin/students" element={<SuperAdminStudents />} />
         <Route path="/super-admin/registrations" element={<SuperAdminRegistrations />} />

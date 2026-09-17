@@ -32,7 +32,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: FaChartLine, route: '/super-admin/dashboard' },
-    { id: 'assign-role', label: 'Assign Role', icon: FaUserShield, route: '/super-admin/assign-role', badge: 'Assign' },
+   
     { id: 'students', label: 'Students Records', icon: FaUserGraduate, route: '/super-admin/students', badge: 'Live' },
     { id: 'registrations', label: 'Registration Records', icon: FaUserPlus, route: '/super-admin/registrations', badge: 'Records' },
     { id: 'ats-analysis', label: 'ATS Analysis History', icon: FaChartLine, route: '/super-admin/ats-resume-scans', badge: 'History' },
@@ -41,6 +41,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'mock-interviews', label: 'Mock Interviews', icon: FaBrain, route: '/super-admin/mock-interviews', badge: 'AI' },
     { id: 'certificates', label: 'Certificates', icon: FaAward, route: '/super-admin/certificates', badge: 'Verify' },
     { id: 'inquiry', label: 'Inquiry Details', icon: FaClipboardList, route: '/super-admin/inquiry-details', badge: 'details' },
+     { id: 'assign-role', label: 'Assign Role', icon: FaUserShield, route: '/super-admin/assign-role', badge: 'Assign' },
     { id: 'logout', label: 'Logout', icon: FaSignOutAlt, isLogout: true }
   ];
 

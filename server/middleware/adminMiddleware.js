@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const SuperAdmin = require('../models/SuperAdmin');
 
 /**
  * Super Admin Auth Middleware
@@ -17,10 +18,7 @@ const protectSuperAdmin = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure');
 
-      let user = await User.findById(decoded.id).select('-password');
-      if (!user) {
-        user = await Role.findById(decoded.id).select('-password');
-      }
+      const user = await SuperAdmin.findById(decoded.id).select('-password');
 
       if (!user) {
         return res.status(401).json({ success: false, message: 'Admin account not found' });
@@ -66,10 +64,8 @@ const protectAdmin = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure');
 
-      let user = await User.findById(decoded.id).select('-password');
-      if (!user) {
-        user = await Role.findById(decoded.id).select('-password');
-      }
+      let user = await SuperAdmin.findById(decoded.id).select('-password');
+      if (!user) user = await Role.findOne({ _id: decoded.id, role: { $in: ['admin', 'ADMIN'] } }).select('-password');
 
       if (!user) {
         return res.status(401).json({ success: false, message: 'Admin account not found' });

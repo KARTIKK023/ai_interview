@@ -407,8 +407,51 @@ const getProfileProgress = async (req, res, next) => {
 // @access  Private
 const updateProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).select('+password');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const requestedEmail = req.body.email?.trim().toLowerCase();
+    const newPassword = req.body.newPassword || req.body.password;
+    const currentPassword = req.body.currentPassword;
+    const isChangingEmail = Boolean(requestedEmail && requestedEmail !== user.email);
+    const isChangingPassword = Boolean(newPassword);
+
+    if (isChangingEmail || isChangingPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ success: false, message: 'Current password is required for credential changes' });
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+      }
+    }
+
+    if (requestedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(requestedEmail)) {
+        return res.status(400).json({ success: false, message: 'Invalid email' });
+      }
+
+      if (isChangingEmail) {
+        const emailExists = await User.findOne({ email: requestedEmail, _id: { $ne: user._id } });
+        if (emailExists) {
+          return res.status(409).json({ success: false, message: 'Email already registered' });
+        }
+        user.email = requestedEmail;
+      }
+    }
+
+    if (isChangingPassword) {
+      const confirmPassword = req.body.confirmPassword;
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+      }
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ success: false, message: 'New passwords do not match' });
+      }
+      user.password = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+    }
 
     // Extract education inputs safely from root or profile
     const inputEdu = req.body.education || req.body.profile?.education || {};

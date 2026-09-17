@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const SuperAdmin = require('../models/SuperAdmin');
 const Interview = require('../models/Interview');
 const Resume = require('../models/Resume');
 const JobRole = require('../models/JobRole');
@@ -64,28 +65,25 @@ const adminLogin = async (req, res, next) => {
     const usernameMatch = caseInsensitiveExactMatch(loginIdentifier);
     const nameMatch = caseInsensitiveExactMatch(loginIdentifier);
 
-    // 1. First check User collection for Super Admin
-    let user = await User.findOne({
+    // 1. Super Admin accounts live only in the superadmins collection.
+    let user = await SuperAdmin.findOne({
       $or: [
         { email: normalizedIdentifier },
         { username: usernameMatch },
         { name: nameMatch }
-      ]
+      ],
+      role: 'SUPER_ADMIN'
     }).select('+password');
 
-    let isFromRoleCollection = false;
-
-    // 2. If not found in User collection, search Role model ('roles' collection)
+    // 2. Regular admin accounts live only in the roles collection.
     if (!user) {
       user = await Role.findOne({
         $or: [
           { email: normalizedIdentifier },
           { username: usernameMatch }
-        ]
+        ],
+        role: { $in: ['admin', 'ADMIN'] }
       }).select('+password');
-      if (user) {
-        isFromRoleCollection = true;
-      }
     }
 
     if (!user) {
@@ -137,7 +135,8 @@ const adminLogin = async (req, res, next) => {
       email: user.email,
       role: user.role,
       permissions: user.permissions || [],
-      isActive: user.isActive
+      isActive: user.isActive,
+      profilePhoto: user.profilePhoto || ''
     };
 
     return res.json({
@@ -173,7 +172,10 @@ const getAdminMe = async (req, res, next) => {
       email: req.user.email || '',
       role: req.user.role || 'ADMIN',
       permissions: Array.isArray(req.user.permissions) ? req.user.permissions : [],
-      isActive: req.user.isActive !== false
+      isActive: req.user.isActive !== false,
+      serviceStatus: req.user.serviceStatus || (req.user.isActive !== false ? 'Active' : 'Inactive'),
+      createdAt: req.user.createdAt,
+      lastLogin: req.user.lastLogin
     };
 
     return res.json({
@@ -185,6 +187,95 @@ const getAdminMe = async (req, res, next) => {
     return res.status(500).json({ success: false, message: 'Server error loading admin session' });
   }
 };
+
+const getSuperAdminProfile = async (req, res, next) => {
+  try {
+    const superAdmin = await SuperAdmin.findById(req.user._id).select('-password');
+    if (!superAdmin) return res.status(404).json({ success: false, message: 'Super Admin account not found' });
+
+    return res.json({ success: true, user: toSuperAdminResponse(superAdmin) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateSuperAdminProfile = async (req, res, next) => {
+  try {
+    const superAdmin = await SuperAdmin.findById(req.user._id).select('+password');
+    if (!superAdmin) return res.status(404).json({ success: false, message: 'Super Admin account not found' });
+
+    const currentPassword = req.body.currentPassword;
+    const requestedEmail = req.body.email?.trim().toLowerCase();
+    const newPassword = req.body.newPassword || req.body.password;
+    const emailChanged = Boolean(requestedEmail && requestedEmail !== superAdmin.email);
+    const passwordChanged = Boolean(newPassword);
+
+    if (emailChanged || passwordChanged) {
+      if (!currentPassword || !(await bcrypt.compare(currentPassword, superAdmin.password))) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+      }
+    }
+
+    if (requestedEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(requestedEmail)) {
+        return res.status(400).json({ success: false, message: 'Invalid email' });
+      }
+      if (emailChanged) {
+        const [duplicateUser, duplicateRole, duplicateSuperAdmin] = await Promise.all([
+          User.findOne({ email: requestedEmail }),
+          Role.findOne({ email: requestedEmail }),
+          SuperAdmin.findOne({ email: requestedEmail, _id: { $ne: superAdmin._id } })
+        ]);
+        if (duplicateUser || duplicateRole || duplicateSuperAdmin) {
+          return res.status(409).json({ success: false, message: 'Email already registered' });
+        }
+        superAdmin.email = requestedEmail;
+      }
+    }
+
+    if (req.body.fullName?.trim()) {
+      superAdmin.fullName = req.body.fullName.trim();
+      superAdmin.name = req.body.fullName.trim();
+    } else if (req.body.name?.trim()) {
+      superAdmin.name = req.body.name.trim();
+      superAdmin.fullName = req.body.name.trim();
+    }
+
+    if (passwordChanged) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
+      }
+      if (newPassword !== req.body.confirmPassword) {
+        return res.status(400).json({ success: false, message: 'New passwords do not match' });
+      }
+      superAdmin.password = await bcrypt.hash(newPassword, await bcrypt.genSalt(10));
+    }
+
+    await superAdmin.save();
+    return res.json({ success: true, user: toSuperAdminResponse(superAdmin) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const toSuperAdminResponse = (superAdmin) => ({
+  id: superAdmin._id,
+  _id: superAdmin._id,
+  adminId: superAdmin.adminId,
+  username: superAdmin.username || superAdmin.fullName || superAdmin.name || 'Super Admin',
+  fullName: superAdmin.fullName || superAdmin.name || '',
+  name: superAdmin.fullName || superAdmin.name || '',
+  email: superAdmin.email || '',
+  role: 'SUPER_ADMIN',
+  permissions: Array.isArray(superAdmin.permissions) ? superAdmin.permissions : [],
+  isActive: superAdmin.isActive !== false,
+  serviceStatus: superAdmin.serviceStatus || 'Active',
+  profilePhoto: superAdmin.profilePhoto || '',
+  createdAt: superAdmin.createdAt,
+  updatedAt: superAdmin.updatedAt,
+  lastLogin: superAdmin.lastLogin
+});
 
 /**
  * @desc    Get Super Admin Dashboard Real Production Analytics
@@ -1512,6 +1603,8 @@ const deleteAdminUser = async (req, res, next) => {
 module.exports = {
   adminLogin,
   getAdminMe,
+  getSuperAdminProfile,
+  updateSuperAdminProfile,
   getAdminDashboard,
   getAdminUsers,
   getAdminOrganizations,
