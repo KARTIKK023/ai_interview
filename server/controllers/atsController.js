@@ -220,9 +220,9 @@ const createResumePdf = (resume, targetJob) =>
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    // ---------------------------------------------------------
-    // Page dimensions
-    // ---------------------------------------------------------
+    // =========================================================
+    // PAGE DIMENSIONS
+    // =========================================================
 
     const PAGE_WIDTH = doc.page.width;
     const PAGE_HEIGHT = doc.page.height;
@@ -235,9 +235,9 @@ const createResumePdf = (resume, targetJob) =>
     const CONTENT_WIDTH = PAGE_WIDTH - LEFT - RIGHT;
     const CONTENT_BOTTOM = PAGE_HEIGHT - BOTTOM;
 
-    // ---------------------------------------------------------
-    // Colors
-    // ---------------------------------------------------------
+    // =========================================================
+    // COLORS
+    // =========================================================
 
     const COLORS = {
       black: '#111111',
@@ -248,9 +248,22 @@ const createResumePdf = (resume, targetJob) =>
       line: '#BDBDBD'
     };
 
-    // ---------------------------------------------------------
-    // Basic helpers
-    // ---------------------------------------------------------
+    // =========================================================
+    // CURSOR / STATE HELPERS
+    // =========================================================
+
+    /*
+     * PDFKit maintains both x and y cursor positions.
+     *
+     * Many of our helpers draw content at different x positions
+     * (especially two-column and three-column layouts).
+     *
+     * Always restore x to LEFT after a helper finishes.
+     */
+
+    const resetCursor = () => {
+      doc.x = LEFT;
+    };
 
     const safeText = (value) => {
       if (value === null || value === undefined) return '';
@@ -266,13 +279,12 @@ const createResumePdf = (resume, targetJob) =>
         size: 'A4',
         margin: 48
       });
+
+      resetCursor();
     };
 
     /*
-     * Content-aware page break.
-     *
-     * This does not blindly add pages after every section.
-     * It checks how much vertical space is left first.
+     * Check whether a certain amount of vertical space is available.
      */
     const ensureSpace = (requiredHeight = 20) => {
       if (availableHeight() < requiredHeight) {
@@ -283,9 +295,9 @@ const createResumePdf = (resume, targetJob) =>
       return false;
     };
 
-    // ---------------------------------------------------------
-    // Text height helper
-    // ---------------------------------------------------------
+    // =========================================================
+    // TEXT MEASUREMENT
+    // =========================================================
 
     const measureText = (text, options = {}) => {
       if (!hasText(text)) return 0;
@@ -300,22 +312,29 @@ const createResumePdf = (resume, targetJob) =>
       });
     };
 
-    // ---------------------------------------------------------
-    // Section heading
-    // ---------------------------------------------------------
+    // =========================================================
+    // SECTION HEADING
+    // =========================================================
 
     const drawSectionHeading = (title) => {
       if (!hasText(title)) return;
 
-      // Keep the heading with at least some content below it.
+      /*
+       * Always make sure the heading begins from the left margin.
+       */
+      resetCursor();
+
       ensureSpace(42);
+
+      const startY = doc.y;
 
       doc
         .font('Helvetica-Bold')
         .fontSize(11)
         .fillColor(COLORS.black)
-        .text(title.toUpperCase(), {
-          width: CONTENT_WIDTH
+        .text(title.toUpperCase(), LEFT, startY, {
+          width: CONTENT_WIDTH,
+          lineGap: 0
         });
 
       const lineY = doc.y + 4;
@@ -328,11 +347,13 @@ const createResumePdf = (resume, targetJob) =>
         .stroke();
 
       doc.y = lineY + 9;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Normal body text
-    // ---------------------------------------------------------
+    // =========================================================
+    // NORMAL BODY TEXT
+    // =========================================================
 
     const drawBodyText = (
       text,
@@ -347,20 +368,24 @@ const createResumePdf = (resume, targetJob) =>
     ) => {
       if (!hasText(text)) return;
 
+      resetCursor();
+
       doc
         .font(font)
         .fontSize(fontSize)
         .fillColor(color)
-        .text(text, {
+        .text(text, LEFT, doc.y, {
           width,
           lineGap,
           align
         });
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Bullet
-    // ---------------------------------------------------------
+    // =========================================================
+    // BULLET
+    // =========================================================
 
     const drawBullet = (text) => {
       if (!hasText(text)) return;
@@ -381,9 +406,8 @@ const createResumePdf = (resume, targetJob) =>
       });
 
       /*
-       * If a bullet is very close to the bottom, move it to the
-       * next page. PDFKit can split text itself, but this keeps
-       * normal bullets visually clean.
+       * If the bullet is very close to the bottom,
+       * move it to the next page.
        */
       if (bulletHeight <= availableHeight() && availableHeight() < 24) {
         addPage();
@@ -405,11 +429,13 @@ const createResumePdf = (resume, targetJob) =>
       });
 
       doc.y += 2;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Two-column row
-    // ---------------------------------------------------------
+    // =========================================================
+    // TWO COLUMN ROW
+    // =========================================================
 
     const drawTwoColumnRow = (
       leftText,
@@ -432,11 +458,9 @@ const createResumePdf = (resume, targetJob) =>
 
       const leftWidth = CONTENT_WIDTH - rightWidth - gap;
 
-      doc
-        .font(leftFont)
-        .fontSize(leftFontSize)
-        .fillColor(color);
-
+      /*
+       * Measure both sides before drawing.
+       */
       const leftHeight = hasText(leftText)
         ? measureText(leftText, {
             width: leftWidth,
@@ -445,11 +469,6 @@ const createResumePdf = (resume, targetJob) =>
             lineGap: 1
           })
         : 0;
-
-      doc
-        .font(rightFont)
-        .fontSize(rightFontSize)
-        .fillColor(color);
 
       const rightHeight = hasText(rightText)
         ? measureText(rightText, {
@@ -462,10 +481,16 @@ const createResumePdf = (resume, targetJob) =>
 
       const rowHeight = Math.max(leftHeight, rightHeight);
 
+      /*
+       * Make sure the entire row can start here.
+       */
       ensureSpace(rowHeight + 4);
 
       const startY = doc.y;
 
+      /*
+       * LEFT SIDE
+       */
       if (hasText(leftText)) {
         doc
           .font(leftFont)
@@ -477,24 +502,39 @@ const createResumePdf = (resume, targetJob) =>
           });
       }
 
+      /*
+       * RIGHT SIDE
+       */
       if (hasText(rightText)) {
         doc
           .font(rightFont)
           .fontSize(rightFontSize)
           .fillColor(color)
-          .text(rightText, LEFT + leftWidth + gap, startY, {
-            width: rightWidth,
-            align: 'right',
-            lineGap: 1
-          });
+          .text(
+            rightText,
+            LEFT + leftWidth + gap,
+            startY,
+            {
+              width: rightWidth,
+              align: 'right',
+              lineGap: 1
+            }
+          );
       }
 
+      /*
+       * Manually control the vertical cursor.
+       *
+       * Most importantly:
+       * restore x to LEFT.
+       */
       doc.y = startY + rowHeight;
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Estimate an experience/project entry height
-    // ---------------------------------------------------------
+    // =========================================================
+    // ENTRY HEIGHT ESTIMATION
+    // =========================================================
 
     const estimateEntryHeight = ({
       title,
@@ -513,8 +553,9 @@ const createResumePdf = (resume, targetJob) =>
 
       const leftWidth = CONTENT_WIDTH - rightWidth - 12;
 
-      // Title
-      doc.font('Helvetica-Bold').fontSize(10);
+      // -------------------------------------------------------
+      // TITLE
+      // -------------------------------------------------------
 
       const titleHeight = measureText(title, {
         width: leftWidth,
@@ -522,8 +563,6 @@ const createResumePdf = (resume, targetJob) =>
         fontSize: 10,
         lineGap: 1
       });
-
-      doc.font('Helvetica').fontSize(9);
 
       const rightHeight = measureText(rightText, {
         width: rightWidth,
@@ -534,10 +573,11 @@ const createResumePdf = (resume, targetJob) =>
 
       height += Math.max(titleHeight, rightHeight);
 
-      // Company / location
-      if (hasText(company) || hasText(rightSecondary)) {
-        doc.font('Helvetica').fontSize(9);
+      // -------------------------------------------------------
+      // COMPANY / LOCATION
+      // -------------------------------------------------------
 
+      if (hasText(company) || hasText(rightSecondary)) {
         const companyHeight = measureText(company, {
           width: leftWidth,
           font: 'Helvetica',
@@ -555,10 +595,11 @@ const createResumePdf = (resume, targetJob) =>
         height += Math.max(companyHeight, secondaryHeight);
       }
 
-      // Description
-      if (hasText(description)) {
-        doc.font('Helvetica').fontSize(9.3);
+      // -------------------------------------------------------
+      // DESCRIPTION
+      // -------------------------------------------------------
 
+      if (hasText(description)) {
         height += measureText(description, {
           width: CONTENT_WIDTH,
           font: 'Helvetica',
@@ -569,11 +610,12 @@ const createResumePdf = (resume, targetJob) =>
         height += 2;
       }
 
-      // Bullets
+      // -------------------------------------------------------
+      // BULLETS
+      // -------------------------------------------------------
+
       bullets.forEach((bullet) => {
         if (!hasText(bullet)) return;
-
-        doc.font('Helvetica').fontSize(9.3);
 
         height += measureText(bullet, {
           width: CONTENT_WIDTH - 12,
@@ -588,9 +630,9 @@ const createResumePdf = (resume, targetJob) =>
       return height + 7;
     };
 
-    // ---------------------------------------------------------
-    // Experience
-    // ---------------------------------------------------------
+    // =========================================================
+    // EXPERIENCE
+    // =========================================================
 
     const drawExperienceItem = (item = {}) => {
       const jobTitle = safeText(item.jobTitle);
@@ -610,15 +652,16 @@ const createResumePdf = (resume, targetJob) =>
         bullets
       });
 
-      /*
-       * If the complete entry comfortably fits on a page but does
-       * not fit in the remaining area, start it on the next page.
-       *
-       * If the entry itself is larger than a full page, we allow
-       * PDFKit to naturally split it.
-       */
       const usablePageHeight = PAGE_HEIGHT - TOP - BOTTOM;
 
+      /*
+       * Only move the COMPLETE entry if:
+       *
+       * 1. It can fit on a normal page.
+       * 2. It doesn't fit in the current remaining space.
+       *
+       * Large entries are allowed to naturally flow across pages.
+       */
       if (
         estimatedHeight <= usablePageHeight - 20 &&
         estimatedHeight > availableHeight()
@@ -644,14 +687,18 @@ const createResumePdf = (resume, targetJob) =>
         });
       }
 
-      bullets.forEach((bullet) => drawBullet(bullet));
+      bullets.forEach((bullet) => {
+        drawBullet(bullet);
+      });
 
       doc.y += 6;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Project
-    // ---------------------------------------------------------
+    // =========================================================
+    // PROJECT
+    // =========================================================
 
     const drawProjectItem = (item = {}) => {
       const name = safeText(item.name || item.title);
@@ -697,14 +744,18 @@ const createResumePdf = (resume, targetJob) =>
         doc.y += 2;
       }
 
-      bullets.forEach((bullet) => drawBullet(bullet));
+      bullets.forEach((bullet) => {
+        drawBullet(bullet);
+      });
 
       doc.y += 5;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Education
-    // ---------------------------------------------------------
+    // =========================================================
+    // EDUCATION
+    // =========================================================
 
     const drawEducationItem = (item = {}) => {
       const degree = safeText(item.degree);
@@ -741,6 +792,7 @@ const createResumePdf = (resume, targetJob) =>
 
       if (hasText(details)) {
         drawBodyText(details, {
+          font: 'Helvetica',
           fontSize: 9,
           color: COLORS.muted,
           lineGap: 1.5
@@ -748,11 +800,13 @@ const createResumePdf = (resume, targetJob) =>
       }
 
       doc.y += 5;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Certification
-    // ---------------------------------------------------------
+    // =========================================================
+    // CERTIFICATION
+    // =========================================================
 
     const drawCertificationItem = (item = {}) => {
       const name = safeText(item.name);
@@ -786,18 +840,22 @@ const createResumePdf = (resume, targetJob) =>
       });
 
       doc.y += 4;
+
+      resetCursor();
     };
 
-    // ---------------------------------------------------------
-    // Skills
-    // ---------------------------------------------------------
+    // =========================================================
+    // SKILLS
+    // =========================================================
 
     const getAllSkills = () => {
       const skills = [];
 
       if (Array.isArray(resume.skills)) {
         resume.skills.forEach((skill) => {
-          if (hasText(skill)) skills.push(safeText(skill));
+          if (hasText(skill)) {
+            skills.push(safeText(skill));
+          }
         });
       }
 
@@ -807,7 +865,9 @@ const createResumePdf = (resume, targetJob) =>
 
           if (Array.isArray(category.skills)) {
             category.skills.forEach((skill) => {
-              if (hasText(skill)) skills.push(safeText(skill));
+              if (hasText(skill)) {
+                skills.push(safeText(skill));
+              }
             });
           }
         });
@@ -828,10 +888,16 @@ const createResumePdf = (resume, targetJob) =>
           category.skills.length
       );
 
+      // =====================================================
+      // CATEGORIZED SKILLS
+      // =====================================================
+
       if (hasCategories) {
+        const columnCount = 3;
         const columnGap = 16;
+
         const columnWidth =
-          (CONTENT_WIDTH - columnGap * 2) / 3;
+          (CONTENT_WIDTH - columnGap * 2) / columnCount;
 
         const rows = [];
 
@@ -839,7 +905,9 @@ const createResumePdf = (resume, targetJob) =>
           const categoryName = safeText(category.category);
 
           const categorySkills = Array.isArray(category.skills)
-            ? category.skills.filter(hasText).map(safeText)
+            ? category.skills
+                .filter(hasText)
+                .map(safeText)
             : [];
 
           if (!categoryName || !categorySkills.length) return;
@@ -850,27 +918,31 @@ const createResumePdf = (resume, targetJob) =>
           });
         });
 
-        if (!rows.length) return;
+        if (!rows.length) {
+          resetCursor();
+          return;
+        }
 
-        // Arrange categories into 3 columns.
+        /*
+         * Distribute categories between the three columns.
+         */
         const columns = [[], [], []];
 
         rows.forEach((row, index) => {
-          columns[index % 3].push(row);
+          columns[index % columnCount].push(row);
         });
 
+        /*
+         * Calculate the height required by each column.
+         */
         const columnHeights = columns.map((column) => {
           return column.reduce((total, row) => {
-            doc.font('Helvetica-Bold').fontSize(8.7);
-
             const titleHeight = measureText(row.title, {
               width: columnWidth,
               font: 'Helvetica-Bold',
               fontSize: 8.7,
               lineGap: 1
             });
-
-            doc.font('Helvetica').fontSize(8.7);
 
             const skillsHeight = measureText(
               row.skills.join(', '),
@@ -896,15 +968,24 @@ const createResumePdf = (resume, targetJob) =>
           let columnY = startY;
 
           column.forEach((row) => {
+            const columnX =
+              LEFT + columnIndex * (columnWidth + columnGap);
+
+            /*
+             * Category name
+             */
             doc
               .font('Helvetica-Bold')
               .fontSize(8.7)
               .fillColor(COLORS.dark)
-              .text(row.title, LEFT + columnIndex * (columnWidth + columnGap), columnY, {
+              .text(row.title, columnX, columnY, {
                 width: columnWidth,
                 lineGap: 1
               });
 
+            /*
+             * Skills
+             */
             columnY = doc.y + 1;
 
             doc
@@ -913,7 +994,7 @@ const createResumePdf = (resume, targetJob) =>
               .fillColor(COLORS.text)
               .text(
                 row.skills.join(', '),
-                LEFT + columnIndex * (columnWidth + columnGap),
+                columnX,
                 columnY,
                 {
                   width: columnWidth,
@@ -927,13 +1008,25 @@ const createResumePdf = (resume, targetJob) =>
 
         doc.y = startY + requiredHeight;
 
+        /*
+         * VERY IMPORTANT:
+         * three-column rendering must not leak its x position.
+         */
+        resetCursor();
+
         return;
       }
 
-      // Fallback for a flat skills array.
+      // =====================================================
+      // FLAT SKILLS
+      // =====================================================
+
       const skills = getAllSkills();
 
-      if (!skills.length) return;
+      if (!skills.length) {
+        resetCursor();
+        return;
+      }
 
       const columnCount = 3;
       const columnGap = 16;
@@ -949,8 +1042,6 @@ const createResumePdf = (resume, targetJob) =>
 
       const columnHeights = columns.map((column) => {
         return column.reduce((total, skill) => {
-          doc.font('Helvetica').fontSize(8.8);
-
           return (
             total +
             measureText(`• ${skill}`, {
@@ -974,13 +1065,16 @@ const createResumePdf = (resume, targetJob) =>
         let columnY = startY;
 
         column.forEach((skill) => {
+          const columnX =
+            LEFT + columnIndex * (columnWidth + columnGap);
+
           doc
             .font('Helvetica')
             .fontSize(8.8)
             .fillColor(COLORS.text)
             .text(
               `• ${skill}`,
-              LEFT + columnIndex * (columnWidth + columnGap),
+              columnX,
               columnY,
               {
                 width: columnWidth,
@@ -993,6 +1087,8 @@ const createResumePdf = (resume, targetJob) =>
       });
 
       doc.y = startY + requiredHeight;
+
+      resetCursor();
     };
 
     // =========================================================
@@ -1013,25 +1109,42 @@ const createResumePdf = (resume, targetJob) =>
       contact.email,
       contact.phone,
       contact.location,
-      ...(Array.isArray(contact.links) ? contact.links : [])
+      ...(Array.isArray(contact.links)
+        ? contact.links
+        : [])
     ]
       .filter(hasText)
       .map(safeText);
 
-    const targetRole = safeText(targetJob?.target_job_role);
-    const targetCompany = safeText(targetJob?.target_company);
+    const targetRole = safeText(
+      targetJob?.target_job_role
+    );
 
-    // Name
+    const targetCompany = safeText(
+      targetJob?.target_company
+    );
+
+    // =========================================================
+    // NAME
+    // =========================================================
+
+    resetCursor();
+
     doc
       .font('Helvetica-Bold')
       .fontSize(21)
       .fillColor(COLORS.black)
-      .text(name, {
+      .text(name, LEFT, doc.y, {
         width: CONTENT_WIDTH,
         align: 'center'
       });
 
-    // Headline
+    resetCursor();
+
+    // =========================================================
+    // HEADLINE
+    // =========================================================
+
     if (headline && headline !== name) {
       doc.moveDown(0.15);
 
@@ -1039,13 +1152,18 @@ const createResumePdf = (resume, targetJob) =>
         .font('Helvetica')
         .fontSize(10.5)
         .fillColor(COLORS.muted)
-        .text(headline, {
+        .text(headline, LEFT, doc.y, {
           width: CONTENT_WIDTH,
           align: 'center'
         });
+
+      resetCursor();
     }
 
-    // Contact row
+    // =========================================================
+    // CONTACT ROW
+    // =========================================================
+
     if (contactItems.length) {
       doc.moveDown(0.2);
 
@@ -1053,14 +1171,24 @@ const createResumePdf = (resume, targetJob) =>
         .font('Helvetica')
         .fontSize(8.5)
         .fillColor(COLORS.muted)
-        .text(contactItems.join('  |  '), {
-          width: CONTENT_WIDTH,
-          align: 'center',
-          lineGap: 1
-        });
+        .text(
+          contactItems.join('  |  '),
+          LEFT,
+          doc.y,
+          {
+            width: CONTENT_WIDTH,
+            align: 'center',
+            lineGap: 1
+          }
+        );
+
+      resetCursor();
     }
 
-    // Target role
+    // =========================================================
+    // TARGET ROLE
+    // =========================================================
+
     if (targetRole) {
       doc.moveDown(0.2);
 
@@ -1075,10 +1203,17 @@ const createResumePdf = (resume, targetJob) =>
         .font('Helvetica')
         .fontSize(8.2)
         .fillColor(COLORS.light)
-        .text(tailoredFor, {
-          width: CONTENT_WIDTH,
-          align: 'center'
-        });
+        .text(
+          tailoredFor,
+          LEFT,
+          doc.y,
+          {
+            width: CONTENT_WIDTH,
+            align: 'center'
+          }
+        );
+
+      resetCursor();
     }
 
     doc.moveDown(0.6);
@@ -1097,6 +1232,7 @@ const createResumePdf = (resume, targetJob) =>
       });
 
       doc.y += 5;
+      resetCursor();
     }
 
     // =========================================================
@@ -1104,7 +1240,8 @@ const createResumePdf = (resume, targetJob) =>
     // =========================================================
 
     if (
-      (Array.isArray(resume.skills) && resume.skills.length) ||
+      (Array.isArray(resume.skills) &&
+        resume.skills.length) ||
       (Array.isArray(resume.skillCategories) &&
         resume.skillCategories.length)
     ) {
@@ -1113,6 +1250,7 @@ const createResumePdf = (resume, targetJob) =>
       drawSkills();
 
       doc.y += 6;
+      resetCursor();
     }
 
     // =========================================================
@@ -1128,6 +1266,8 @@ const createResumePdf = (resume, targetJob) =>
       resume.experience.forEach((item) => {
         drawExperienceItem(item);
       });
+
+      resetCursor();
     }
 
     // =========================================================
@@ -1143,6 +1283,8 @@ const createResumePdf = (resume, targetJob) =>
       resume.projects.forEach((item) => {
         drawProjectItem(item);
       });
+
+      resetCursor();
     }
 
     // =========================================================
@@ -1158,6 +1300,8 @@ const createResumePdf = (resume, targetJob) =>
       resume.education.forEach((item) => {
         drawEducationItem(item);
       });
+
+      resetCursor();
     }
 
     // =========================================================
@@ -1173,6 +1317,8 @@ const createResumePdf = (resume, targetJob) =>
       resume.certifications.forEach((item) => {
         drawCertificationItem(item);
       });
+
+      resetCursor();
     }
 
     // =========================================================
@@ -1200,12 +1346,16 @@ const createResumePdf = (resume, targetJob) =>
         });
 
         doc.y += 6;
+
+        resetCursor();
       });
     }
 
-    // ---------------------------------------------------------
-    // Finish PDF
-    // ---------------------------------------------------------
+    // =========================================================
+    // FINISH PDF
+    // =========================================================
+
+    resetCursor();
 
     doc.end();
   });
