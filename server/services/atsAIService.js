@@ -13,11 +13,34 @@ const groqModelName = process.env.ATS_GROQ_MODEL || process.env.GROQ_MODEL || 'l
 const trimResumeText = (text) => String(text || '').replace(/\s+/g, ' ').trim().slice(0, MAX_RESUME_TEXT);
 
 const cleanJson = (value) => {
-  const text = String(value || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  const start = Math.min(...[text.indexOf('{'), text.indexOf('[')].filter((index) => index >= 0));
-  const end = Math.max(text.lastIndexOf('}'), text.lastIndexOf(']'));
-  if (start === Infinity || end < start) throw new Error('ATS AI returned invalid JSON');
-  return JSON.parse(text.slice(start, end + 1));
+  if (value === null || value === undefined) {
+    throw new Error('ATS AI returned an empty response');
+  }
+
+  let text = String(value).trim();
+
+  if (!text) {
+    throw new Error('ATS AI returned an empty response');
+  }
+
+  // Remove markdown fences if they somehow appear.
+  text = text
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('\n========== INVALID ATS JSON ==========');
+    console.error(text);
+    console.error('======================================\n');
+
+    throw new Error(
+      `ATS AI returned invalid JSON: ${error.message}`
+    );
+  }
 };
 
 const getGeminiText = async (prompt) => {
@@ -29,18 +52,52 @@ const getGeminiText = async (prompt) => {
 };
 
 const getGroqText = async (prompt) => {
-  const apiKey = process.env.ATS_GROQ_API_KEY || process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error('ATS Groq API key is missing');
+  const apiKey =
+    process.env.ATS_GROQ_API_KEY ||
+    process.env.GROQ_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('ATS Groq API key is missing');
+  }
+
   const groq = new Groq({ apiKey });
+
   return generateWithRetry(async () => {
     const result = await groq.chat.completions.create({
       model: groqModelName,
-      temperature: 0.2,
-      max_tokens: 6000,
-      response_format: { type: 'json_object' },
-      messages: [{ role: 'user', content: prompt }]
+      temperature: 0.1,
+      max_tokens: 8192,
+
+      response_format: {
+        type: 'json_object'
+      },
+
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
     });
-    return result.choices?.[0]?.message?.content || '';
+
+    const choice = result.choices?.[0];
+
+    console.log('========== GROQ ATS RESPONSE ==========');
+    console.log('Finish reason:', choice?.finish_reason);
+    console.log('Usage:', result.usage);
+    console.log('========================================');
+
+    if (!choice?.message?.content) {
+      throw new Error('Groq returned an empty response');
+    }
+
+    if (choice.finish_reason === 'length') {
+      throw new Error(
+        'Groq stopped because the response reached the token limit.'
+      );
+    }
+
+    return choice.message.content;
   });
 };
 
