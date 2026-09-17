@@ -3,6 +3,8 @@ const router = express.Router();
 const {
   adminLogin,
   getAdminMe,
+  getSuperAdminProfile,
+  updateSuperAdminProfile,
   getAdminDashboard,
   getAdminUsers,
   getAdminOrganizations,
@@ -35,6 +37,8 @@ const { downloadOptimizedResume } = require('../controllers/atsController');
 // Super Admin / Admin Auth Endpoints
 router.post('/login', adminLogin);
 router.get('/me', protectAdmin, getAdminMe);
+router.get('/profile', protectSuperAdmin, getSuperAdminProfile);
+router.put('/profile', protectSuperAdmin, updateSuperAdminProfile);
 
 // Assign Role Management Endpoints (Strictly Super Admin)
 router.post('/assign-role', protectSuperAdmin, assignAdmin);

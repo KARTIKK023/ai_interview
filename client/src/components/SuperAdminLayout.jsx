@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import SuperAdminSidebar from '../pages/super-admin/SuperAdminSidebar';
+import API from '../services/api';
 import {
   FaShieldAlt,
   FaSearch,
@@ -11,6 +12,7 @@ import {
   FaMoon,
   FaSync,
   FaUserShield,
+  FaUser,
   FaLock,
   FaSignOutAlt,
   FaServer
@@ -28,6 +30,24 @@ const SuperAdminLayout = () => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [themeMode, setThemeMode] = useState('light');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('superAdminUser') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    API.get('/admin/me')
+      .then((res) => {
+        if (res.data?.user) {
+          setAdminUser(res.data.user);
+          localStorage.setItem('superAdminUser', JSON.stringify(res.data.user));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [notificationsList, setNotificationsList] = useState([
     { id: 1, text: 'Real-time production database connected to Super Admin portal.', time: '1 min ago', read: false }
@@ -68,6 +88,15 @@ const SuperAdminLayout = () => {
   };
 
   const isDarkMode = themeMode === 'dark';
+  const displayName = adminUser.fullName || adminUser.name || '';
+  const avatarInitials = displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
 
   return (
     <div
@@ -131,13 +160,13 @@ const SuperAdminLayout = () => {
                 className="rounded-circle text-white fw-bold d-flex align-items-center justify-content-center shadow-sm"
                 style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)', fontSize: '0.775rem' }}
               >
-                SA
+                {avatarInitials}
               </div>
               <div className="d-none d-sm-block text-start lh-1">
-                <span className="d-block fw-bold text-white" style={{ fontSize: '0.8rem' }}>Super Admin</span>
-                <span className="text-white-50" style={{ fontSize: '0.65rem' }}>superadmin@hiresmart.ai</span>
+                <span className="d-block fw-bold text-white" style={{ fontSize: '0.8rem' }}>{displayName}</span>
+                <span className="text-white" style={{ fontSize: '0.65rem' }}>{adminUser.email || ''}</span>
               </div>
-              <FaChevronDown size={10} className="text-white-50 ms-1 d-none d-sm-inline" />
+              <FaChevronDown size={10} className="text-white ms-1 d-none d-sm-inline" />
             </div>
 
             {showProfileMenu && (
@@ -151,15 +180,15 @@ const SuperAdminLayout = () => {
                 }}
               >
                 <div className="p-2 border-bottom border-secondary border-opacity-30">
-                  <span className="d-block fw-bold text-white small">Super Admin</span>
-                  <span className="text-white-50" style={{ fontSize: '0.68rem' }}>superadmin@hiresmart.ai</span>
+                  <span className="d-block fw-bold text-white small">{displayName}</span>
+                  <span className="text-white" style={{ fontSize: '0.68rem' }}>{adminUser.email || ''}</span>
                 </div>
                 <div className="pt-2">
                   <button
-                    className="btn btn-danger btn-sm w-100 d-flex align-items-center justify-content-center gap-2 fw-bold"
-                    onClick={handleLogout}
+                    className="btn btn-link text-white text-decoration-none btn-sm w-100 d-flex align-items-center gap-2 fw-bold"
+                    onClick={() => { setShowProfileMenu(false); navigate('/super-admin/profile'); }}
                   >
-                    <FaSignOutAlt size={12} /> Log Out Admin Session
+                    <FaUser size={12} /> My Profile
                   </button>
                 </div>
               </div>

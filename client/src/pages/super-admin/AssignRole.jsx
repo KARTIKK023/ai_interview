@@ -58,6 +58,12 @@ const AssignRole = () => {
   const [adminToDelete, setAdminToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Status Confirmation Modal State
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
+  const [adminToDeactivate, setAdminToDeactivate] = useState(null);
+  const [statusAction, setStatusAction] = useState('deactivate');
+  const [deactivating, setDeactivating] = useState(false);
+
   useEffect(() => {
     fetchAdmins();
   }, []);
@@ -176,15 +182,40 @@ const AssignRole = () => {
 
   // Toggle Active Status
   const handleToggleStatus = async (adminId, currentStatus) => {
+    const admin = admins.find((item) => item._id === adminId);
+    setAdminToDeactivate(admin || null);
+    setStatusAction(currentStatus ? 'deactivate' : 'activate');
+    setDeactivateModalOpen(Boolean(admin));
+  };
+
+  const updateAdminStatus = async (adminId, isDeactivation) => {
     try {
       const res = await API.put(`/admin/assigned-admins/${adminId}/toggle-status`);
       if (res.data && res.data.success) {
-        toast.success(res.data.message);
+        toast.success(isDeactivation ? 'Admin deactivated successfully' : res.data.message);
         fetchAdmins();
+        return true;
       }
     } catch (err) {
       console.error('Toggle status error:', err);
       toast.error(err.response?.data?.message || 'Failed to update admin status');
+      return false;
+    }
+  };
+
+  const handleStatusConfirm = async () => {
+    if (!adminToDeactivate) return;
+
+    try {
+      setDeactivating(true);
+      const isDeactivation = statusAction === 'deactivate';
+      const updated = await updateAdminStatus(adminToDeactivate._id, isDeactivation);
+      if (updated) {
+        setDeactivateModalOpen(false);
+        setAdminToDeactivate(null);
+      }
+    } finally {
+      setDeactivating(false);
     }
   };
 
@@ -310,7 +341,7 @@ const AssignRole = () => {
             <FaUserShield size={24} className="text-warning" />
             <h3 className="fw-bold mb-0 text-white">Assign Admin Role & Feature Permissions</h3>
           </div>
-          <p className="mb-0 text-white-50 small">
+          <p className="mb-0 text-white small">
             Create new Admin accounts, assign module features, and manage server-enforced access controls.
           </p>
         </div>
@@ -331,7 +362,7 @@ const AssignRole = () => {
               Create & Assign New Admin
             </h5>
           </div>
-          <span className="text-muted small">All permissions are saved securely in MongoDB</span>
+         
         </div>
 
         <div className="card-body p-4">
@@ -759,6 +790,65 @@ const AssignRole = () => {
                 </button>
                 <button type="button" className="btn btn-danger btn-sm px-4 fw-bold" onClick={handleDeleteAdminConfirm} disabled={deleting}>
                   {deleting ? 'Deleting...' : 'Delete Admin'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STATUS CONFIRMATION MODAL */}
+      {deactivateModalOpen && adminToDeactivate && (
+        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content border-0 shadow-lg rounded-3">
+              <div className="modal-header text-white" style={{ background: '#4C1D95' }}>
+                <h5 className="modal-title fw-bold">{statusAction === 'deactivate' ? 'Deactivate Admin?' : 'Activate Admin?'}</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => { setDeactivateModalOpen(false); setAdminToDeactivate(null); }}
+                  disabled={deactivating}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                <p className="text-muted mb-3">
+                  Are you sure you want to {statusAction === 'deactivate' ? 'deactivate' : 'activate'} this Admin account?
+                </p>
+                <div className="rounded-3 p-3" style={{ background: '#F5F3FF' }}>
+                  <div className="d-flex justify-content-between gap-3 mb-2">
+                    <span className="text-muted small">Admin Name</span>
+                    <strong className="text-dark text-end">{adminToDeactivate.username || adminToDeactivate.fullName || adminToDeactivate.name || 'Admin'}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between gap-3 mb-2">
+                    <span className="text-muted small">Admin Email</span>
+                    <strong className="text-dark text-end text-break">{adminToDeactivate.email}</strong>
+                  </div>
+                  <div className="d-flex justify-content-between gap-3">
+                    <span className="text-muted small">Current Status</span>
+                    <span className={`badge ${adminToDeactivate.isActive !== false ? 'bg-success bg-opacity-10 text-success border-success' : 'bg-danger bg-opacity-10 text-danger border-danger'} border border-opacity-25`}>
+                      {adminToDeactivate.isActive !== false ? 'Active' : 'Deactivated'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer bg-light justify-content-end">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm px-4"
+                  onClick={() => { setDeactivateModalOpen(false); setAdminToDeactivate(null); }}
+                  disabled={deactivating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-warning btn-sm px-4 fw-bold"
+                  onClick={handleStatusConfirm}
+                  disabled={deactivating}
+                  style={statusAction === 'activate' ? { color: '#fff' } : undefined}
+                >
+                  {deactivating ? `${statusAction === 'deactivate' ? 'Deactivating' : 'Activating'}...` : statusAction === 'deactivate' ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
             </div>

@@ -5,7 +5,7 @@ const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const User = require('./models/User');
+const SuperAdmin = require('./models/SuperAdmin');
 
 const seedSuperAdmin = async () => {
   try {
@@ -22,12 +22,11 @@ const seedSuperAdmin = async () => {
     const adminEmail = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@hiresmart.ai').toLowerCase().trim();
     const adminPassword = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123';
 
-    // Check if Super Admin already exists
-    let existingAdmin = await User.findOne({
+    // Super Admin accounts are stored only in the dedicated collection.
+    const existingAdmin = await SuperAdmin.findOne({
       $or: [
         { email: adminEmail },
-        { role: 'SUPER_ADMIN' },
-        { role: 'super_admin' }
+        { role: 'SUPER_ADMIN' }
       ]
     });
 
@@ -40,8 +39,7 @@ const seedSuperAdmin = async () => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(adminPassword, salt);
 
-    // Create Super Admin user
-    const superAdmin = await User.create({
+    const superAdmin = await SuperAdmin.create({
       fullName: 'HireSmart Super Admin',
       name: 'HireSmart Super Admin',
       email: adminEmail,
@@ -55,7 +53,6 @@ const seedSuperAdmin = async () => {
     console.log('      SUPER ADMIN CREATED SUCCESSFULLY IN MONGODB ATLAS        ');
     console.log('===============================================================');
     console.log(`  Email:    ${superAdmin.email}`);
-    console.log(`  Password: ${adminPassword}`);
     console.log(`  Role:     ${superAdmin.role}`);
     console.log('===============================================================\n');
 
