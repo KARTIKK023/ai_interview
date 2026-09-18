@@ -74,6 +74,8 @@ The server expects environment variables for database, authentication, mail, AI,
 - `GROQ_MODEL`: Groq model name.
 - `OLLAMA_BASE_URL`, `OLLAMA_MODEL`: local Ollama configuration.
 - `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`: optional super-admin seed credentials.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth client credentials used for student sign-in. The server starts without them; the `/api/auth/google` route redirects back to the login page until they are set.
+- `GOOGLE_CALLBACK_URL`: the exact "Authorized redirect URI" registered in the Google Cloud Console. Defaults to `CLIENT_URL/api/auth/google/callback` (development: `http://localhost:5173/api/auth/google/callback`, routed to the backend through the Vite `/api` proxy).
 
 `client/vite.config.js` uses port `5173` and proxies API and upload requests to port `5001`.
 
@@ -93,6 +95,16 @@ There are two independent login sessions.
 
 `services/api.js` adds a bearer token through an Axios request interceptor. URLs containing `/admin` or `/super-admin` use `superAdminToken`; other URLs prefer `studentToken`, then the legacy `token`, then the super-admin token. A 401 response removes the relevant session keys.
 
+### Google sign-in (students only)
+
+A separate Google OAuth flow is also available. Passport's Google strategy is configured in `server/config/passport.js` and initialized with `session: false` (the app keeps using JWT, so no server-side session is stored).
+
+- `GET /api/auth/google` starts the flow; it redirects to the Google consent screen.
+- `GET /api/auth/google/callback` completes it. The strategy finds an existing user by email or creates a new one. Sign-in is enforced to student accounts only: an existing non-student Google account is rejected, and new accounts are always created with role `student`.
+- On success the callback signs the standard JWT and redirects to `CLIENT_URL/auth/google/callback?token=...`.
+- `GoogleAuthCallback.jsx` reads the token, stores it as `studentToken` in `localStorage` (removing the legacy `token` key), and performs a full page reload to `/student/dashboard` so `AuthContext` re-establishes the session through `/auth/me`.
+- If OAuth is not configured or the sign-in fails, the server redirects to `/login?google=notconfigured` or `/login?google=error`, and the login page shows the corresponding message.
+
 ## 5. Frontend Routing and Page Responsibilities
 
 All route declarations are in `client/src/App.jsx`.
@@ -100,8 +112,9 @@ All route declarations are in `client/src/App.jsx`.
 ### Public pages
 
 - `/`: `pages/Home.jsx`, the public landing/home page.
-- `/login`: `pages/Login.jsx`, student login form.
+- `/login`: `pages/Login.jsx`, student login form with email/password and a "Continue with Google" option.
 - `/register`: `pages/Register.jsx`, student registration and OTP flow.
+- `/auth/google/callback`: `pages/GoogleAuthCallback.jsx`, the client-side landing point after Google OAuth; stores the returned JWT token and redirects into the student dashboard.
 - `/super-admin/login`: `pages/super-admin/SuperAdminLogin.jsx`, admin login.
 
 ### Student pages
@@ -184,6 +197,7 @@ Unknown URLs redirect to `/`.
 - `pages/Home.jsx`: public product home.
 - `pages/Login.jsx`: calls the authentication context login method and redirects by role.
 - `pages/Register.jsx`: collects registration data, requests/verifies OTP, and submits registration.
+- `pages/GoogleAuthCallback.jsx`: completes Google sign-in by storing the token returned from `/api/auth/google/callback` and redirecting to the student dashboard.
 - `pages/student/StudentDashboard.jsx`: concurrently loads dashboard analytics, interviews, and profile progress.
 - `pages/student/StudentInterviews.jsx`: fetches and presents interview history.
 - `pages/student/StudentInterviewQuestions.jsx`: loads questions and answers for a selected interview.
@@ -259,6 +273,8 @@ All route paths are mounted below `/api` by `server/server.js`.
 - `POST /auth/verify-otp`: public OTP verification.
 - `POST /auth/register`: public account creation.
 - `POST /auth/login`: public login.
+- `GET /auth/google`: starts Google OAuth for student sign-in.
+- `GET /auth/google/callback`: completes Google OAuth; issues the student JWT and redirects to the client callback page.
 - `GET /auth/me`: authenticated current-user lookup.
 - `PUT /auth/profile`: authenticated profile update.
 - `GET /auth/profile-progress`: authenticated progress lookup.
@@ -358,6 +374,7 @@ User
 - `services/emailService.js`: OTP mail, general notifications, score notifications, and development fallback logging when SMTP is unavailable.
 - `services/jobSearchService.js`: predefined jobs plus Remotive and Jobicy searches, location/role filtering, skill overlap, and relevance scoring.
 - `services/locationService.js` is client-side; the server-side location logic is in `controllers/locationController.js`.
+- `config/passport.js`: initializes the Passport Google OAuth strategy for student sign-in; finds users by email, creates new student accounts with a random (non-usable) password and generated student ID, and enforces the student-only rule.
 - `services/profileProgressService.js`: calculates weighted profile completion across registration, personal information, education, resume, and professional links.
 - `utils/studentIdGenerator.js`: generates IDs in the `STU-YYYY-XXXXX` format by checking existing users.
 
@@ -371,6 +388,15 @@ User
 4. Registration requires a verified OTP, hashes the password, creates a forced student account, invalidates OTP records, and returns a JWT.
 5. Login validates email/password and account state, then returns a 30-day JWT and normalized user data.
 6. The client stores the student session and future Axios requests attach its bearer token.
+
+### Google sign-in (students only)
+
+1. The login page's "Continue with Google" button sends the browser to `/api/auth/google`.
+2. Passport redirects the user to the Google consent screen with `profile` and `email` scopes.
+3. Google redirects back to `/api/auth/google/callback` (the authorized redirect URI).
+4. The strategy looks up the email. A missing user is created as a student (random password, generated student ID). An existing account must have role `student`, otherwise the flow fails.
+5. The callback records the login session exactly like password login (sets `lastLogin`/`loginStartedAt`, marks the student `isOnline`, and appends a `loginHistory` entry), signs the standard JWT, and redirects to `CLIENT_URL/auth/google/callback?token=<jwt>`.
+6. `GoogleAuthCallback.jsx` stores `studentToken`, removes the legacy `token` key, and reloads `/student/dashboard`; `AuthContext` restores the session via `/auth/me`.
 
 ### Interview creation and completion
 
@@ -453,6 +479,7 @@ These are observations from reading the current code, included to help future de
 14. ATS now uses a dedicated Gemini/Groq service and versioned exact-input caching. Existing scans created by the earlier heuristic implementation may not have the new hash/version fields and should be treated as legacy results.
 15. The server logs a database connection failure but continues starting; protected database-dependent endpoints will then fail later.
 16. Resume PDFs and generated tailored PDFs are stored in MongoDB and can approach the document-size limit at the configured upload maximum; larger-scale deployment should move artifacts to object storage.
+17. The Google OAuth flow passes the signed JWT through the `?token=` query parameter of the client callback URL, so it can appear in browser history and HTTP referrer headers; production deployments may prefer a short-lived one-time code exchange.
 
 ## 17. A Practical Reading Order
 

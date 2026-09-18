@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const passport = require('passport');
 const { errorHandler } = require('./middleware/errorMiddleware');
 
 const fs = require('fs');
@@ -17,6 +18,9 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Connect Database
 connectDB();
+
+// Configure Google OAuth strategy (student sign-in)
+require('./config/passport');
 
 const app = express();
 
@@ -34,6 +38,8 @@ app.use(cors({
   },
   credentials: true
 }));
+
+app.use(passport.initialize());
 
 // Route Files
 const authRoutes = require('./routes/authRoutes');

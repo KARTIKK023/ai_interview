@@ -2,11 +2,13 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const multer = require('multer');
+const passport = require('../config/passport');
 const {
   sendOtp,
   verifyOtp,
   registerUser,
   loginUser,
+  googleAuthCallback,
   getMe,
   updateProfile,
   getProfileProgress,
@@ -14,6 +16,8 @@ const {
   logoutUser
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
+
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // Storage configuration for profile photos
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -46,6 +50,32 @@ router.post('/send-otp', sendOtp);
 router.post('/verify-otp', verifyOtp);
 router.post('/register', registerUser);
 router.post('/login', loginUser);
+
+// Google OAuth (student sign-in)
+router.get('/google', (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect(`${clientUrl}/login?google=notconfigured`);
+  }
+  return passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false
+  })(req, res, next);
+});
+
+router.get(
+  '/google/callback',
+  (req, res, next) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return res.redirect(`${clientUrl}/login?google=notconfigured`);
+    }
+    return passport.authenticate('google', {
+      session: false,
+      failureRedirect: `${clientUrl}/login?google=error`
+    })(req, res, next);
+  },
+  googleAuthCallback
+);
+
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
 router.get('/profile-progress', protect, getProfileProgress);
