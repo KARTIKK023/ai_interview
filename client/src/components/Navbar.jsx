@@ -125,7 +125,7 @@ const Navbar = () => {
                   }}
                 >
                   <li>
-                    <span className="dropdown-item-text text-muted small px-3">{user.email}</span>
+                    <span className="dropdown-item-text text small px-3">{user.email}</span>
                   </li>
                   <li>
                     <Link className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-white" to="/student/profile">
