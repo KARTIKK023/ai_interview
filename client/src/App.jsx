@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import GoogleAuthCallback from './pages/GoogleAuthCallback';
 
 // Student Pages
 import StudentDashboard from './pages/student/StudentDashboard';
@@ -70,6 +71,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
       {/* Super Admin Routes */}
       <Route path="/super-admin/login" element={<SuperAdminLogin />} />

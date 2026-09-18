@@ -1,13 +1,23 @@
 import React, { useState, useContext } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import { FaRobot, FaLock, FaEnvelope, FaExclamationCircle } from 'react-icons/fa';
+import { FaRobot, FaLock, FaEnvelope, FaExclamationCircle, FaGoogle } from 'react-icons/fa';
 
 const Login = () => {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const googleStatus = searchParams.get('google');
+    if (googleStatus === 'error') {
+      return 'Google sign-in failed. Only student accounts can sign in with Google.';
+    }
+    if (googleStatus === 'notconfigured') {
+      return 'Google sign-in is not configured yet. Please register with your email and password.';
+    }
+    return '';
+  });
   const [loading, setLoading] = useState(false);
 
   const { login } = useContext(AuthContext);
@@ -91,6 +101,17 @@ const Login = () => {
                   {loading ? 'Signing in...' : 'Sign In'}
                 </button>
               </form>
+
+              <div className="d-flex align-items-center gap-2 my-3">
+                <hr className="flex-grow-1" />
+                <span className="text-muted small">or</span>
+                <hr className="flex-grow-1" />
+              </div>
+
+              <a href="/api/auth/google" className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
+                <FaGoogle size={18} />
+                Continue with Google
+              </a>
 
               <div className="text-center mt-3 border-top pt-3">
                 <p className="text-muted small mb-1">

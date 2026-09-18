@@ -347,6 +347,68 @@ const loginUser = async (req, res, next) => {
 
 
 
+// @desc    Google OAuth callback (student sign-in)
+// @route   GET /api/auth/google/callback
+// @access  Public (handled by Passport strategy)
+const googleAuthCallback = async (req, res) => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+
+  try {
+    const user = req.user;
+
+    if (!user || (user.role || '').toLowerCase() !== 'student') {
+      return res.redirect(`${clientUrl}/login?google=error`);
+    }
+
+    // Record the login session exactly like password login so super-admin
+    // student records show last-login time, online state, and duration.
+    const loginTime = new Date();
+
+    user.lastLogin = loginTime;
+    user.loginStartedAt = loginTime;
+    user.lastLogout = null;
+    user.loginDuration = 0;
+    user.isOnline = true;
+
+    // Auto-close any previous unclosed sessions before opening a new session
+    if (user.loginHistory && user.loginHistory.length > 0) {
+      user.loginHistory.forEach(session => {
+        if (!session.logoutAt) {
+          session.logoutAt = loginTime;
+          if (session.loginAt) {
+            session.duration = Math.max(
+              0,
+              Math.floor((loginTime.getTime() - new Date(session.loginAt).getTime()) / 1000)
+            );
+          }
+        }
+      });
+    }
+
+    if (!Array.isArray(user.loginHistory)) {
+      user.loginHistory = [];
+    }
+
+    // Keep up to 200 session records in history
+    if (user.loginHistory.length >= 200) {
+      user.loginHistory = user.loginHistory.slice(-199);
+    }
+
+    user.loginHistory.push({
+      loginAt: loginTime,
+      logoutAt: null,
+      duration: 0
+    });
+
+    await user.save();
+
+    const token = generateToken(user._id);
+    return res.redirect(`${clientUrl}/auth/google/callback?token=${token}`);
+  } catch (err) {
+    return res.redirect(`${clientUrl}/login?google=error`);
+  }
+};
+
 // @desc    Get logged in user
 // @route   GET /api/auth/me
 // @access  Private
@@ -670,6 +732,7 @@ module.exports = {
   verifyOtp,
   registerUser,
   loginUser,
+  googleAuthCallback,
   getMe,
   updateProfile,
   getProfileProgress,
