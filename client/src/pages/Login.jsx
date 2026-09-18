@@ -108,7 +108,7 @@ const Login = () => {
                 <hr className="flex-grow-1" />
               </div>
 
-              <a href="/api/auth/google" className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
+              <a href="/api/auth/google/callback" className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
                 <FaGoogle size={18} />
                 Continue with Google
               </a>
