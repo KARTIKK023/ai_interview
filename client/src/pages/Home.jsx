@@ -68,12 +68,13 @@ const nonTechnicalRoles = [
 ];
 
 const features = [
-  {
-    icon: <FaRobot />,
-    title: "AI Mock Interview",
-    text: "Practice realistic interviews with dynamic AI-generated questions and follow-ups.",
-    color: "#3b82f6",
-  },
+{
+  icon: <FaRobot style={{ color: "#ffffff" }} />,
+  title: "AI Mock Interview",
+  text: "Practice realistic interviews with dynamic AI-generated questions and follow-ups.",
+  color: "#ffffff",
+  textColor: "#ffffff",
+},
   {
     icon: <TbScan />,
     title: "Resume Intelligence",
@@ -166,6 +167,13 @@ const HeroWord = ({ children, delay = 0 }) => (
   </motion.span>
 );
 
+const hiringTexts = [
+  "Get Hired Faster.",
+  "Ace Every Interview.",
+  "Build Real Confidence.",
+  "Land Your Dream Role.",
+  
+];
 /* =========================================================
    HOME
 ========================================================= */
@@ -176,6 +184,7 @@ const Home = () => {
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [roleType, setRoleType] = useState("Technical");
+   const [hiringTextIndex, setHiringTextIndex] = useState(0);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
@@ -197,13 +206,15 @@ const Home = () => {
      QUESTION ROTATION
   ======================================================= */
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setQuestionIndex((prev) => (prev + 1) % questions.length);
-    }, 3500);
+ useEffect(() => {
+  const interval = setInterval(() => {
+    setHiringTextIndex(
+      (prev) => (prev + 1) % hiringTexts.length
+    );
+  }, 2500);
 
-    return () => clearInterval(timer);
-  }, []);
+  return () => clearInterval(interval);
+}, []);
 
   /* =======================================================
      MOUSE PARALLAX
@@ -448,9 +459,9 @@ const Home = () => {
                   WebkitTextFillColor: "transparent",
                 }}
               >
-                AI
+                HireSmart Ai
               </span>{" "}
-              Interview
+           
             </span>
 
           </Link>
@@ -463,6 +474,7 @@ const Home = () => {
               flex: 1,
               justifyContent: "center",
               gap: "32px",
+              color: "#ffffff"
             }}
           >
 
@@ -478,7 +490,7 @@ const Home = () => {
                 key={text}
                 href={href}
                 style={{
-                  color: "#94a3b8",
+                  color: "#ffffff",
                   textDecoration: "none",
                   fontSize: "14px",
                   fontWeight: 600,
@@ -508,7 +520,7 @@ const Home = () => {
             <Link
               to="/login"
               style={{
-                color: "#94a3b8",
+                color: "#ffffff",
                 textDecoration: "none",
                 fontWeight: 600,
                 fontSize: "14px",
@@ -598,7 +610,7 @@ const Home = () => {
                 <h1
                   style={{
                     fontSize:
-                      "clamp(46px,6vw,78px)",
+                      "clamp(38px,4vw,65px)",
                     lineHeight: 1.03,
                     letterSpacing: "-3px",
                     fontWeight: 800,
@@ -607,54 +619,75 @@ const Home = () => {
                 >
 
                   <HeroWord delay={0.1}>
-                    Prepare
-                  </HeroWord>
-
-                  <HeroWord delay={0.17}>
-                    Smarter.
+                    Prepare  Smarter.
                   </HeroWord>
 
                   <br />
 
-                  <span
-                    style={{
-                      display: "inline-block",
-                      background:
-                        "linear-gradient(90deg,#a855f7,#3b82f6,#06b6d4)",
-                      backgroundSize: "200% 200%",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    <motion.span
-                      animate={{
-                        backgroundPosition: [
-                          "0% 50%",
-                          "100% 50%",
-                          "0% 50%",
-                        ],
-                      }}
-                      transition={{
-                        duration: 6,
-                        repeat: Infinity,
-                      }}
-                    >
-                      Interview Better.
-                    </motion.span>
-                  </span>
+                 <motion.span
+  style={{
+    background:
+      "linear-gradient(90deg, #a855f7, #7c5cff, #287cff, #00c8ff)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    display: "inline-block",
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+  }}
+  animate={{
+    width: ["0%", "100%", "100%", "0%"],
+  }}
+  transition={{
+    duration: 4,
+    times: [0, 0.45, 0.75, 1],
+    repeat: Infinity,
+    repeatDelay: 0.5,
+    ease: "easeInOut",
+  }}
+>
+  Interview Better.
+</motion.span>
 
                   <br />
 
-                  <HeroWord delay={0.32}>
-                    Get Hired Faster.
-                  </HeroWord>
-
+  <AnimatePresence mode="wait">
+  <motion.span
+    key={hiringTexts[hiringTextIndex]}
+    initial={{
+      opacity: 0,
+      y: 30,
+      filter: "blur(8px)",
+    }}
+    animate={{
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+    }}
+    exit={{
+      opacity: 0,
+      y: -30,
+      filter: "blur(8px)",
+    }}
+    transition={{
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    }}
+    style={{
+      display: "inline-block",
+      color: "#ffffff",
+      whiteSpace: "nowrap",
+      fontSize: "clamp(38px, 4vw, 60px)",
+    }}
+  >
+    {hiringTexts[hiringTextIndex]}
+  </motion.span>
+</AnimatePresence>
                 </h1>
 
                 <motion.p
                   variants={fadeUp}
                   style={{
-                    color: "#94a3b8",
+                    color: "#ffffff",
                     fontSize: "18px",
                     lineHeight: 1.7,
                     maxWidth: "620px",
@@ -734,14 +767,14 @@ const Home = () => {
                   variants={fadeUp}
                   className="d-flex flex-wrap gap-4 mt-4"
                   style={{
-                    color: "#94a3b8",
+                    color: "#ffffff",
                     fontSize: "13px",
                   }}
                 >
 
                   <span>
                     <FaCheckCircle
-                      className="text-info me-2"
+                      className="text-info me-2 "
                     />
                     Resume-Based
                   </span>
@@ -965,7 +998,7 @@ const Home = () => {
 
                         <span
                           style={{
-                            color: "#94a3b8",
+                            color: "#ffffff",
                             fontSize: "12px",
                           }}
                         >
@@ -1118,7 +1151,7 @@ const Home = () => {
 
                               <span
                                 style={{
-                                  color: "#94a3b8",
+                                  color: "#ffffff",
                                   fontSize: "12px",
                                 }}
                               >
@@ -1234,7 +1267,7 @@ const Home = () => {
 
                         <div
                           style={{
-                            color: "#94a3b8",
+                            color: "#ffffff",
                             fontSize: "11px",
                           }}
                         >
@@ -1294,7 +1327,7 @@ const Home = () => {
                           alignItems: "center",
                           justifyContent: "center",
                           borderRadius: "50%",
-                          color: "#10b981",
+                          color: "#ffffff",
                           background:
                             "rgba(16,185,129,.12)",
                         }}
@@ -1306,7 +1339,7 @@ const Home = () => {
 
                         <div
                           style={{
-                            color: "#94a3b8",
+                            color: "#ffffff",
                             fontSize: "11px",
                           }}
                         >
@@ -1363,7 +1396,7 @@ const Home = () => {
               <h4 className="fw-bold mb-0">
                 10K+
               </h4>
-              <small className="text-white-50">
+              <small className="text-white">
                 Practice Sessions
               </small>
             </div>
@@ -1376,7 +1409,7 @@ const Home = () => {
               <h4 className="fw-bold mb-0">
                 90+
               </h4>
-              <small className="text-white-50">
+              <small className="text-white">
                 Career Roles
               </small>
             </div>
@@ -1390,7 +1423,7 @@ const Home = () => {
               <h4 className="fw-bold mb-0">
                 AI
               </h4>
-              <small className="text-white-50">
+              <small className="text-white">
                 Smart Evaluation
               </small>
             </div>
@@ -1403,7 +1436,7 @@ const Home = () => {
               <h4 className="fw-bold mb-0">
                 3 Modes
               </h4>
-              <small className="text-white-50">
+              <small className="text-white">
                 Text • Voice • Video
               </small>
             </div>
@@ -1477,7 +1510,7 @@ const Home = () => {
 
             <motion.p
               variants={fadeUp}
-              className="text-white-50 mx-auto"
+              className="text-white mx-auto"
               style={{
                 maxWidth: "680px",
               }}
@@ -1590,7 +1623,7 @@ const Home = () => {
                   </h5>
 
                   <p
-                    className="text-white-50 small mb-0"
+                    className="text-white small mb-0"
                     style={{
                       lineHeight: 1.7,
                     }}
@@ -1759,7 +1792,7 @@ const Home = () => {
                       alignItems: "center",
                       justifyContent: "center",
                       borderRadius: "50%",
-                      color: "#06b6d4",
+                      color: "#ffffff",
                       background:
                         "rgba(6,182,212,.1)",
                       border:
@@ -1774,7 +1807,7 @@ const Home = () => {
                   </h6>
 
                   <p
-                    className="small text-white-50 mb-0"
+                    className="small text-white mb-0"
                     style={{
                       lineHeight: 1.6,
                     }}
@@ -1840,7 +1873,7 @@ const Home = () => {
               </span>
             </h2>
 
-            <p className="text-white-50">
+            <p className="text-white">
               Choose a role and practice interview questions
               designed for that career.
             </p>
@@ -2082,7 +2115,7 @@ const Home = () => {
                 </h2>
 
                 <p
-                  className="text-white-50 fs-5"
+                  className="text-white fs-5"
                   style={{
                     lineHeight: 1.7,
                   }}
@@ -2681,15 +2714,15 @@ const Home = () => {
 
                 <span>
                   <span className="text-info">
-                    AI
+                    HireSmart AI
                   </span>{" "}
-                  Interview
+                
                 </span>
 
               </div>
 
               <p
-                className="text-white-50 small"
+                className="text-white small"
                 style={{
                   maxWidth: "350px",
                   lineHeight: 1.7,
@@ -2714,7 +2747,7 @@ const Home = () => {
                   href="#features"
                   className="text-white-50 small text-decoration-none"
                 >
-                  AI Interview
+                  HireSmart AI
                 </a>
 
                 <a
@@ -2762,32 +2795,6 @@ const Home = () => {
                   className="text-white-50 small text-decoration-none"
                 >
                   Interview History
-                </Link>
-
-              </div>
-
-            </div>
-
-            <div className="col-6 col-lg-2">
-
-              <h6 className="fw-bold mb-3">
-                Companies
-              </h6>
-
-              <div className="d-flex flex-column gap-2">
-
-                <Link
-                  to="/login?role=HR"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  HR Recruitment
-                </Link>
-
-                <Link
-                  to="/login?role=HR"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Job Postings
                 </Link>
 
               </div>
