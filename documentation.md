@@ -75,9 +75,13 @@ The server expects environment variables for database, authentication, mail, AI,
 - `OLLAMA_BASE_URL`, `OLLAMA_MODEL`: local Ollama configuration.
 - `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`: optional super-admin seed credentials.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth client credentials used for student sign-in. The server starts without them; the `/api/auth/google` route redirects back to the login page until they are set.
-- `GOOGLE_CALLBACK_URL`: the exact "Authorized redirect URI" registered in the Google Cloud Console. Defaults to `CLIENT_URL/api/auth/google/callback` (development: `http://localhost:5173/api/auth/google/callback`, routed to the backend through the Vite `/api` proxy).
+- `GOOGLE_CALLBACK_URL`: the exact "Authorized redirect URI" registered in the Google Cloud Console. Defaults to `CLIENT_URL/api/auth/google/callback` (development: `http://localhost:5173/api/auth/google/callback`, routed to the backend through the Vite `/api` proxy). For a separated deployment it must be the public API origin plus `/api/auth/google/callback` (for example `https://api.example.com/api/auth/google/callback`), and that same URL must be registered in the Google OAuth client.
+
+`server/.env.example` and `client/.env.example` are committed templates; `server/.env` is gitignored, so it must be recreated from the template on every machine or deployment.
 
 `client/vite.config.js` uses port `5173` and proxies API and upload requests to port `5001`.
+
+The client also supports `VITE_API_URL` (see `client/.env.example`). When empty, the browser calls `/api` on the client's own origin (the Vite proxy in development). When set to a public backend origin such as `https://api.example.com`, all Axios calls and the Google sign-in link target that origin instead, which lets the built client be hosted separately from the API. `client/src/services/apiBase.js` computes this value, and `client/src/services/api.js` and `pages/Login.jsx` consume it.
 
 ## 4. Global Authentication Design
 
@@ -104,6 +108,8 @@ A separate Google OAuth flow is also available. Passport's Google strategy is co
 - On success the callback signs the standard JWT and redirects to `CLIENT_URL/auth/google/callback?token=...`.
 - `GoogleAuthCallback.jsx` reads the token, stores it as `studentToken` in `localStorage` (removing the legacy `token` key), and performs a full page reload to `/student/dashboard` so `AuthContext` re-establishes the session through `/auth/me`.
 - If OAuth is not configured or the sign-in fails, the server redirects to `/login?google=notconfigured` or `/login?google=error`, and the login page shows the corresponding message.
+
+For a production deployment the client and API origins must be aligned: build the client with `VITE_API_URL` set to the public API origin (or leave it empty if the API is served on the same origin as the client), set `CLIENT_URL` to the deployed frontend origin (the server redirects there after sign-in), and set `GOOGLE_CALLBACK_URL` to the public API origin's callback path plus register it as an Authorized redirect URI in Google Cloud Console.
 
 ## 5. Frontend Routing and Page Responsibilities
 
@@ -174,6 +180,7 @@ Unknown URLs redirect to `/`.
 - `src/index.css`: global stylesheet; imports Bootstrap and defines colors, typography, cards, gradients, layout, navigation, recorder, and progress styles.
 - `src/context/AuthContext.jsx`: owns student session state and exposes `user`, `token`, `loading`, `login`, `register`, `logout`, and `setUser`.
 - `src/services/api.js`: shared Axios client, bearer-token selection, and 401 cleanup.
+- `src/services/apiBase.js`: computes `API_BASE_URL` from `VITE_API_URL` (empty by default) so the client can target the API on the same origin or a separated backend.
 - `src/services/locationService.js`: client-side wrapper for country, state, and city location APIs.
 - `src/components/ProtectedRoute.jsx`: student authentication and role gate.
 - `src/components/AdminProtectedRoute.jsx`: super-admin token verification and role gate.
@@ -458,6 +465,8 @@ ATS prompt and result versions are stored so future prompt/rubric changes invali
 - `server/config/db.js`: database connection setup.
 - `readme.md`: currently only placeholder text.
 - `documentation.md`: this explanation of the repository.
+- `server/.env.example`: committed template listing every server-side environment variable, including Google OAuth placeholders.
+- `client/.env.example`: committed template showing `VITE_API_URL`.
 
 ## 16. Current Behavior Notes and Gaps
 
