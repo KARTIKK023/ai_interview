@@ -1,8 +1,11 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { API_BASE_URL } from '../services/apiBase';
 import Navbar from '../components/Navbar';
 import { FaRobot, FaLock, FaEnvelope, FaExclamationCircle, FaGoogle } from 'react-icons/fa';
+
+const GOOGLE_AUTH_URL = `${API_BASE_URL}/api/auth/google`;
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -108,7 +111,7 @@ const Login = () => {
                 <hr className="flex-grow-1" />
               </div>
 
-              <a href="/api/auth/google/callback" className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
+              <a href={GOOGLE_AUTH_URL} className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
                 <FaGoogle size={18} />
                 Continue with Google
               </a>
