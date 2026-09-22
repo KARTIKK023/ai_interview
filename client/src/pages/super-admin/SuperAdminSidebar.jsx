@@ -10,7 +10,9 @@ import {
   FaAward,
   FaClipboardList,
   FaUserShield,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaCreditCard,
+  FaTags
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -41,6 +43,8 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'mock-interviews', label: 'Mock Interviews', icon: FaBrain, route: '/super-admin/mock-interviews', badge: 'AI' },
     { id: 'certificates', label: 'Certificates', icon: FaAward, route: '/super-admin/certificates', badge: 'Verify' },
     { id: 'inquiry', label: 'Inquiry Details', icon: FaClipboardList, route: '/super-admin/inquiry-details', badge: 'details' },
+    { id: 'payments', label: 'Payments', icon: FaCreditCard, route: '/super-admin/payments', badge: 'Razorpay' },
+    { id: 'coupons', label: 'Coupons', icon: FaTags, route: '/super-admin/coupons', badge: 'Offers' },
      { id: 'assign-role', label: 'Assign Role', icon: FaUserShield, route: '/super-admin/assign-role', badge: 'Assign' },
     { id: 'logout', label: 'Logout', icon: FaSignOutAlt, isLogout: true }
   ];

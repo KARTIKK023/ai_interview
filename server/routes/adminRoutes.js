@@ -71,4 +71,15 @@ router.get('/ats/analysis-history', protectAdmin, requirePermission('ats-analysi
 router.get('/ats-resume-scans', protectAdmin, requirePermission('ats-analysis'), getAdminAtsResumeScans);
 router.get('/ats/scans/:id/optimized-resume', protectAdmin, requirePermission('resumes'), downloadOptimizedResume);
 
+// Payments & Coupons (Strictly Super Admin; admins need the 'payments' permission)
+const paymentAdmin = require('../controllers/paymentAdminController');
+router.get('/payments', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getPayments);
+router.get('/payments/analytics', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getAnalytics);
+router.get('/payments/coupons', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getCoupons);
+router.post('/payments/coupons', protectSuperAdmin, requirePermission('payments'), paymentAdmin.createCoupon);
+router.put('/payments/coupons/:id', protectSuperAdmin, requirePermission('payments'), paymentAdmin.updateCoupon);
+router.delete('/payments/coupons/:id', protectSuperAdmin, requirePermission('payments'), paymentAdmin.deleteCoupon);
+router.get('/payments/groups', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getGroups);
+router.post('/payments/groups', protectSuperAdmin, requirePermission('payments'), paymentAdmin.createGroup);
+
 module.exports = router;

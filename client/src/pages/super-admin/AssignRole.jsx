@@ -22,7 +22,8 @@ const AVAILABLE_FEATURES = [
   { id: 'target-jobs', label: 'Target Jobs Records' },
   { id: 'mock-interviews', label: 'Mock Interviews' },
   { id: 'certificates', label: 'Certificates' },
-  { id: 'inquiries', label: 'Inquiry Details' }
+  { id: 'inquiries', label: 'Inquiry Details' },
+  { id: 'payments', label: 'Payments & Coupons' }
 ];
 
 const AssignRole = () => {
