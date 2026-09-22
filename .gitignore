@@ -3,3 +3,6 @@ server/.env
 .cgr-exclusion-state.json
 .cgr-hash-cache.json
 .cgr-parser-fingerprint
+.lavish
+
+.tmp
