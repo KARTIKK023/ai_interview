@@ -28,6 +28,9 @@ import StudentAchievements from './pages/student/StudentAchievements';
 import PlacementOpportunities from './pages/student/PlacementOpportunities';
 import HelpSupport from './pages/student/HelpSupport';
 import Ask from './pages/student/Ask';
+import Enquiry from "./pages/Enquiry";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 
 // Interview Preparation Pages
 import AIMockInterviewLevels from './pages/student/interview-preparation/AIMockInterviewLevels';
@@ -71,6 +74,9 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/enquiry" element={<Enquiry />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
       <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
       {/* Super Admin Routes */}
