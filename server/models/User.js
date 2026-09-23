@@ -112,6 +112,16 @@ const userSchema = new mongoose.Schema(
     
     },
 
+  accessUnlocked: {
+    type: Boolean,
+    default: false
+  },
+
+  unlockedAt: {
+    type: Date,
+    default: null
+  },
+
   lastLogin: {
     type: Date,
     default: null

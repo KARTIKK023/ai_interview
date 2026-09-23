@@ -26,6 +26,13 @@ require('./config/passport');
 const app = express();
 
 // Body Parser & CORS (Allow any localhost origin e.g. 5173, 5174, 5175)
+// Razorpay webhook needs the RAW body for signature verification, so it is
+// mounted BEFORE the global JSON parser.
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  require('./controllers/paymentController').webhook
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(uploadsDir));
@@ -76,6 +83,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/ask', askRoutes);
 app.use("/api/support", supportRoutes);
 app.use('/api/ats', atsRoutes);
+app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use(
   '/api/notifications',
   notificationRoutes
