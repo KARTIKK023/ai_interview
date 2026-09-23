@@ -1,0 +1,11 @@
+{
+  "name": "ai-interview-platform",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root package for Render deployment: builds the client and runs the API + static client from one service.",
+  "scripts": {
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client",
+    "start": "node server/server.js",
+    "seed:superadmin": "node server/seedSuperAdmin.js"
+  }
+}
