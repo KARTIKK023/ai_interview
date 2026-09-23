@@ -122,6 +122,26 @@ const userSchema = new mongoose.Schema(
     default: null
   },
 
+  mockLevelsUnlocked: {
+    type: Boolean,
+    default: false
+  },
+
+  mockLevelsUnlockedAt: {
+    type: Date,
+    default: null
+  },
+
+  atsProUnlocked: {
+    type: Boolean,
+    default: false
+  },
+
+  atsProUnlockedAt: {
+    type: Date,
+    default: null
+  },
+
   lastLogin: {
     type: Date,
     default: null

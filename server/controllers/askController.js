@@ -5,8 +5,8 @@ const AskMessage = require('../models/AskMessage');
 
 const {
   streamChat,
-  checkOllama,
-  OLLAMA_MODEL,
+  checkGroq,
+  GROQ_MODEL,
 } = require('../services/askAIService');
 
 const getUserId = (req) => {
@@ -234,7 +234,7 @@ const streamMessage = async (req, res, next) => {
 
     /**
      * Limit context so very old conversations don't
-     * grow the Ollama prompt indefinitely.
+     * grow the Groq prompt indefinitely.
      */
     const contextMessages = previousMessages
       .slice(-40)
@@ -251,7 +251,7 @@ const streamMessage = async (req, res, next) => {
       user: userId,
       role: 'user',
       content: trimmedMessage,
-      model: OLLAMA_MODEL,
+      model: GROQ_MODEL,
       completed: true,
     });
 
@@ -322,7 +322,7 @@ const streamMessage = async (req, res, next) => {
     res.write(
       `data: ${JSON.stringify({
         type: 'start',
-        model: OLLAMA_MODEL,
+        model: GROQ_MODEL,
         chatId,
       })}\n\n`
     );
@@ -361,7 +361,7 @@ const streamMessage = async (req, res, next) => {
                 user: userId,
                 role: 'assistant',
                 content: assistantResponse,
-                model: OLLAMA_MODEL,
+                model: GROQ_MODEL,
                 completed: true,
               });
             }
@@ -441,7 +441,7 @@ const streamMessage = async (req, res, next) => {
  */
 const askHealth = async (req, res) => {
   try {
-    const data = await checkOllama();
+    const data = await checkGroq();
 
     const models =
       data?.models || [];
@@ -449,24 +449,24 @@ const askHealth = async (req, res) => {
     const modelAvailable =
       models.some(
         (model) =>
-          model.name === OLLAMA_MODEL ||
-          model.model === OLLAMA_MODEL
+          model.id === GROQ_MODEL ||
+          model.name === GROQ_MODEL
       );
 
     res.json({
       success: true,
-      ollama: true,
-      model: OLLAMA_MODEL,
+      groq: true,
+      model: GROQ_MODEL,
       modelAvailable,
     });
   } catch (error) {
     res.status(503).json({
       success: false,
-      ollama: false,
-      model: OLLAMA_MODEL,
+      groq: false,
+      model: GROQ_MODEL,
       modelAvailable: false,
       message:
-        'Unable to connect to Ollama.',
+        'Unable to connect to Groq.',
     });
   }
 };

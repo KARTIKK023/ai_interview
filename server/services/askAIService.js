@@ -1,11 +1,14 @@
-const OLLAMA_BASE_URL =
-  process.env.ASK_OLLAMA_BASE_URL ||
-  process.env.OLLAMA_BASE_URL ||
-  'http://127.0.0.1:11434';
+const Groq = require('groq-sdk');
 
-const OLLAMA_MODEL =
-  process.env.ASK_OLLAMA_MODEL ||
-  'llama3.1:8b-instruct-q4_K_M';
+const GROQ_API_KEY =
+  process.env.ASK_GROQ_API_KEY ||
+  process.env.GROQ_API_KEY ||
+  '';
+
+const GROQ_MODEL =
+  process.env.ASK_GROQ_MODEL ||
+  process.env.GROQ_MODEL ||
+  'llama-3.1-8b-instant';
 
 const SYSTEM_PROMPT = `
 You are Ask, the AI assistant inside HireSmart AI.
@@ -35,6 +38,18 @@ Rules:
 10. Maintain context from previous messages in the conversation.
 `;
 
+const getGroqClient = () => {
+  if (!GROQ_API_KEY || GROQ_API_KEY.trim() === '') {
+    throw new Error(
+      'Ask AI: GROQ_API_KEY is missing. Set GROQ_API_KEY (or ASK_GROQ_API_KEY) in server/.env.'
+    );
+  }
+
+  return new Groq({
+    apiKey: GROQ_API_KEY,
+  });
+};
+
 const normalizeMessages = (messages = []) => {
   return messages
     .filter(
@@ -51,13 +66,11 @@ const normalizeMessages = (messages = []) => {
 };
 
 /**
- * Streams Ollama response.
+ * Streams a Groq chat completion response.
  *
  * onToken(token)
  * onDone(fullResponse)
  * onError(error)
- *
- * Returns an AbortController so the caller can cancel the request.
  */
 const streamChat = async ({
   messages,
@@ -80,7 +93,9 @@ const streamChat = async ({
     }
   }
 
-  const ollamaMessages = [
+  const groq = getGroqClient();
+
+  const groqMessages = [
     {
       role: 'system',
       content: SYSTEM_PROMPT,
@@ -91,94 +106,31 @@ const streamChat = async ({
   let fullResponse = '';
 
   try {
-    const response = await fetch(
-      `${OLLAMA_BASE_URL}/api/chat`,
+    const stream = await groq.chat.completions.create(
       {
-        method: 'POST',
-
-        headers: {
-          'Content-Type': 'application/json',
-        },
-
-        body: JSON.stringify({
-          model: OLLAMA_MODEL,
-          messages: ollamaMessages,
-          stream: true,
-
-          options: {
-            temperature: 0.7,
-            top_p: 0.9,
-          },
-        }),
-
+        model: GROQ_MODEL,
+        messages: groqMessages,
+        temperature: 0.7,
+        top_p: 0.9,
+        max_tokens: 2048,
+        stream: true,
+      },
+      {
         signal: controller.signal,
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    for await (const chunk of stream) {
+      const token = chunk?.choices?.[0]?.delta?.content;
 
-      throw new Error(
-        `Ollama returned ${response.status}: ${errorText}`
-      );
-    }
-
-    if (!response.body) {
-      throw new Error(
-        'Ollama did not return a streaming response.'
-      );
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) {
-        break;
+      if (!token) {
+        continue;
       }
 
-      buffer += decoder.decode(value, {
-        stream: true,
-      });
+      fullResponse += token;
 
-      const lines = buffer.split('\n');
-
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.trim()) {
-          continue;
-        }
-
-        let data;
-
-        try {
-          data = JSON.parse(line);
-        } catch (parseError) {
-          continue;
-        }
-
-        if (data.message?.content) {
-          const token = data.message.content;
-
-          fullResponse += token;
-
-          if (onToken) {
-            onToken(token);
-          }
-        }
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        if (data.done) {
-          break;
-        }
+      if (onToken) {
+        onToken(token);
       }
     }
 
@@ -188,13 +140,13 @@ const streamChat = async ({
 
     return {
       response: fullResponse,
-      model: OLLAMA_MODEL,
+      model: GROQ_MODEL,
     };
   } catch (error) {
     if (error.name === 'AbortError') {
       return {
         response: fullResponse,
-        model: OLLAMA_MODEL,
+        model: GROQ_MODEL,
         aborted: true,
       };
     }
@@ -204,26 +156,35 @@ const streamChat = async ({
     }
 
     throw error;
-  };
+  }
 };
 
-const checkOllama = async () => {
-  const response = await fetch(
-    `${OLLAMA_BASE_URL}/api/tags`
-  );
+/**
+ * Checks that a Groq API key is configured.
+ */
+const checkGroq = async () => {
+  try {
+    const groq = getGroqClient();
 
-  if (!response.ok) {
+    const response = await groq.models.list();
+
+    const models = Array.isArray(response?.data)
+      ? response.data
+      : [];
+
+    return {
+      models,
+    };
+  } catch (error) {
     throw new Error(
-      `Unable to connect to Ollama (${response.status})`
+      `Unable to connect to Groq: ${error.message}`
     );
   }
-
-  return response.json();
 };
 
 module.exports = {
   streamChat,
-  checkOllama,
-  OLLAMA_MODEL,
-  OLLAMA_BASE_URL,
+  checkGroq,
+  GROQ_MODEL,
+  GROQ_API_KEY,
 };

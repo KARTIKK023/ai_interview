@@ -72,7 +72,8 @@ The server expects environment variables for database, authentication, mail, AI,
 - `AI_API_KEY`: Gemini-style AI key.
 - `GROQ_API_KEY`: Groq key.
 - `GROQ_MODEL`: Groq model name.
-- `OLLAMA_BASE_URL`, `OLLAMA_MODEL`: local Ollama configuration.
+- `ASK_GROQ_API_KEY`, `ASK_GROQ_MODEL`: Ask AI Groq configuration (falls back to the shared `GROQ_API_KEY` / `GROQ_MODEL`).
+- `OLLAMA_BASE_URL`, `OLLAMA_MODEL`: local Ollama configuration (used by the general AI provider fallback, not Ask AI).
 - `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`: optional super-admin seed credentials.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: Google OAuth client credentials used for student sign-in. The server starts without them; the `/api/auth/google` route redirects back to the login page until they are set.
 - `GOOGLE_CALLBACK_URL`: the exact "Authorized redirect URI" registered in the Google Cloud Console. Defaults to `CLIENT_URL/api/auth/google/callback` (development: `http://localhost:5173/api/auth/google/callback`, routed to the backend through the Vite `/api` proxy). For a separated deployment it must be the public API origin plus `/api/auth/google/callback` (for example `https://api.example.com/api/auth/google/callback`), and that same URL must be registered in the Google OAuth client.
@@ -376,7 +377,7 @@ User
 - `services/aiService.js`: provider abstraction for Gemini, Groq, and Ollama; question generation; question cleanup/deduplication; answer evaluation; follow-up generation; final report generation; and fallback responses.
 - `services/atsAIService.js`: separate Gemini/Groq-only ATS provider, strict JSON analysis, score normalization, unsupported-claim warnings, and structured tailored-resume generation.
 - `services/aiRetryService.js`: retries rate-limited Groq requests using `Retry-After` or exponential delay.
-- `services/askAIService.js`: Ollama chat streaming, cancellation using `AbortController`, and Ollama health checking.
+- `services/askAIService.js`: Groq chat streaming, cancellation using `AbortController`, and Groq health checking.
 - `services/evaluationService.js`: defines the fixed evaluation criteria: relevance, accuracy, technical knowledge, problem solving, and answer quality.
 - `services/emailService.js`: OTP mail, general notifications, score notifications, and development fallback logging when SMTP is unavailable.
 - `services/jobSearchService.js`: predefined jobs plus Remotive and Jobicy searches, location/role filtering, skill overlap, and relevance scoring.
@@ -429,7 +430,7 @@ The dashboard loads analytics, interview history, and profile progress together.
 
 ### Ask AI chat
 
-The Ask page manages chat records and message history. A message is posted to the SSE endpoint. The controller verifies chat ownership, saves the user message, supplies up to the last 40 messages as context to Ollama, streams assistant chunks, and saves the completed assistant message.
+The Ask page manages chat records and message history. A message is posted to the SSE endpoint. The controller verifies chat ownership, saves the user message, supplies up to the last 40 messages as context to Groq, streams assistant chunks, and saves the completed assistant message.
 
 ### Support
 

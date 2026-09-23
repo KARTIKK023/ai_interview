@@ -1,9 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import API from '../services/api';
 import toast from 'react-hot-toast';
-import { FaLock, FaTags, FaCreditCard, FaSpinner, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaLock, FaTags, FaCreditCard, FaSpinner, FaCheckCircle, FaTimesCircle, FaRobot, FaFileAlt, FaCrown } from 'react-icons/fa';
 
-const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
+const PLAN_META = {
+  MOCK_LEVELS: {
+    icon: FaRobot,
+    title: 'Mock Interviews',
+    tagline: 'All AI mock-interview levels (2–10)',
+    badge: 'MOCK',
+    accent: '#4F46E5'
+  },
+  ATS_PRO: {
+    icon: FaFileAlt,
+    title: 'ATS Pro',
+    tagline: 'Full resume analysis + tailored resume PDF',
+    badge: 'ATS',
+    accent: '#0891B2'
+  },
+  SUPER_PACK: {
+    icon: FaCrown,
+    title: 'Super Pack',
+    tagline: 'Everything — Mock Interviews + ATS Pro',
+    badge: 'BOTH',
+    accent: '#7C3AED',
+    featured: true
+  }
+};
+
+const BuyCreditsModal = ({ show, onClose, onUnlocked, initialPurpose = null }) => {
   const [catalog, setCatalog] = useState({});
   const [couponCode, setCouponCode] = useState('');
   const [couponApplying, setCouponApplying] = useState(false);
@@ -11,12 +36,20 @@ const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
   const [couponError, setCouponError] = useState('');
   const [paying, setPaying] = useState(false);
   const [fetching, setFetching] = useState(false);
-  const [selectedPurpose, setSelectedPurpose] = useState(null);
+  const [selectedPurpose, setSelectedPurpose] = useState(initialPurpose);
 
   useEffect(() => {
     if (!show) return;
     fetchCatalog();
   }, [show]);
+
+  useEffect(() => {
+    if (show && initialPurpose) setSelectedPurpose(initialPurpose);
+    if (show && !initialPurpose) setSelectedPurpose(null);
+    setCouponCode('');
+    setAppliedCoupon(null);
+    setCouponError('');
+  }, [show, initialPurpose]);
 
   useEffect(() => {
     if (couponCode) return;
@@ -98,7 +131,7 @@ const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
         amount: res.data.amount,
         currency: 'INR',
         name: 'HireSmart AI',
-        description: 'Unlimited Full Access',
+        description: PLAN_META[selectedPurpose]?.title || 'Purchase',
         handler: async (response) => {
           try {
             await API.post('/payments/verify', {
@@ -107,7 +140,7 @@ const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
               signature: response.razorpay_signature
             });
             toast.success('Payment received — your access unlocks in a moment.');
-            if (onUnlocked) onUnlocked(true);
+            if (onUnlocked) onUnlocked(selectedPurpose);
             onClose();
           } catch (verifyErr) {
             toast.error(verifyErr.response?.data?.message || 'Verification failed. If you paid, access will unlock shortly.');
@@ -142,14 +175,16 @@ const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
               <span className="rounded-3 p-2" style={{ background: '#eee8ff', color: '#6337e8' }}>
                 <FaCreditCard size={18} />
               </span>
-              <h5 className="modal-title fw-extrabold mb-0">Unlock Full Access</h5>
+              <h5 className="modal-title fw-extrabold mb-0">Choose Your Plan</h5>
             </div>
             <button type="button" className="btn-close" onClick={onClose}></button>
           </div>
 
           <div className="modal-body p-4 pt-2">
             <p className="text-muted small mb-3">
-              One payment unlocks <strong>everything</strong> — unlimited mock interviews, AI evaluation, ATS resume checks and certificates. No monthly fees.
+              Pick the feature you want to unlock. <strong>Mock Interviews</strong> opens all interview levels,
+              <strong> ATS Pro</strong> unlocks the full analysis and the tailored-resume PDF, or take the
+              <strong> Super Pack</strong> and get both. One-time payments, no monthly fees.
             </p>
 
             {fetching ? (
@@ -164,25 +199,44 @@ const BuyCreditsModal = ({ show, onClose, onUnlocked }) => {
               <div className="row g-3">
                 {Object.entries(catalog).map(([purpose, basePrice]) => {
                   const selected = selectedPurpose === purpose;
+                  const meta = PLAN_META[purpose] || { icon: FaCreditCard, title: purpose.replace(/_/g, ' '), tagline: '', accent: '#4F46E5', badge: purpose.replace(/_/g, ' ') };
+                  const Icon = meta.icon;
                   return (
-                    <div className="col-md-6" key={purpose}>
+                    <div className={meta.featured ? 'col-md-12' : 'col-md-6'} key={purpose}>
                       <button
                         type="button"
-                        className="btn w-100 text-start p-3 border rounded-3"
+                        className="btn w-100 text-start p-3 rounded-3 d-flex align-items-start gap-3 position-relative"
                         style={{
-                          borderColor: selected ? '#4F46E5' : '#E2E8F0',
-                          background: selected ? '#EEF2FF' : '#FFFFFF',
-                          boxShadow: selected ? '0 4px 12px rgba(79, 70, 229, 0.15)' : 'none'
+                          border: `2px solid ${selected ? meta.accent : '#E2E8F0'}`,
+                          background: selected ? '#F8F7FF' : '#FFFFFF',
+                          boxShadow: selected ? `0 4px 12px ${meta.accent}33` : 'none'
                         }}
                         onClick={() => selectPurpose(purpose)}
                       >
-                        <div className="d-flex justify-content-between align-items-center mb-1">
-                          <strong>{purpose.replace(/_/g, ' ')} — Unlimited</strong>
-                        </div>
-                        <div className="fs-4 fw-extrabold" style={{ color: selected ? '#4F46E5' : '#1e293b' }}>
-                          ₹{basePrice}
-                        </div>
-                        <small className="text-muted">One-time · Lifetime access</small>
+                        {meta.featured && (
+                          <span
+                            className="position-absolute start-0 top-0 rounded-top-start rounded-bottom-end px-2 py-1 text-white small fw-bold"
+                            style={{ background: meta.accent, fontSize: '0.68rem', letterSpacing: '0.04em' }}
+                          >
+                            RECOMMENDED · BEST VALUE
+                          </span>
+                        )}
+                        <span
+                          className="rounded-3 d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                          style={{ width: '44px', height: '44px', background: `${meta.accent}18`, color: meta.accent }}
+                        >
+                          <Icon size={19} />
+                        </span>
+                        <span className="flex-grow-1" style={{ paddingTop: meta.featured ? '14px' : '0' }}>
+                          <span className="d-flex justify-content-between align-items-center mb-1">
+                            <strong className="fs-6">{meta.title}</strong>
+                            <span className="small fw-bold text-muted">One-time · Lifetime</span>
+                          </span>
+                          <span className="d-block small text-muted mb-2">{meta.tagline}</span>
+                          <span className="fs-4 fw-extrabold" style={{ color: selected ? meta.accent : '#1e293b' }}>
+                            ₹{basePrice}
+                          </span>
+                        </span>
                       </button>
                     </div>
                   );

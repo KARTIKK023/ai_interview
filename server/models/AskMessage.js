@@ -29,7 +29,7 @@ const askMessageSchema = new mongoose.Schema(
 
     model: {
       type: String,
-      default: 'llama3.1:8b-instruct-q4_K_M',
+      default: 'llama-3.1-8b-instant',
     },
 
     completed: {

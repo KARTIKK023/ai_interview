@@ -21,7 +21,7 @@ const { protect } = require("../middleware/authMiddleware");
 
 /*
  * GET /api/ask/health
- * Check Ollama + model availability
+ * Check Groq + model availability
  */
 router.get("/health", protect, askHealth);
 

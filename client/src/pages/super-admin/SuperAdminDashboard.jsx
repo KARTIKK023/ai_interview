@@ -29,11 +29,11 @@ import {
   FaClipboardList,
   FaAward,
   FaGraduationCap,
-  FaEnvelope
+  FaEnvelope,
+  FaRupeeSign
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import SuperAdminSidebar from './SuperAdminSidebar';
-;
 
 const kpiIconMap = {
   'total-students': FaUserGraduate,
@@ -46,7 +46,8 @@ const kpiIconMap = {
   'avg-score': FaAward,
   'resume-scans': FaFileAlt,
   'total-certificates': FaGraduationCap,
-  'total-inquiries': FaEnvelope
+  'total-inquiries': FaEnvelope,
+  'total-revenue': FaRupeeSign
 };
 
 const SuperAdminDashboard = () => {
@@ -212,7 +213,8 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
     'resume-scans': '/super-admin/resumes',
     'total-certificates': '/super-admin/certificates',
     'total-inquiries': '/super-admin/inquiry-details',
-    'ats-resumes': '/super-admin/ats-resume-scans'
+    'ats-resumes': '/super-admin/ats-resume-scans',
+    'total-revenue': '/super-admin/payments'
 
   };
 
@@ -264,7 +266,11 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
       'ats-resumes':{
       bg: 'linear-gradient(135deg, #06B6D4 0%, #0891B2 60%, #0E7490 100%)',
       shadow: '0 6px 18px -3px rgba(8, 145, 178, 0.35)'
-    }
+    },
+    'total-revenue': {
+      bg: 'linear-gradient(135deg, #10B981 0%, #059669 60%, #047857 100%)',
+      shadow: '0 6px 18px -3px rgba(5, 150, 105, 0.35)'
+    },
   };
 
   // KPI cards calculation from DB
@@ -278,7 +284,8 @@ const fetchDashboardData = useCallback(async (timeframe = selectedTimeframe, sho
       { id: 'avg-score', title: 'AVERAGE SCORE', value: '0%', trend: '+0.0%', trendUp: true, timeframe: 'all students average', color: '#D97706', bgLight: 'rgba(217, 119, 6, 0.1)', route: '/super-admin/mock-interviews' },
       { id: 'total-inquiries', title: 'TOTAL INQUIRIES', value: '0', trend: '', trendUp: true, timeframe: 'Total support inquiries', color: '#0284C7', bgLight: 'rgba(2, 132, 199, 0.1)', route: '/super-admin/inquiry-details' },
       { id: 'total-certificates', title: 'TOTAL CERTIFICATES', value: '0', trend: '', trendUp: true, timeframe: 'All issued certificates with score >= 75%', color: '#7C3AED', bgLight: 'rgba(124, 58, 237, 0.1)', route: '/super-admin/certificates' },
-      { id: 'ats-resumes', title: 'ATS RESUMES', value: '0', trend: '', trendUp: true, timeframe: 'ATS SCAN RESUMES', bgLight: 'rgba(6, 182, 212, 0.1)', route: '/admin/ats-resume-scans'}
+      { id: 'ats-resumes', title: 'ATS RESUMES', value: '0', trend: '', trendUp: true, timeframe: 'ATS SCAN RESUMES', bgLight: 'rgba(6, 182, 212, 0.1)', route: '/admin/ats-resume-scans'},
+      { id: 'total-revenue', title: 'TOTAL REVENUE', value: '₹0', trend: '', trendUp: true, timeframe: 'all-time paid revenue', color: '#059669', bgLight: 'rgba(5, 150, 105, 0.1)', route: '/super-admin/payments'}
 
     ];
 

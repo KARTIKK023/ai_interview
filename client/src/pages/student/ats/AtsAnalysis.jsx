@@ -13,12 +13,13 @@ import {
   FaFileAlt,
   FaShieldAlt,
   FaLock,
-  FaTimes,
   FaChevronDown,
   FaChevronRight,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import StudentLayout from '../../../components/StudentLayout';
+import BuyCreditsModal from '../../../components/BuyCreditsModal';
+import API from '../../../services/api';
 import { atsApi, errorMessage, normalizeScan } from './atsApi';
 
 const scoreClass = (score) =>
@@ -38,7 +39,7 @@ const AtsAnalysis = () => {
   const [deleting, setDeleting] = useState(false);
 
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   const [openSections, setOpenSections] = useState({
     recommendations: false,
@@ -56,6 +57,18 @@ const AtsAnalysis = () => {
       )
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    const fetchEntitlement = async () => {
+      try {
+        const res = await API.get('/payments/entitlements');
+        setPremiumUnlocked(!!res.data?.atsProUnlocked);
+      } catch (err) {
+        setPremiumUnlocked(false);
+      }
+    };
+    fetchEntitlement();
+  }, []);
 
   const deleteAnalysis = async () => {
     if (!window.confirm('Delete this ATS analysis and its tailored resume?')) {
@@ -81,12 +94,7 @@ const AtsAnalysis = () => {
       return;
     }
 
-    setShowUnlockModal(true);
-  };
-
-  const continueWithDemo = () => {
-    setPremiumUnlocked(true);
-    setShowUnlockModal(false);
+    setShowBuyModal(true);
   };
 
   const toggleSection = (section) => {
@@ -1142,118 +1150,16 @@ const AtsAnalysis = () => {
         </div>
       </div>
 
-      {showUnlockModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.35)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            zIndex: 1060,
-            padding: '20px',
+      {showBuyModal && (
+        <BuyCreditsModal
+          show={showBuyModal}
+          onClose={() => setShowBuyModal(false)}
+          onUnlocked={() => {
+            setPremiumUnlocked(true);
+            setShowBuyModal(false);
           }}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setShowUnlockModal(false);
-            }
-          }}
-        >
-          <div
-            className="bg-white rounded-4 shadow-lg"
-            style={{
-              width: '100%',
-              maxWidth: '410px',
-            }}
-          >
-            <div className="p-4">
-              <div className="d-flex justify-content-between align-items-start mb-4">
-                <div className="d-flex align-items-center gap-3">
-                  <div
-                    className="rounded-3 d-flex align-items-center justify-content-center"
-                    style={{
-                      width: '44px',
-                      height: '44px',
-                      backgroundColor: '#edf3ff',
-                      color: '#0d6efd',
-                    }}
-                  >
-                    <FaLock />
-                  </div>
-
-                  <div>
-                    <div
-                      className="small fw-bold text-primary"
-                      style={{
-                        letterSpacing: '0.5px',
-                      }}
-                    >
-                      PREMIUM PREVIEW
-                    </div>
-
-                    <h5 className="fw-bold mb-0 mt-1">
-                      Unlock this analysis
-                    </h5>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-light rounded-circle d-flex align-items-center justify-content-center"
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                  }}
-                  onClick={() => setShowUnlockModal(false)}
-                >
-                  <FaTimes size={12} />
-                </button>
-              </div>
-
-              <p className="text-secondary mb-4 lh-lg">
-                Continue to view the complete ATS analysis, including
-                detailed recommendations, score reasoning, resume evidence
-                and all remaining details.
-              </p>
-
-              <div className="d-flex align-items-center gap-3 mb-4">
-                <FaCheckCircle className="text-success flex-shrink-0" />
-                <span className="small text-secondary">
-                  Full recommendations
-                </span>
-              </div>
-
-              <div className="d-flex align-items-center gap-3 mb-4">
-                <FaCheckCircle className="text-success flex-shrink-0" />
-                <span className="small text-secondary">
-                  Detailed score reasoning
-                </span>
-              </div>
-
-              <div className="d-flex align-items-center gap-3 mb-4">
-                <FaCheckCircle className="text-success flex-shrink-0" />
-                <span className="small text-secondary">
-                  Complete resume evidence
-                </span>
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-primary w-100 rounded-3 py-2 fw-semibold"
-                onClick={continueWithDemo}
-              >
-                Continue
-                <FaChevronRight className="ms-2" size={12} />
-              </button>
-
-              <div className="text-center mt-3">
-                <small className="text-muted">
-                  Demo access is enabled while premium billing is being
-                  implemented.
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
+          initialPurpose="ATS_PRO"
+        />
       )}
     </StudentLayout>
   );

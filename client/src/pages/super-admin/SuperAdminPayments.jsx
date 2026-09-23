@@ -8,8 +8,21 @@ import {
   FaReceipt,
   FaTags,
   FaCalendarAlt,
-  FaChartLine
+  FaChartLine,
+  FaFilter
 } from 'react-icons/fa';
+
+const PURPOSE_LABELS = {
+  MOCK_LEVELS: 'Mock Interviews',
+  ATS_PRO: 'ATS Pro',
+  SUPER_PACK: 'Super Pack'
+};
+
+const PURPOSE_COLORS = {
+  MOCK_LEVELS: '#4F46E5',
+  ATS_PRO: '#0891B2',
+  SUPER_PACK: '#7C3AED'
+};
 
 const SuperAdminPayments = () => {
   const [payments, setPayments] = useState([]);
@@ -17,6 +30,7 @@ const SuperAdminPayments = () => {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [purposeFilter, setPurposeFilter] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -63,9 +77,21 @@ const SuperAdminPayments = () => {
 
   const fmtRs = (paise) => `₹${((paise || 0) / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
+  const filteredPayments = purposeFilter
+    ? payments.filter((p) => p.purpose === purposeFilter)
+    : payments;
+
   const columns = [
     { title: 'Student', data: 'student', render: (data) => `<strong>${data?.name || data?.fullName || 'N/A'}</strong><span class="d-block text-muted" style="font-size:0.8rem;">${data?.email || ''}</span>` },
-    { title: 'Purpose', data: 'purpose', render: (data) => `<span class="badge bg-secondary">${(data || '').replace(/_/g, ' ')}</span>` },
+    {
+      title: 'Plan',
+      data: 'purpose',
+      render: (data) => {
+        const label = PURPOSE_LABELS[data] || (data || '').replace(/_/g, ' ');
+        const color = PURPOSE_COLORS[data] || '#6B7280';
+        return `<span class="badge" style="background:${color};color:#fff;">${label}</span>`;
+      }
+    },
     { title: 'Paid', data: 'payableAmountPaise', render: (data) => `<strong>${fmtRs(data)}</strong>` },
     { title: 'Discount', data: 'discountPaise', render: (data) => (data ? `<span class="text-success">−${fmtRs(data)}</span>` : '—') },
     { title: 'Coupon', data: 'coupon', render: (data) => (data?.code ? `<span class="badge" style="background:#F59E0B;color:#fff;">${data.code}</span>` : '—') },
@@ -196,7 +222,16 @@ const SuperAdminPayments = () => {
               <label className="form-label fw-semibold d-flex align-items-center gap-1"><FaCalendarAlt /> To Date</label>
               <input type="date" className="form-control" value={toDate} min={fromDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
-            <div className="col-md-6 d-flex gap-2">
+            <div className="col-md-3">
+              <label className="form-label fw-semibold d-flex align-items-center gap-1"><FaFilter /> Plan</label>
+              <select className="form-select" value={purposeFilter} onChange={(e) => setPurposeFilter(e.target.value)}>
+                <option value="">All Plans</option>
+                {Object.entries(PURPOSE_LABELS).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-3 d-flex gap-2">
               <button type="button" className="btn btn-primary btn-sm fw-bold px-4" onClick={applyDateFilter}>
                 Apply Filter
               </button>
@@ -206,6 +241,7 @@ const SuperAdminPayments = () => {
                 onClick={() => {
                   setFromDate('');
                   setToDate('');
+                  setPurposeFilter('');
                   fetchData();
                 }}
               >
@@ -220,7 +256,7 @@ const SuperAdminPayments = () => {
       <DataTable
         title="Payment Records"
         columns={columns}
-        data={payments}
+        data={filteredPayments}
         loading={loading}
         options={{ order: [[7, 'desc']] }}
       />

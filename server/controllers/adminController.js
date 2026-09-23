@@ -13,6 +13,7 @@ const Certificate = require('../models/Certificate');
 const SupportMessage = require('../models/SupportMessage');
 const AtsScan = require('../models/AtsScan');
 const AtsArtifact = require('../models/AtsArtifact');
+const Payment = require('../models/Payment');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'ai_interview_secret_key_2026_super_secure', {
@@ -316,7 +317,9 @@ const getAdminDashboard = async (req, res, next) => {
       totalInquiries,
       avgScoreAgg,
       totalAtsAnalyses,
-      newAtsAnalyses30d
+      newAtsAnalyses30d,
+      totalRevenueAgg,
+      newRevenue30dAgg
     ] = await Promise.all([
       User.countDocuments(studentFilter),
       User.countDocuments({ ...studentFilter, createdAt: { $gte: thirtyDaysAgo } }),
@@ -342,13 +345,35 @@ const getAdminDashboard = async (req, res, next) => {
         }
       ]).catch(() => []),
       AtsScan.countDocuments().catch(() => 0),
-      AtsScan.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0)
+      AtsScan.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }).catch(() => 0),
+      Payment.aggregate([
+        { $match: { status: 'PAID' } },
+        { $group: { _id: null, revenue: { $sum: '$payableAmountPaise' } } }
+      ]).catch(() => []),
+      Payment.aggregate([
+        { $match: { status: 'PAID', capturedAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: null, revenue: { $sum: '$payableAmountPaise' } } }
+      ]).catch(() => [])
     ]);
 
     const rawAvgScore = (avgScoreAgg && avgScoreAgg.length > 0 && avgScoreAgg[0].avgScore)
       ? Math.round(avgScoreAgg[0].avgScore * 10) / 10
       : 0;
     const avgScoreDisplay = rawAvgScore > 0 ? `${rawAvgScore}%` : '0%';
+
+    const totalRevenuePaise = (totalRevenueAgg && totalRevenueAgg.length > 0 && totalRevenueAgg[0].revenue)
+      ? totalRevenueAgg[0].revenue
+      : 0;
+    const newRevenue30dPaise = (newRevenue30dAgg && newRevenue30dAgg.length > 0 && newRevenue30dAgg[0].revenue)
+      ? newRevenue30dAgg[0].revenue
+      : 0;
+
+    const formatRupees = (paise) => {
+      const rupees = (paise || 0) / 100;
+      if (rupees >= 10000000) return `₹${(rupees / 10000000).toFixed(2)} Cr`;
+      if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(2)} L`;
+      return `₹${rupees.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    };
 
     // Growth percentage helper
     const calcTrend = (newCount, totalCount) => {
@@ -447,6 +472,17 @@ const getAdminDashboard = async (req, res, next) => {
         color: '#06B6D4',
         bgLight: 'rgba(6, 182, 212, 0.1)',
         route: '/admin/ats-resume-scans'
+      },
+      {
+        id: 'total-revenue',
+        title: 'TOTAL REVENUE',
+        value: formatRupees(totalRevenuePaise),
+        trend: totalRevenuePaise > 0 ? `+₹${(newRevenue30dPaise / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })} 30d` : '',
+        trendUp: newRevenue30dPaise >= 0,
+        timeframe: `${(newRevenue30dPaise / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })} in last 30d`,
+        color: '#059669',
+        bgLight: 'rgba(5, 150, 105, 0.1)',
+        route: '/super-admin/payments'
       }
       
       
@@ -1077,7 +1113,189 @@ const updateStudentServiceStatus = async (req, res, next) => {
 };
 
 /**
- * @desc    Delete Student Record by ID (Super Admin)
+ * @desc    Grant/revoke paid feature entitlements for a student (Super Admin override)
+ * @route   PUT /api/admin/students/:id/entitlements
+ * @access  Private (Super Admin)
+ */
+const updateStudentEntitlements = async (req, res, next) => {
+  try {
+    const { mockLevelsUnlocked, atsProUnlocked } = req.body;
+
+    let student = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      student = await User.findById(req.params.id);
+    }
+    if (!student) {
+      student = await User.findOne({
+        $or: [
+          { studentId: req.params.id },
+          { student_id: req.params.id }
+        ]
+      });
+    }
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student record not found in MongoDB' });
+    }
+
+    const updates = {};
+    if (typeof mockLevelsUnlocked === 'boolean') {
+      updates.mockLevelsUnlocked = mockLevelsUnlocked;
+      updates.mockLevelsUnlockedAt = mockLevelsUnlocked ? new Date() : null;
+    }
+    if (typeof atsProUnlocked === 'boolean') {
+      updates.atsProUnlocked = atsProUnlocked;
+      updates.atsProUnlockedAt = atsProUnlocked ? new Date() : null;
+    }
+
+    updates.accessUnlocked = !!(updates.mockLevelsUnlocked !== undefined
+      ? updates.mockLevelsUnlocked
+      : student.mockLevelsUnlocked) && !!(updates.atsProUnlocked !== undefined
+      ? updates.atsProUnlocked
+      : student.atsProUnlocked);
+    if (updates.accessUnlocked && !student.unlockedAt) {
+      updates.unlockedAt = new Date();
+    }
+
+    student = await User.findByIdAndUpdate(student._id, { $set: updates }, { new: true });
+
+    const studentObj = student.toObject();
+    delete studentObj.password;
+
+    res.json({
+      success: true,
+      message: 'Student feature access updated',
+      student: studentObj
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Get all students with their paid feature entitlements (Plans module)
+ * @route   GET /api/admin/entitlements
+ * @access  Private (Super Admin)
+ */
+const getAdminEntitlements = async (req, res, next) => {
+  try {
+    const students = await User.find({
+      role: { $in: ['student', 'STUDENT'] }
+    })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const entitlements = students.map((student) => ({
+      _id: student._id,
+      studentId: student.studentId || student.student_id || String(student._id),
+      fullName: student.fullName || student.name || 'Student',
+      email: student.email || '',
+      profilePhoto: student.profilePhoto || '',
+      mockLevelsUnlocked: !!student.mockLevelsUnlocked,
+      mockLevelsUnlockedAt: student.mockLevelsUnlockedAt || null,
+      atsProUnlocked: !!student.atsProUnlocked,
+      atsProUnlockedAt: student.atsProUnlockedAt || null,
+      accessUnlocked: !!student.accessUnlocked,
+      unlockedAt: student.unlockedAt || null,
+      createdAt: student.createdAt || null
+    }));
+
+    const planCounts = entitlements.reduce(
+      (acc, s) => {
+        acc.total += 1;
+        if (s.accessUnlocked) acc.superPack += 1;
+        if (s.mockLevelsUnlocked) acc.mock += 1;
+        if (s.atsProUnlocked) acc.atsPro += 1;
+        if (!s.mockLevelsUnlocked && !s.atsProUnlocked) acc.none += 1;
+        return acc;
+      },
+      { total: 0, mock: 0, atsPro: 0, superPack: 0, none: 0 }
+    );
+
+    res.json({ success: true, count: entitlements.length, entitlements, planCounts });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Bulk grant/revoke feature entitlements for all students without the plan
+ * @route   PUT /api/admin/entitlements/bulk
+ * @access  Private (Super Admin)
+ */
+const bulkUpdateEntitlements = async (req, res, next) => {
+  try {
+    const { action, plans } = req.body;
+    const isGrant = action === 'grant';
+
+    if (!['grant', 'revoke'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'Invalid action. Use "grant" or "revoke".' });
+    }
+
+    const applyMock = Boolean(plans?.mock);
+    const applyAts = Boolean(plans?.ats);
+
+    if (!applyMock && !applyAts) {
+      return res.status(400).json({ success: false, message: 'Select at least one plan to update.' });
+    }
+
+    const now = new Date();
+
+    const query = { role: { $in: ['student', 'STUDENT'] } };
+    if (isGrant) {
+      const orClauses = [];
+      if (applyMock) orClauses.push({ mockLevelsUnlocked: { $ne: true } });
+      if (applyAts) orClauses.push({ atsProUnlocked: { $ne: true } });
+      query.$or = orClauses;
+    } else {
+      const andClauses = [];
+      if (applyMock) andClauses.push({ mockLevelsUnlocked: true });
+      if (applyAts) andClauses.push({ atsProUnlocked: true });
+      query.$and = andClauses;
+    }
+
+    const students = await User.find(query).select('_id mockLevelsUnlocked atsProUnlocked').lean();
+
+    const bulkOps = students.map((student) => {
+      const set = {};
+      if (applyMock) {
+        set.mockLevelsUnlocked = isGrant;
+        set.mockLevelsUnlockedAt = isGrant ? now : null;
+      }
+      if (applyAts) {
+        set.atsProUnlocked = isGrant;
+        set.atsProUnlockedAt = isGrant ? now : null;
+      }
+
+      const finalMock = applyMock ? isGrant : !!student.mockLevelsUnlocked;
+      const finalAts = applyAts ? isGrant : !!student.atsProUnlocked;
+      set.accessUnlocked = finalMock && finalAts;
+
+      return {
+        updateOne: {
+          filter: { _id: student._id },
+          update: { $set: set }
+        }
+      };
+    });
+
+    if (bulkOps.length > 0) {
+      await User.bulkWrite(bulkOps);
+    }
+
+    res.json({
+      success: true,
+      message: `${isGrant ? 'Granted' : 'Revoked'} ${applyMock ? 'Mock Interviews' : ''}${applyMock && applyAts ? ' and ' : ''}${applyAts ? 'ATS Pro' : ''} for ${bulkOps.length} student(s).`,
+      updatedCount: bulkOps.length
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * @desc    Update Student Record by ID (Super Admin)
  * @route   DELETE /api/admin/students/:id
  * @access  Private (Super Admin)
  */
@@ -1615,6 +1833,9 @@ module.exports = {
   getAdminStudentProfile,
   getStudentLoginHistory,
   updateStudentServiceStatus,
+  updateStudentEntitlements,
+  getAdminEntitlements,
+  bulkUpdateEntitlements,
   deleteAdminStudent,
   getAdminRegistrations,
   getAdminResumes,

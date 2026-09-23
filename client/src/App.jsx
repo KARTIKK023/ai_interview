@@ -63,6 +63,7 @@ import AssignRole from './pages/super-admin/AssignRole';
 import SuperAdminProfile from './pages/super-admin/SuperAdminProfile';
 import SuperAdminPayments from './pages/super-admin/SuperAdminPayments';
 import SuperAdminCoupons from './pages/super-admin/SuperAdminCoupons';
+import SuperAdminPlans from './pages/super-admin/SuperAdminPlans';
 
 // Admin Pages & Guard
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -106,6 +107,7 @@ function App() {
         <Route path="/super-admin/ats-resume-scans" element={<SuperAdminAtsResumeScans />} />
         <Route path="/super-admin/payments" element={<SuperAdminPayments />} />
         <Route path="/super-admin/coupons" element={<SuperAdminCoupons />} />
+        <Route path="/super-admin/plans" element={<SuperAdminPlans />} />
 
         {/* Additional Super Admin Resource Routes */}
         <Route path="/super-admin/users" element={<SuperAdminUsers />} />

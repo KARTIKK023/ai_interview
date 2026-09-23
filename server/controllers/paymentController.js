@@ -13,7 +13,9 @@ const {
 const { validatePaymentVerification, validateWebhookSignature } = require('razorpay/dist/utils/razorpay-utils');
 
 const CATALOG = {
-  FULL_ACCESS: 499
+  MOCK_LEVELS: 600,
+  ATS_PRO: 400,
+  SUPER_PACK: 700
 };
 
 const assertPaymentsEnabled = () => {
@@ -28,7 +30,7 @@ const createOrder = async (req, res, next) => {
   try {
     assertPaymentsEnabled();
 
-    const { purpose = 'FULL_ACCESS', couponCode } = req.body;
+    const { purpose = 'SUPER_PACK', couponCode } = req.body;
 
     const basePrice = CATALOG[purpose];
     if (!basePrice) {
@@ -199,10 +201,15 @@ const getMyPayments = async (req, res, next) => {
 const getEntitlements = async (req, res, next) => {
   try {
     const latest = await Payment.findOne({ student: req.user._id, status: 'PAID' }).sort({ capturedAt: -1 }).lean();
+    const mockLevelsUnlocked = !!req.user.mockLevelsUnlocked;
+    const atsProUnlocked = !!req.user.atsProUnlocked;
     res.json({
       success: true,
       accessUnlocked: !!req.user.accessUnlocked,
       unlockedAt: req.user.unlockedAt || null,
+      mockLevelsUnlocked,
+      atsProUnlocked,
+      hasBoth: mockLevelsUnlocked && atsProUnlocked,
       latestPayment: latest ? { purpose: latest.purpose, amountPaise: latest.payableAmountPaise, capturedAt: latest.capturedAt } : null,
       activeMode: RAZORPAY_MODE
     });
@@ -215,7 +222,7 @@ const applyCouponPreview = async (req, res, next) => {
   try {
     assertPaymentsEnabled();
 
-    const { purpose = 'FULL_ACCESS', couponCode } = req.body;
+    const { purpose = 'SUPER_PACK', couponCode } = req.body;
 
     const basePrice = CATALOG[purpose];
     if (!basePrice) {
