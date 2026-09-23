@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: require('path').join(__dirname, '.env') });
 
 const connectDB = require('./config/db');
 const passport = require('passport');
@@ -39,7 +39,7 @@ app.use('/uploads', express.static(uploadsDir));
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('https://xk5nf2pg-5174.inc1.devtunnels.ms/')) {
       return callback(null, true);
     }
     return callback(null, true);
@@ -97,6 +97,19 @@ app.use("/api/enquiry", enquiryRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'AI Interview Platform API is running' });
 });
+
+// Serve the built React client for single-service production deploys.
+// Only active when ../client/dist exists, so local Vite dev (port 5173) is untouched.
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // Error Handler
 app.use(errorHandler);
