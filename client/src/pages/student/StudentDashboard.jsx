@@ -36,7 +36,7 @@ const StudentDashboard = () => {
   const fetchEntitlement = async () => {
     try {
       const res = await API.get('/payments/entitlements');
-      setAccessUnlocked(!!res.data?.accessUnlocked);
+      setAccessUnlocked(!!(res.data?.mockLevelsUnlocked && res.data?.atsProUnlocked));
     } catch (err) {
       setAccessUnlocked(false);
     }
@@ -150,7 +150,7 @@ const StudentDashboard = () => {
             }}
             onClick={() => setShowBuyModal(true)}
           >
-            <FaCreditCard /> Unlock Full Access <FaLock size={13} />
+            <FaCreditCard /> Get Access <FaLock size={13} />
           </button>
         )}
       </div>

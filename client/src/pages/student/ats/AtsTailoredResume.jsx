@@ -8,13 +8,14 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaLock,
-  FaTimes,
   FaEdit,
   FaSave,
   FaEye,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import StudentLayout from '../../../components/StudentLayout';
+import BuyCreditsModal from '../../../components/BuyCreditsModal';
+import API from '../../../services/api';
 import { atsApi, errorMessage, normalizeScan } from './atsApi';
 
 const AtsTailoredResume = () => {
@@ -32,7 +33,7 @@ const AtsTailoredResume = () => {
   const [tailoredPdfUrl, setTailoredPdfUrl] = useState('');
 
   const [premiumUnlocked, setPremiumUnlocked] = useState(false);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [showBuyModal, setShowBuyModal] = useState(false);
 
   useEffect(() => {
     atsApi
@@ -66,15 +67,20 @@ const AtsTailoredResume = () => {
     if (tailoredPdfUrl) URL.revokeObjectURL(tailoredPdfUrl);
   }, [originalPdfUrl, tailoredPdfUrl]);
 
+  useEffect(() => {
+    const fetchEntitlement = async () => {
+      try {
+        const res = await API.get('/payments/entitlements');
+        setPremiumUnlocked(!!res.data?.atsProUnlocked);
+      } catch (err) {
+        setPremiumUnlocked(false);
+      }
+    };
+    fetchEntitlement();
+  }, []);
+
   const handleUnlock = () => {
-    setShowUnlockModal(true);
-  };
-
-  const continueWithDemo = () => {
-    setPremiumUnlocked(true);
-    setShowUnlockModal(false);
-
-    toast.success('Premium preview unlocked for this demo.');
+    setShowBuyModal(true);
   };
 
   const generate = async () => {
@@ -509,7 +515,7 @@ const AtsTailoredResume = () => {
               </div>
               <div className="btn-group" role="group" aria-label="Resume preview mode">
                 <button type="button" className={`btn ${previewMode === 'original' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { setPreviewMode('original'); loadOriginalPreview(); }}><FaEye className="me-2" />Original</button>
-                <button type="button" className={`btn ${previewMode === 'tailored' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { if (!premiumUnlocked) { handleUnlock(); return; } setPreviewMode('tailored'); loadTailoredPreview(); }}><FaMagic className="me-2" />Tailored</button>
+                <button type="button" className={`btn ${previewMode === 'tailored' ? 'btn-primary' : 'btn-outline-secondary'}`} onClick={() => { setPreviewMode('tailored'); loadTailoredPreview(); }}><FaMagic className="me-2" />Tailored</button>
               </div>
             </div>
 
@@ -1063,127 +1069,17 @@ const AtsTailoredResume = () => {
         )}
       </div>
 
-      {showUnlockModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{
-            backgroundColor: 'rgba(15, 23, 42, 0.35)',
-            zIndex: 9999,
-            padding: '20px',
+      {showBuyModal && (
+        <BuyCreditsModal
+          show={showBuyModal}
+          onClose={() => setShowBuyModal(false)}
+          onUnlocked={() => {
+            setPremiumUnlocked(true);
+            setShowBuyModal(false);
+            toast.success('ATS Pro unlocked.');
           }}
-          onClick={() => setShowUnlockModal(false)}
-        >
-          <div
-            className="card border-0 shadow-lg rounded-4"
-            style={{
-              width: '100%',
-              maxWidth: '430px',
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-          >
-            <div className="card-body p-4 p-lg-5">
-              <div className="d-flex justify-content-between align-items-start mb-4">
-                <div
-                  className="d-flex align-items-center justify-content-center rounded-3"
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    backgroundColor: '#edf3ff',
-                  }}
-                >
-                  <FaLock
-                    className="text-primary"
-                    size={19}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  className="btn btn-light rounded-circle d-flex align-items-center justify-content-center"
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                  }}
-                  onClick={() =>
-                    setShowUnlockModal(false)
-                  }
-                >
-                  <FaTimes size={13} />
-                </button>
-              </div>
-
-              <div className="small fw-semibold text-primary mb-2">
-                PREMIUM PREVIEW
-              </div>
-
-              <h4
-                className="fw-bold mb-2"
-                style={{
-                  letterSpacing: '-0.5px',
-                }}
-              >
-                Unlock your tailored resume
-              </h4>
-
-              <p className="text-secondary lh-lg mb-4">
-                Get access to the complete AI-optimized resume
-                and all the improvements made specifically for
-                your target position.
-              </p>
-
-              <div className="mb-4">
-                <div className="d-flex align-items-center py-3 border-bottom">
-                  <FaCheckCircle
-                    className="text-success me-3"
-                    size={15}
-                  />
-
-                  <span className="small">
-                    Fully optimized resume content
-                  </span>
-                </div>
-
-                <div className="d-flex align-items-center py-3 border-bottom">
-                  <FaCheckCircle
-                    className="text-success me-3"
-                    size={15}
-                  />
-
-                  <span className="small">
-                    Detailed role-specific improvements
-                  </span>
-                </div>
-
-                <div className="d-flex align-items-center py-3">
-                  <FaCheckCircle
-                    className="text-success me-3"
-                    size={15}
-                  />
-
-                  <span className="small">
-                    Download your tailored PDF
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="btn btn-primary w-100 py-2 rounded-3 fw-semibold"
-                onClick={continueWithDemo}
-              >
-                Continue
-              </button>
-
-              <div className="text-center mt-3">
-                <small className="text-secondary">
-                  Demo mode · No payment required
-                </small>
-              </div>
-            </div>
-          </div>
-        </div>
+          initialPurpose="ATS_PRO"
+        />
       )}
 
       <style>

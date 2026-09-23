@@ -15,6 +15,9 @@ const {
   getAdminStudentProfile,
   getStudentLoginHistory,
   updateStudentServiceStatus,
+  updateStudentEntitlements,
+  getAdminEntitlements,
+  bulkUpdateEntitlements,
   deleteAdminStudent,
   getAdminRegistrations,
   getAdminResumes,
@@ -57,9 +60,12 @@ router.get('/resume-scans', protectAdmin, requirePermission('resumes'), getAdmin
 
 // Permission Enforced Specific Endpoints
 router.get('/students', protectAdmin, requirePermission('students'), getAdminStudents);
+router.get('/entitlements', protectSuperAdmin, requirePermission('students'), getAdminEntitlements);
+router.put('/entitlements/bulk', protectSuperAdmin, requirePermission('students'), bulkUpdateEntitlements);
 router.get('/students/:studentId/login-history', protectAdmin, requirePermission('students'), getStudentLoginHistory);
 router.get('/students/:id', protectAdmin, requirePermission('students'), getAdminStudentProfile);
 router.put('/students/:id/service-status', protectAdmin, requirePermission('students'), updateStudentServiceStatus);
+router.put('/students/:id/entitlements', protectSuperAdmin, requirePermission('students'), updateStudentEntitlements);
 router.delete('/students/:id', protectAdmin, requirePermission('students'), deleteAdminStudent);
 router.get('/registrations', protectAdmin, requirePermission('registrations'), getAdminRegistrations);
 router.get('/resumes', protectAdmin, requirePermission('resumes'), getAdminResumes);

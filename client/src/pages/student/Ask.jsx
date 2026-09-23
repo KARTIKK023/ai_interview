@@ -947,11 +947,11 @@ const Ask = () => {
 
               <div>
                 <div className="ask-status-title">
-                  Local AI
+                  Groq AI
                 </div>
 
                 <div className="ask-status-model">
-                  llama3.1 · 8B
+                  groq cloud · fast inference
                 </div>
               </div>
             </div>
@@ -993,7 +993,7 @@ const Ask = () => {
                 </h1>
 
                 <span>
-                  Powered by local AI
+                  Powered by Groq
                 </span>
               </div>
 
@@ -1001,7 +1001,7 @@ const Ask = () => {
 
             <div className="ask-header-model">
               <span className="ask-live-dot" />
-              Llama 3.1 8B
+              Llama 3.1 8B · Groq
             </div>
 
           </header>

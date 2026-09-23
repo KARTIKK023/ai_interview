@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema(
   {
     student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    purpose: { type: String, enum: ['FULL_ACCESS'], required: true, default: 'FULL_ACCESS' },
+    purpose: { type: String, enum: ['MOCK_LEVELS', 'ATS_PRO', 'SUPER_PACK'], required: true, default: 'SUPER_PACK' },
     baseAmountPaise: { type: Number, required: true },
     discountPaise: { type: Number, default: 0 },
     payableAmountPaise: { type: Number, required: true },

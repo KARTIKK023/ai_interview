@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
 import StudentLayout from '../../../components/StudentLayout';
+import BuyCreditsModal from '../../../components/BuyCreditsModal';
+import API from '../../../services/api';
 
 import {
   FaRobot,
@@ -33,6 +35,21 @@ const AIMockInterviewLevels = () => {
 
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [selectedLockedLevel, setSelectedLockedLevel] = useState(null);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [mockLevelsUnlocked, setMockLevelsUnlocked] = useState(false);
+
+  const fetchEntitlement = async () => {
+    try {
+      const res = await API.get('/payments/entitlements');
+      setMockLevelsUnlocked(!!res.data?.mockLevelsUnlocked);
+    } catch (err) {
+      setMockLevelsUnlocked(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEntitlement();
+  }, []);
 
   // Dynamically generate 10 interview levels
   const levels = Array.from({ length: 10 }, (_, index) => {
@@ -49,9 +66,9 @@ const AIMockInterviewLevels = () => {
   });
 
   // Level 1 = Free
-  // Level 2-10 = Premium
+  // Level 2-10 = Premium (unlocked once purchased)
   const handleSelectLevel = (levelObj) => {
-    if (levelObj.level === 1) {
+    if (levelObj.level === 1 || mockLevelsUnlocked) {
       navigate(
         `/student/interview-preparation/ai-mock/setup?level=${levelObj.level}&questions=${levelObj.questionCount}`
       );
@@ -102,6 +119,40 @@ const AIMockInterviewLevels = () => {
           interview levels for deeper preparation.
         </p>
       </div>
+
+      {mockLevelsUnlocked && (
+        <div
+          className="mb-4 p-3 d-flex align-items-center gap-3"
+          style={{
+            backgroundColor: '#ECFDF5',
+            border: '1px solid #A7F3D0',
+            borderRadius: '14px',
+          }}
+        >
+          <div
+            className="d-flex align-items-center justify-content-center flex-shrink-0"
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              backgroundColor: '#10B981',
+              color: '#fff',
+            }}
+          >
+            <FaCheckCircle />
+          </div>
+
+          <div>
+            <div className="fw-bold" style={{ color: '#065F46' }}>
+              All interview levels unlocked
+            </div>
+
+            <small style={{ color: '#047857' }}>
+              Levels 2–10 are now available — pick any level to start.
+            </small>
+          </div>
+        </div>
+      )}
 
       {/* =====================================================
           FREE LEVEL INFO
@@ -202,6 +253,19 @@ const AIMockInterviewLevels = () => {
                       <FaCheckCircle className="me-1" />
                       FREE
                     </span>
+                  ) : mockLevelsUnlocked ? (
+                    <span
+                      className="badge px-3 py-2 fw-bold"
+                      style={{
+                        backgroundColor: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: '8px',
+                      }}
+                    >
+                      <FaCheckCircle className="me-1" />
+                      UNLOCKED
+                    </span>
                   ) : (
                     <span
                       className="badge px-3 py-2 fw-bold"
@@ -255,10 +319,12 @@ const AIMockInterviewLevels = () => {
                     BUTTON
                 ================================================= */}
                 <div className="mt-auto">
-                  {item.isFree ? (
+                  {item.isFree || mockLevelsUnlocked ? (
                     <button
                       type="button"
-                      className="btn btn-success w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
+                      className={`btn w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2 ${
+                        item.isFree ? 'btn-success' : 'btn-primary'
+                      }`}
                       onClick={() =>
                         handleSelectLevel(item)
                       }
@@ -266,8 +332,8 @@ const AIMockInterviewLevels = () => {
                         borderRadius: '10px',
                       }}
                     >
-                      <FaPlay size={14} />
-                      Start Free Interview
+                      {item.isFree ? <FaPlay size={14} /> : <FaPlay size={14} />}
+                      {item.isFree ? 'Start Free Interview' : `Start Level ${item.level}`}
                       <FaArrowRight size={13} />
                     </button>
                   ) : (
@@ -426,17 +492,16 @@ const AIMockInterviewLevels = () => {
                 type="button"
                 className="btn btn-primary w-100 py-3 fw-bold d-flex align-items-center justify-content-center gap-2"
                 onClick={() => {
-                  // TODO:
-                  // Replace this with your actual payment/
-                  // subscription page route.
-                  navigate('/student/subscription');
+                  setShowPremiumModal(false);
+                  setSelectedLockedLevel(null);
+                  setShowBuyModal(true);
                 }}
                 style={{
                   borderRadius: '11px',
                 }}
               >
                 <FaCrown />
-                Buy Premium Access
+                Buy Mock Interviews
                 <FaArrowRight size={14} />
               </button>
 
@@ -451,6 +516,15 @@ const AIMockInterviewLevels = () => {
           </div>
         </div>
       )}
+
+      <BuyCreditsModal
+        show={showBuyModal}
+        onClose={() => setShowBuyModal(false)}
+        onUnlocked={() => {
+          fetchEntitlement();
+        }}
+        initialPurpose="MOCK_LEVELS"
+      />
     </StudentLayout>
   );
 };
