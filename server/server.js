@@ -1,14 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+dotenv.config();
+
 const connectDB = require('./config/db');
 const passport = require('passport');
 const { errorHandler } = require('./middleware/errorMiddleware');
+const enquiryRoutes = require("./routes/enquiryRoutes");
 
 const fs = require('fs');
 const path = require('path');
-
-dotenv.config();
 
 // Ensure uploads folder exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -87,6 +88,10 @@ app.use(
   '/api/notifications',
   notificationRoutes
 );
+
+app.use(express.json());
+
+app.use("/api/enquiry", enquiryRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

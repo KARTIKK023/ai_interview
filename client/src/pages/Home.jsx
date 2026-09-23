@@ -1,7 +1,10 @@
 import React, { useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { AuthContext } from "../context/AuthContext";
+import LandingFooter from "./LandingFooter";
+const MotionLink = motion(Link);
 
 import {
   FaRobot,
@@ -18,13 +21,38 @@ import {
   FaUsers,
   FaLightbulb,
   FaBullseye,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaMapMarkerAlt,
+  FaFacebookF,
+  FaLinkedinIn,
+  FaInstagram,
+  FaTimes,
 } from "react-icons/fa";
+import { FaTwitter } from "react-icons/fa";
 
 import { TbScan } from "react-icons/tb";
 
 /* =========================================================
    DATA
 ========================================================= */
+
+
+const socialStyle = {
+  width: "34px",
+  height: "34px",
+  border: "1px solid #1e3a5f",
+  borderRadius: "7px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#3b82f6",
+  textDecoration: "none",
+};
+
+
+
+
 
 const questions = [
   {
@@ -66,6 +94,105 @@ const nonTechnicalRoles = [
   "Operations Manager",
   "Recruiter",
 ];
+
+const roleDetails = {
+  "Frontend Developer": {
+    description:
+      "Build responsive and interactive web applications using modern frontend technologies.",
+    skills: "HTML, CSS, JavaScript, React, Tailwind CSS, Git",
+    practice: [
+      "Frontend interview questions",
+      "JavaScript concepts",
+      "React & API questions",
+      "Project-based questions",
+    ],
+    focus: "Technical • Projects • Problem Solving",
+  },
+  "Backend Developer": {
+    description:
+      "Design reliable server-side applications, APIs, and data services that power modern products.",
+    skills: "Node.js, Express, REST APIs, Databases, Authentication, Git",
+    practice: [
+      "Backend fundamentals",
+      "API design and security",
+      "Database and scalability questions",
+      "System design scenarios",
+    ],
+    focus: "Technical • APIs • System Design",
+  },
+  "Full Stack Developer": {
+    description:
+      "Create complete products across the frontend, backend, database, and deployment layers.",
+    skills: "JavaScript, React, Node.js, SQL, REST APIs, Deployment",
+    practice: [
+      "End-to-end application questions",
+      "Frontend and backend concepts",
+      "Architecture trade-offs",
+      "Full stack project discussions",
+    ],
+    focus: "Technical • Architecture • Projects",
+  },
+  "Data Analyst": {
+    description:
+      "Turn business data into clear insights, useful reports, and confident recommendations.",
+    skills: "SQL, Excel, Python, Statistics, Power BI, Data Visualization",
+    practice: [
+      "SQL and data-cleaning questions",
+      "Analytics case studies",
+      "Statistics and visualization concepts",
+      "Portfolio and project questions",
+    ],
+    focus: "Analytics • Business Cases • Communication",
+  },
+  "DevOps Engineer": {
+    description:
+      "Build reliable delivery pipelines and cloud infrastructure for fast, resilient software teams.",
+    skills: "Linux, Docker, Kubernetes, CI/CD, Cloud, Monitoring",
+    practice: [
+      "DevOps and cloud fundamentals",
+      "CI/CD troubleshooting",
+      "Infrastructure and reliability scenarios",
+      "Incident-response questions",
+    ],
+    focus: "Cloud • Reliability • Troubleshooting",
+  },
+  "React Developer": {
+    description:
+      "Craft maintainable, high-performance user experiences with React and its modern ecosystem.",
+    skills: "React, JavaScript, Hooks, State Management, APIs, Testing",
+    practice: [
+      "React component questions",
+      "Hooks and state management",
+      "Performance and testing topics",
+      "Frontend project walkthroughs",
+    ],
+    focus: "React • Performance • Projects",
+  },
+  "AI Engineer": {
+    description:
+      "Build intelligent applications by combining machine learning models, data, and production systems.",
+    skills: "Python, Machine Learning, NLP, LLMs, APIs, MLOps",
+    practice: [
+      "Machine learning fundamentals",
+      "LLM and AI application design",
+      "Model evaluation and deployment",
+      "AI project discussions",
+    ],
+    focus: "Machine Learning • AI Systems • Projects",
+  },
+  "Python Developer": {
+    description:
+      "Develop clear, scalable software and automation with Python across web, data, and services.",
+    skills: "Python, OOP, Django, FastAPI, SQL, Testing",
+    practice: [
+      "Python language concepts",
+      "Object-oriented programming",
+      "Web framework and API questions",
+      "Coding and debugging challenges",
+    ],
+    focus: "Python • Coding • Problem Solving",
+  },
+};
 
 const features = [
 {
@@ -184,10 +311,15 @@ const Home = () => {
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [roleType, setRoleType] = useState("Technical");
+  const [selectedRole, setSelectedRole] = useState(null);
    const [hiringTextIndex, setHiringTextIndex] = useState(0);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
+
+const [demoStatus, setDemoStatus] = useState(0);
+const [demoTime, setDemoTime] = useState(12);
+const [speechIndex, setSpeechIndex] = useState(0);
 
   const smoothX = useSpring(mouseX, {
     stiffness: 80,
@@ -202,19 +334,72 @@ const Home = () => {
   const isStudent =
     user && (user.role || "").toLowerCase() === "student";
 
+
+    // Demo status animation
+useEffect(() => {
+  const interval = setInterval(() => {
+    setDemoStatus((prev) => (prev + 1) % 4);
+  }, 2200);
+
+  return () => clearInterval(interval);
+}, []);
+
+// Demo timer
+useEffect(() => {
+  const interval = setInterval(() => {
+    setDemoTime((prev) => (prev >= 59 ? 0 : prev + 1));
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+// Rotate demo speech
+useEffect(() => {
+  const interval = setInterval(() => {
+    setSpeechIndex((prev) => (prev + 1) % 3);
+  }, 4000);
+
+  return () => clearInterval(interval);
+}, []);
+
   /* =======================================================
      QUESTION ROTATION
   ======================================================= */
 
- useEffect(() => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHiringTextIndex(
+        (prev) => (prev + 1) % hiringTexts.length
+      );
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+
+  // Auto-change interview questions
+useEffect(() => {
   const interval = setInterval(() => {
-    setHiringTextIndex(
-      (prev) => (prev + 1) % hiringTexts.length
-    );
-  }, 2500);
+    setQuestionIndex((prev) => (prev + 1) % questions.length);
+  }, 5000); // change every 5 seconds
 
   return () => clearInterval(interval);
 }, []);
+
+  /* =======================================================
+     BODY SCROLL LOCK WHEN MODAL IS OPEN
+  ======================================================= */
+
+  useEffect(() => {
+    if (selectedRole) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedRole]);
 
   /* =======================================================
      MOUSE PARALLAX
@@ -244,6 +429,20 @@ const Home = () => {
   };
 
   const currentQuestion = questions[questionIndex];
+  const selectedRoleDetails = selectedRole
+    ? roleDetails[selectedRole] || {
+        description:
+          "Build the skills and confidence needed to perform at your best in this career path.",
+        skills: "Communication, Problem Solving, Role Fundamentals, Collaboration",
+        practice: [
+          "Role-specific interview questions",
+          "Scenario-based practice",
+          "Communication and confidence",
+          "Personalized interview feedback",
+        ],
+        focus: "Role Knowledge • Communication • Scenarios",
+      }
+    : null;
 
   return (
     <div
@@ -484,6 +683,7 @@ const Home = () => {
               ["How It Works", "#how"],
               ["For Students", "#roles"],
               ["AI Coach", "#coach"],
+              ["Enquiry", "/enquiry"],
             ].map(([text, href]) => (
 
               <a
@@ -648,7 +848,7 @@ const Home = () => {
   Interview Better.
 </motion.span>
 
-                  <br />
+      <br />
 
   <AnimatePresence mode="wait">
   <motion.span
@@ -733,31 +933,34 @@ const Home = () => {
                     <FaArrowRight size={13} />
                   </motion.button>
 
-                  <motion.a
-                    whileHover={{
-                      scale: 1.04,
-                      background:
-                        "rgba(59,130,246,.12)",
-                    }}
-                    href="#features"
-                    style={{
-                      borderRadius: "35px",
-                      padding: "17px 28px",
-                      color: "#fff",
-                      textDecoration: "none",
-                      fontWeight: 700,
-                      border:
-                        "1px solid rgba(96,165,250,.3)",
-                      background:
-                        "rgba(15,23,42,.65)",
-                    }}
-                  >
-                    <FaPlay
-                      size={11}
-                      className="me-2"
-                    />
-                    Explore AI Interview
-                  </motion.a>
+                 <MotionLink
+                  to="/student/interview-preparation/ai-mock"
+                  whileHover={{
+                    scale: 1.04,
+                    background: "rgba(59,130,246,.12)",
+                  }}
+                  whileTap={{
+                    scale: 0.98,
+                  }}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "35px",
+                    padding: "17px 28px",
+                    color: "#fff",
+                    textDecoration: "none",
+                    fontWeight: 700,
+                    border: "1px solid rgba(96,165,250,.3)",
+                    background: "rgba(15,23,42,.65)",
+                  }}
+                >
+                  <FaPlay
+                    size={11}
+                    className="me-2"
+                  />
+                  Explore AI Interview
+                </MotionLink>
 
                 </motion.div>
 
@@ -799,568 +1002,1039 @@ const Home = () => {
 
             </div>
 
-            {/* =================================================
-                AI INTERVIEW DASHBOARD
-            ================================================= */}
+        
 
-            <div className="col-lg-6">
+       {/* =========================================================
+    AI INTERVIEWER - INTERACTIVE DEMO CARD
+========================================================= */}
+
+  <div className="col-lg-6">
+  <motion.div
+    style={{
+      x: smoothX,
+      y: smoothY,
+      position: "relative",
+    }}
+  >
+
+    <motion.div
+      initial={{
+        opacity: 0,
+        scale: 0.88,
+        rotateY: 12,
+      }}
+      animate={{
+        opacity: 1,
+        scale: 1,
+        rotateY: 0,
+      }}
+      transition={{
+        duration: 1.1,
+        delay: 0.2,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      style={{
+        position: "relative",
+        maxWidth: "630px",
+        margin: "auto",
+        perspective: "1200px",
+      }}
+    >
+
+      {/* =====================================================
+          AMBIENT GLOW
+      ===================================================== */}
+
+      <motion.div
+        animate={{
+          scale: [0.92, 1.08, 0.92],
+          opacity: [0.18, 0.38, 0.18],
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        style={{
+          position: "absolute",
+          inset: "-50px",
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(37,99,235,.30), transparent 68%)",
+          filter: "blur(35px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* =====================================================
+          MAIN CARD
+      ===================================================== */}
+
+      <motion.div
+        animate={{
+          y: [0, -6, 0],
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        whileHover={{
+          y: -10,
+        }}
+        style={{
+          position: "relative",
+          zIndex: 2,
+          padding: "20px",
+          borderRadius: "24px",
+          background:
+            "linear-gradient(145deg, rgba(15,23,42,.98), rgba(3,7,18,.98))",
+          border:
+            "1px solid rgba(96,165,250,.32)",
+          boxShadow:
+            "0 35px 100px rgba(0,0,0,.55), 0 0 70px rgba(37,99,235,.12)",
+          overflow: "visible",
+        }}
+      >
+
+        {/* =================================================
+            HEADER
+        ================================================= */}
+
+        <div
+          className="d-flex justify-content-between align-items-center"
+          style={{
+            paddingBottom: "15px",
+            marginBottom: "15px",
+            borderBottom:
+              "1px solid rgba(255,255,255,.08)",
+          }}
+        >
+
+          <div className="d-flex align-items-center gap-3">
+
+            {/* AI ICON */}
+            <motion.div
+              animate={{
+                boxShadow: [
+                  "0 0 12px rgba(6,182,212,.25)",
+                  "0 0 32px rgba(6,182,212,.65)",
+                  "0 0 12px rgba(6,182,212,.25)",
+                ],
+              }}
+              transition={{
+                duration: 2.2,
+                repeat: Infinity,
+              }}
+              style={{
+                width: "48px",
+                height: "48px",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background:
+                  "linear-gradient(135deg,#06b6d4,#2563eb)",
+                color: "#fff",
+              }}
+            >
+              <FaRobot size={23} />
+            </motion.div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: "15px",
+                  fontWeight: 800,
+                  color: "#fff",
+                }}
+              >
+                AI Interviewer
+              </div>
 
               <motion.div
+                animate={{
+                  opacity: [0.55, 1, 0.55],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                }}
                 style={{
-                  x: smoothX,
-                  y: smoothY,
+                  color: "#34d399",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  marginTop: "2px",
+                }}
+              >
+                ● LIVE SESSION
+              </motion.div>
+            </div>
+
+          </div>
+
+          {/* LIVE REC */}
+          <div
+            style={{
+              color: "#f87171",
+              fontSize: "11px",
+              fontWeight: 700,
+            }}
+          >
+            <motion.span
+              animate={{
+                opacity: [1, 0.3, 1],
+                scale: [1, 1.1, 1],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+              }}
+            >
+              ● REC
+            </motion.span>
+          </div>
+
+        </div>
+
+        {/* =================================================
+            AI AVATAR AREA
+        ================================================= */}
+
+        <div
+          style={{
+            position: "relative",
+            height: "190px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            borderRadius: "18px",
+            background:
+              "radial-gradient(circle at center, rgba(37,99,235,.16), rgba(2,6,23,.35) 55%, transparent 75%)",
+          }}
+        >
+
+          {/* ROTATING OUTER RING */}
+          <motion.div
+            animate={{
+              rotate: 360,
+            }}
+            transition={{
+              duration: 14,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            style={{
+              position: "absolute",
+              width: "160px",
+              height: "160px",
+              borderRadius: "50%",
+              border:
+                "1px solid rgba(59,130,246,.5)",
+              boxShadow:
+                "0 0 30px rgba(37,99,235,.20)",
+            }}
+          />
+
+          {/* SECOND RING */}
+          <motion.div
+            animate={{
+              rotate: -360,
+            }}
+            transition={{
+              duration: 9,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            style={{
+              position: "absolute",
+              width: "135px",
+              height: "135px",
+              borderRadius: "50%",
+              border:
+                "1px dashed rgba(168,85,247,.65)",
+            }}
+          />
+
+          {/* AI GLOW */}
+          <motion.div
+            animate={{
+              scale: [0.9, 1.15, 0.9],
+              opacity: [0.25, 0.5, 0.25],
+            }}
+            transition={{
+              duration: 2.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{
+              position: "absolute",
+              width: "110px",
+              height: "110px",
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(6,182,212,.30), transparent 70%)",
+              filter: "blur(12px)",
+            }}
+          />
+
+        
+         {/* ROBOT */}
+          <motion.div
+            animate={{
+              y: [0, -7, 0],
+              scale: [1, 1.025, 1],
+            }}
+            transition={{
+              duration: 2.8,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            style={{
+              position: "relative",
+              zIndex: 3,
+              width: "92px",
+              height: "92px",
+              borderRadius: "28px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "linear-gradient(145deg,#e0f2fe,#bfdbfe)",
+              boxShadow: "0 0 35px rgba(6,182,212,.55)",
+            }}
+          >
+            <FaRobot
+              size={46}
+              style={{
+                color: "#06b6d4",
+              }}
+            />
+</motion.div>
+
+          {/* LISTENING PILL */}
+          <motion.div
+            animate={{
+              scale: [1, 1.04, 1],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+            }}
+            style={{
+              position: "absolute",
+              zIndex: 4,
+              bottom: "12px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              padding: "8px 16px",
+              borderRadius: "30px",
+              background:
+                "rgba(2,6,23,.92)",
+              border:
+                "1px solid rgba(6,182,212,.45)",
+              color: "#67e8f9",
+              fontSize: "11px",
+              fontWeight: 700,
+              boxShadow:
+                "0 0 25px rgba(6,182,212,.18)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <motion.span
+              animate={{
+                opacity: [0.5, 1, 0.5],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+              }}
+            >
+              🎙 I'm listening...
+            </motion.span>
+          </motion.div>
+
+          {/* LEFT WAVE */}
+          <div
+            style={{
+              position: "absolute",
+              left: "28px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
+            {[14, 22, 30, 18, 26].map(
+              (height, index) => (
+                <motion.span
+                  key={index}
+                  animate={{
+                    height: [
+                      `${height * 0.45}px`,
+                      `${height}px`,
+                      `${height * 0.6}px`,
+                      `${height}px`,
+                    ],
+                  }}
+                  transition={{
+                    duration: 0.7,
+                    repeat: Infinity,
+                    delay: index * 0.08,
+                  }}
+                  style={{
+                    width: "3px",
+                    borderRadius: "4px",
+                    background:
+                      "linear-gradient(#7c3aed,#06b6d4)",
+                    boxShadow:
+                      "0 0 8px rgba(6,182,212,.5)",
+                  }}
+                />
+              )
+            )}
+          </div>
+
+          {/* RIGHT WAVE */}
+          <div
+            style={{
+              position: "absolute",
+              right: "28px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
+            {[26, 18, 30, 22, 14].map(
+              (height, index) => (
+                <motion.span
+                  key={index}
+                  animate={{
+                    height: [
+                      `${height * 0.45}px`,
+                      `${height}px`,
+                      `${height * 0.65}px`,
+                      `${height}px`,
+                    ],
+                  }}
+                  transition={{
+                    duration: 0.7,
+                    repeat: Infinity,
+                    delay: index * 0.08,
+                  }}
+                  style={{
+                    width: "3px",
+                    borderRadius: "4px",
+                    background:
+                      "linear-gradient(#06b6d4,#7c3aed)",
+                    boxShadow:
+                      "0 0 8px rgba(124,58,237,.5)",
+                  }}
+                />
+              )
+            )}
+          </div>
+
+          {/* SPEECH BUBBLE */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={speechIndex}
+              initial={{
+                opacity: 0,
+                y: 10,
+                scale: 0.95,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                y: -10,
+                scale: 0.96,
+              }}
+              transition={{
+                duration: 0.35,
+              }}
+              style={{
+                position: "absolute",
+                top: "10px",
+                right: "20px",
+                maxWidth: "205px",
+                padding: "10px 13px",
+                borderRadius: "14px",
+                background:
+                  "rgba(15,23,42,.92)",
+                border:
+                  "1px solid rgba(124,58,237,.4)",
+                color: "#e2e8f0",
+                fontSize: "10px",
+                lineHeight: 1.5,
+                boxShadow:
+                  "0 10px 30px rgba(0,0,0,.3)",
+              }}
+            >
+              {[
+                "Hello! 👋 I'm your AI Interviewer.",
+                "Take your time. Think through your answer.",
+                "Great! Let's move to the next question.",
+              ][speechIndex]}
+            </motion.div>
+          </AnimatePresence>
+
+        </div>
+
+        {/* =================================================
+            QUESTION
+        ================================================= */}
+
+        <motion.div
+          whileHover={{
+            borderColor:
+              "rgba(6,182,212,.35)",
+          }}
+          style={{
+            padding: "16px",
+            borderRadius: "14px",
+            background:
+              "rgba(30,41,59,.65)",
+            border:
+              "1px solid rgba(96,165,250,.15)",
+            marginTop: "14px",
+          }}
+        >
+
+          <div
+            className="d-flex justify-content-between align-items-center mb-2"
+          >
+            <span
+              style={{
+                color: "#06b6d4",
+                fontSize: "10px",
+                fontWeight: 800,
+              }}
+            >
+              QUESTION{" "}
+              {String(questionIndex + 1).padStart(2, "0")}
+              {" / 08"}
+            </span>
+
+            <span
+              style={{
+                color: "#94a3b8",
+                fontSize: "10px",
+              }}
+            >
+              {currentQuestion.category}
+            </span>
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentQuestion.text}
+              initial={{
+                opacity: 0,
+                y: 12,
+              }}
+              animate={{
+                opacity: 1,
+                y: 0,
+              }}
+              exit={{
+                opacity: 0,
+                y: -12,
+              }}
+              transition={{
+                duration: 0.4,
+              }}
+              style={{
+                color: "#fff",
+                fontSize: "14px",
+                lineHeight: 1.55,
+              }}
+            >
+              "{currentQuestion.text}"
+            </motion.div>
+          </AnimatePresence>
+
+        </motion.div>
+
+        {/* =================================================
+            LIVE ANALYSIS STATUS
+        ================================================= */}
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(4, 1fr)",
+            gap: "7px",
+            marginTop: "12px",
+          }}
+        >
+
+          {[
+            ["Analyzing", "◉"],
+            ["Evaluating", "◈"],
+            ["Feedback", "✦"],
+            ["Ready", "✓"],
+          ].map(([label, icon], index) => {
+
+            const active =
+              demoStatus === index;
+
+            return (
+              <motion.div
+                key={label}
+                animate={{
+                  scale: active ? 1.04 : 1,
+                  borderColor: active
+                    ? "rgba(6,182,212,.55)"
+                    : "rgba(96,165,250,.12)",
+                  background: active
+                    ? "rgba(6,182,212,.08)"
+                    : "rgba(15,23,42,.45)",
+                }}
+                transition={{
+                  duration: 0.3,
+                }}
+                style={{
+                  padding: "9px 7px",
+                  borderRadius: "9px",
+                  border:
+                    "1px solid rgba(96,165,250,.12)",
+                  textAlign: "center",
+                }}
+              >
+                <motion.div
+                  animate={{
+                    opacity: active
+                      ? [0.5, 1, 0.5]
+                      : 0.6,
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: active
+                      ? Infinity
+                      : 0,
+                  }}
+                  style={{
+                    color: active
+                      ? "#67e8f9"
+                      : "#64748b",
+                    fontSize: "15px",
+                  }}
+                >
+                  {icon}
+                </motion.div>
+
+                <div
+                  style={{
+                    color: active
+                      ? "#e2e8f0"
+                      : "#64748b",
+                    fontSize: "12px",
+                    marginTop: "3px",
+                  }}
+                >
+                  {label}
+                </div>
+              </motion.div>
+            );
+          })}
+
+        </div>
+
+        {/* =================================================
+            WAVEFORM
+        ================================================= */}
+
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "13px 15px",
+            borderRadius: "13px",
+            background:
+              "rgba(2,6,23,.85)",
+            border:
+              "1px solid rgba(59,130,246,.18)",
+          }}
+        >
+
+          <div className="d-flex justify-content-between align-items-center">
+            <span
+              style={{
+                color: "#cbd5e1",
+                fontSize: "11px",
+                fontWeight: 700,
+              }}
+            >
+              <FaMicrophone
+                className="text-info me-2"
+                size={12}
+              />
+              Listening to your answer...
+            </span>
+
+            <span
+              style={{
+                color: "#06b6d4",
+                fontSize: "11px",
+                fontWeight: 700,
+              }}
+            >
+              00:{String(demoTime).padStart(2, "0")}
+            </span>
+          </div>
+
+          <div
+            className="d-flex justify-content-center align-items-center gap-1"
+            style={{
+              height: "42px",
+              marginTop: "8px",
+            }}
+          >
+            {[
+              13, 24, 16, 32, 22,
+              38, 26, 42, 20, 34,
+              18, 30, 14, 27, 19,
+              35, 23, 16, 31, 20,
+            ].map((height, index) => (
+              <motion.div
+                key={index}
+                animate={{
+                  height: [
+                    `${height * 0.35}px`,
+                    `${height}px`,
+                    `${height * 0.55}px`,
+                    `${height}px`,
+                  ],
+                }}
+                transition={{
+                  duration: 0.7,
+                  repeat: Infinity,
+                  delay: index * 0.045,
+                }}
+                style={{
+                  width: "4px",
+                  borderRadius: "4px",
+                  background:
+                    "linear-gradient(#a855f7,#06b6d4)",
+                  boxShadow:
+                    "0 0 8px rgba(6,182,212,.4)",
+                }}
+              />
+            ))}
+          </div>
+
+        </div>
+
+        {/* =================================================
+            SCORES
+        ================================================= */}
+
+        <div
+          className="row g-2"
+          style={{
+            marginTop: "12px",
+          }}
+        >
+
+          {[
+            ["Technical", 92, "#06b6d4"],
+            ["Communication", 84, "#3b82f6"],
+            ["Confidence", 88, "#10b981"],
+            ["Relevance", 90, "#facc15"],
+          ].map(([name, value, color]) => (
+
+            <div
+              className="col-6"
+              key={name}
+            >
+
+              <motion.div
+                whileHover={{
+                  y: -3,
+                  scale: 1.02,
+                }}
+                style={{
+                  padding: "11px",
+                  borderRadius: "10px",
+                  background:
+                    `${color}08`,
+                  border:
+                    `1px solid ${color}25`,
                 }}
               >
 
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    scale: 0.75,
-                    rotateY: 12,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    rotateY: 0,
-                  }}
-                  transition={{
-                    duration: 1.2,
-                    delay: 0.3,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
+                <div
+                  className="d-flex justify-content-between"
+                >
+                  <span
+                    style={{
+                      color: "#cbd5e1",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {name}
+                  </span>
+
+                  <strong
+                    style={{
+                      color,
+                      fontSize: "11px",
+                    }}
+                  >
+                    {value}%
+                  </strong>
+                </div>
+
+                <div
                   style={{
-                    position: "relative",
-                    maxWidth: "620px",
-                    margin: "auto",
-                    perspective: "1200px",
+                    height: "4px",
+                    marginTop: "7px",
+                    borderRadius: "10px",
+                    background:
+                      "rgba(255,255,255,.08)",
+                    overflow: "hidden",
                   }}
                 >
 
-                  {/* OUTER GLOW */}
-
                   <motion.div
+                    initial={{
+                      width: 0,
+                    }}
                     animate={{
-                      opacity: [0.25, 0.5, 0.25],
-                      scale: [0.95, 1.05, 0.95],
+                      width: `${value}%`,
                     }}
                     transition={{
-                      duration: 4,
-                      repeat: Infinity,
+                      duration: 1.8,
+                      delay: 0.4,
+                      ease: "easeOut",
                     }}
                     style={{
-                      position: "absolute",
-                      inset: "-30px",
-                      background:
-                        "radial-gradient(circle,rgba(37,99,235,.3),transparent 65%)",
-                      filter: "blur(30px)",
+                      height: "100%",
+                      borderRadius: "10px",
+                      background: color,
+                      boxShadow:
+                        `0 0 10px ${color}90`,
                     }}
                   />
 
-                  {/* MAIN CARD */}
-
-                  <motion.div
-                    animate={{
-                      y: [0, -8, 0],
-                    }}
-                    transition={{
-                      duration: 5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    style={{
-                      position: "relative",
-                      zIndex: 2,
-                      padding: "22px",
-                      borderRadius: "22px",
-                      background:
-                        "linear-gradient(145deg,rgba(15,23,42,.97),rgba(3,7,18,.97))",
-                      border:
-                        "1px solid rgba(96,165,250,.35)",
-                      boxShadow:
-                        "0 35px 100px rgba(0,0,0,.55),0 0 70px rgba(37,99,235,.13)",
-                    }}
-                  >
-
-                    {/* HEADER */}
-
-                    <div
-                      className="d-flex justify-content-between align-items-center pb-3 mb-3"
-                      style={{
-                        borderBottom:
-                          "1px solid rgba(255,255,255,.08)",
-                      }}
-                    >
-
-                      <div className="d-flex align-items-center gap-3">
-
-                        <motion.div
-                          animate={{
-                            boxShadow: [
-                              "0 0 10px rgba(6,182,212,.3)",
-                              "0 0 30px rgba(6,182,212,.7)",
-                              "0 0 10px rgba(6,182,212,.3)",
-                            ],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                          }}
-                          style={{
-                            width: "50px",
-                            height: "50px",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background:
-                              "linear-gradient(135deg,#06b6d4,#2563eb)",
-                          }}
-                        >
-                          <FaRobot size={24} />
-                        </motion.div>
-
-                        <div>
-
-                          <div
-                            style={{
-                              fontWeight: 800,
-                            }}
-                          >
-                            AI Interviewer
-                          </div>
-
-                          <span
-                            style={{
-                              color: "#34d399",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                            }}
-                          >
-                            ● LIVE SESSION
-                          </span>
-
-                        </div>
-
-                      </div>
-
-                      <div
-                        style={{
-                          color: "#f87171",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                        }}
-                      >
-                        <motion.span
-                          animate={{
-                            opacity: [1, 0.3, 1],
-                          }}
-                          transition={{
-                            duration: 1,
-                            repeat: Infinity,
-                          }}
-                        >
-                          ● REC
-                        </motion.span>
-                      </div>
-
-                    </div>
-
-                    {/* QUESTION */}
-
-                    <div
-                      style={{
-                        padding: "18px",
-                        borderRadius: "12px",
-                        background:
-                          "rgba(30,41,59,.7)",
-                        border:
-                          "1px solid rgba(96,165,250,.15)",
-                        minHeight: "125px",
-                        marginBottom: "15px",
-                      }}
-                    >
-
-                      <div className="d-flex justify-content-between mb-3">
-
-                        <strong
-                          style={{
-                            color: "#06b6d4",
-                            fontSize: "12px",
-                          }}
-                        >
-                          QUESTION{" "}
-                          {String(questionIndex + 1).padStart(
-                            2,
-                            "0"
-                          )}{" "}
-                          / 08
-                        </strong>
-
-                        <span
-                          style={{
-                            color: "#ffffff",
-                            fontSize: "12px",
-                          }}
-                        >
-                          {currentQuestion.category}
-                        </span>
-
-                      </div>
-
-                      <AnimatePresence mode="wait">
-
-                        <motion.div
-                          key={currentQuestion.text}
-                          initial={{
-                            opacity: 0,
-                            y: 15,
-                            filter: "blur(5px)",
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                            filter: "blur(0px)",
-                          }}
-                          exit={{
-                            opacity: 0,
-                            y: -15,
-                          }}
-                          transition={{
-                            duration: 0.45,
-                          }}
-                          style={{
-                            fontSize: "15px",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          "{currentQuestion.text}"
-                        </motion.div>
-
-                      </AnimatePresence>
-
-                    </div>
-
-                    {/* WAVEFORM */}
-
-                    <div
-                      style={{
-                        padding: "16px",
-                        borderRadius: "12px",
-                        background:
-                          "rgba(2,6,23,.9)",
-                        border:
-                          "1px solid rgba(59,130,246,.2)",
-                        marginBottom: "15px",
-                      }}
-                    >
-
-                      <div className="d-flex justify-content-between">
-
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            fontSize: "13px",
-                          }}
-                        >
-                          <FaMicrophone
-                            className="text-info me-2"
-                          />
-                          Listening to your answer...
-                        </span>
-
-                        <span
-                          className="text-info"
-                          style={{
-                            fontSize: "12px",
-                          }}
-                        >
-                          00:12
-                        </span>
-
-                      </div>
-
-                      <div
-                        className="d-flex justify-content-center align-items-center gap-1 mt-3"
-                        style={{
-                          height: "42px",
-                        }}
-                      >
-
-                        {[18, 30, 14, 35, 22, 42, 27, 38, 17, 32, 24, 40, 20, 30, 15].map(
-                          (height, index) => (
-
-                            <motion.div
-                              key={index}
-                              animate={{
-                                height: [
-                                  `${height * 0.4}px`,
-                                  `${height}px`,
-                                  `${height * 0.6}px`,
-                                  `${height}px`,
-                                ],
-                              }}
-                              transition={{
-                                duration: 0.8,
-                                repeat: Infinity,
-                                delay: index * 0.06,
-                              }}
-                              style={{
-                                width: "4px",
-                                borderRadius: "5px",
-                                background:
-                                  "linear-gradient(#a855f7,#06b6d4)",
-                                boxShadow:
-                                  "0 0 8px rgba(6,182,212,.4)",
-                              }}
-                            />
-
-                          )
-                        )}
-
-                      </div>
-
-                    </div>
-
-                    {/* SCORES */}
-
-                    <div className="row g-2">
-
-                      {[
-                        ["Technical", 92, "#06b6d4"],
-                        ["Communication", 84, "#3b82f6"],
-                        ["Confidence", 88, "#10b981"],
-                        ["Relevance", 90, "#facc15"],
-                      ].map(([name, value, color]) => (
-
-                        <div
-                          className="col-6"
-                          key={name}
-                        >
-
-                          <div
-                            style={{
-                              padding: "13px",
-                              borderRadius: "10px",
-                              background: `${color}0C`,
-                              border:
-                                `1px solid ${color}30`,
-                            }}
-                          >
-
-                            <div className="d-flex justify-content-between">
-
-                              <span
-                                style={{
-                                  color: "#ffffff",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                {name}
-                              </span>
-
-                              <strong
-                                style={{
-                                  color,
-                                  fontSize: "13px",
-                                }}
-                              >
-                                {value}%
-                              </strong>
-
-                            </div>
-
-                            <div
-                              style={{
-                                height: "5px",
-                                marginTop: "8px",
-                                background:
-                                  "rgba(255,255,255,.1)",
-                                borderRadius: "10px",
-                              }}
-                            >
-
-                              <motion.div
-                                initial={{
-                                  width: 0,
-                                }}
-                                whileInView={{
-                                  width: `${value}%`,
-                                }}
-                                viewport={{
-                                  once: true,
-                                }}
-                                transition={{
-                                  duration: 1.4,
-                                  delay: 0.2,
-                                }}
-                                style={{
-                                  height: "100%",
-                                  borderRadius: "10px",
-                                  background: color,
-                                  boxShadow:
-                                    `0 0 10px ${color}80`,
-                                }}
-                              />
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-                      ))}
-
-                    </div>
-
-                  </motion.div>
-
-                  {/* =================================================
-                      FLOATING RESUME CARD
-                  ================================================= */}
-
-                  <motion.div
-                    animate={{
-                      y: [0, -12, 0],
-                      rotate: [0, 1, 0],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                    }}
-                    style={{
-                      position: "absolute",
-                      zIndex: 5,
-                      right: "-30px",
-                      top: "-25px",
-                      width: "190px",
-                      padding: "15px",
-                      borderRadius: "15px",
-                      background:
-                        "rgba(7,13,29,.94)",
-                      backdropFilter: "blur(20px)",
-                      border:
-                        "1px solid rgba(59,130,246,.4)",
-                      boxShadow:
-                        "0 20px 50px rgba(0,0,0,.4)",
-                    }}
-                  >
-
-                    <div className="d-flex gap-3">
-
-                      <div
-                        style={{
-                          width: "40px",
-                          height: "40px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "10px",
-                          color: "#06b6d4",
-                          background:
-                            "rgba(6,182,212,.12)",
-                        }}
-                      >
-                        <TbScan size={22} />
-                      </div>
-
-                      <div>
-
-                        <div
-                          style={{
-                            color: "#ffffff",
-                            fontSize: "11px",
-                          }}
-                        >
-                          Resume Analysis
-                        </div>
-
-                        <strong
-                          style={{
-                            color: "#06b6d4",
-                          }}
-                        >
-                          92% Match
-                        </strong>
-
-                      </div>
-
-                    </div>
-
-                  </motion.div>
-
-                  {/* FEEDBACK */}
-
-                  <motion.div
-                    animate={{
-                      y: [0, 10, 0],
-                      rotate: [0, -1, 0],
-                    }}
-                    transition={{
-                      duration: 4.5,
-                      repeat: Infinity,
-                    }}
-                    style={{
-                      position: "absolute",
-                      zIndex: 5,
-                      left: "-40px",
-                      bottom: "-25px",
-                      width: "200px",
-                      padding: "15px",
-                      borderRadius: "15px",
-                      background:
-                        "rgba(7,13,29,.94)",
-                      backdropFilter: "blur(20px)",
-                      border:
-                        "1px solid rgba(16,185,129,.3)",
-                      boxShadow:
-                        "0 20px 50px rgba(0,0,0,.4)",
-                    }}
-                  >
-
-                    <div className="d-flex gap-3">
-
-                      <div
-                        style={{
-                          width: "40px",
-                          height: "40px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "50%",
-                          color: "#ffffff",
-                          background:
-                            "rgba(16,185,129,.12)",
-                        }}
-                      >
-                        <FaLightbulb />
-                      </div>
-
-                      <div>
-
-                        <div
-                          style={{
-                            color: "#ffffff",
-                            fontSize: "11px",
-                          }}
-                        >
-                          AI Feedback
-                        </div>
-
-                        <strong>
-                          Ready ✓
-                        </strong>
-
-                      </div>
-
-                    </div>
-
-                  </motion.div>
-
-                </motion.div>
+                </div>
 
               </motion.div>
 
             </div>
+
+          ))}
+
+        </div>
+
+      </motion.div>
+
+      {/* =====================================================
+          FLOATING RESUME MATCH
+      ===================================================== */}
+
+      <motion.div
+        animate={{
+          y: [0, -12, 0],
+          rotate: [0, 1.5, 0],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        whileHover={{
+          scale: 1.05,
+        }}
+        style={{
+          position: "absolute",
+          zIndex: 10,
+          right: "-28px",
+          top: "-22px",
+          width: "175px",
+          padding: "13px",
+          borderRadius: "14px",
+          background:
+            "rgba(7,13,29,.96)",
+          backdropFilter: "blur(20px)",
+          border:
+            "1px solid rgba(6,182,212,.35)",
+          boxShadow:
+            "0 20px 50px rgba(0,0,0,.4)",
+        }}
+      >
+
+        <div className="d-flex gap-2 align-items-center">
+
+          <motion.div
+            animate={{
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+            style={{
+              width: "35px",
+              height: "35px",
+              borderRadius: "9px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#06b6d4",
+              background:
+                "rgba(6,182,212,.12)",
+            }}
+          >
+            <TbScan size={20} />
+          </motion.div>
+
+          <div>
+            <div
+              style={{
+                color: "#ffffff",
+                fontSize: "9px",
+              }}
+            >
+              Resume Analysis
+            </div>
+
+            <strong
+              style={{
+                color: "#06b6d4",
+                fontSize: "14px",
+              }}
+            >
+              92% Match
+            </strong>
+          </div>
+
+        </div>
+
+      </motion.div>
+
+      {/* =====================================================
+          FLOATING AI FEEDBACK
+      ===================================================== */}
+
+      <motion.div
+        animate={{
+          y: [0, 10, 0],
+          rotate: [0, -1.5, 0],
+        }}
+        transition={{
+          duration: 4.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        whileHover={{
+          scale: 1.05,
+        }}
+        style={{
+          position: "absolute",
+          zIndex: 10,
+          left: "-35px",
+          bottom: "-28px",
+          width: "190px",
+          padding: "13px",
+          borderRadius: "14px",
+          background:
+            "rgba(7,13,29,.96)",
+          backdropFilter: "blur(20px)",
+          border:
+            "1px solid rgba(16,185,129,.3)",
+          boxShadow:
+            "0 20px 50px rgba(0,0,0,.4)",
+        }}
+      >
+
+        <div className="d-flex gap-2 align-items-center">
+
+          <motion.div
+            animate={{
+              scale: [1, 1.12, 1],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+            }}
+            style={{
+              width: "35px",
+              height: "35px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#10b981",
+              background:
+                "rgba(16,185,129,.12)",
+            }}
+          >
+            <FaLightbulb />
+          </motion.div>
+
+          <div>
+            <div
+              style={{
+                color: "#ffffff",
+                fontSize: "9px",
+              }}
+            >
+              AI Feedback
+            </div>
+
+            <AnimatePresence mode="wait">
+              <motion.strong
+                key={demoStatus}
+                initial={{
+                  opacity: 0,
+                  y: 5,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                exit={{
+                  opacity: 0,
+                  y: -5,
+                }}
+                style={{
+                  color:
+                    demoStatus === 3
+                      ? "#34d399"
+                      : "#cbd5e1",
+                  fontSize: "13px",
+                }}
+              >
+                {[
+                  "Analyzing...",
+                  "Evaluating...",
+                  "Generating...",
+                  "Ready ✓",
+                ][demoStatus]}
+              </motion.strong>
+            </AnimatePresence>
+
+          </div>
+
+        </div>
+
+      </motion.div>
+
+    </motion.div>
+
+  </motion.div>
+
+</div>
 
           </div>
 
@@ -1973,8 +2647,18 @@ const Home = () => {
                   whileHover={{
                     scale: 1.04,
                     x: 5,
+                    boxShadow: "0 14px 34px rgba(37,99,235,.16)",
                   }}
-                  onClick={handleStart}
+                  onClick={() => setSelectedRole(role)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedRole(role);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Explore ${role} career path`}
                   style={{
                     cursor: "pointer",
                     padding: "17px",
@@ -2040,6 +2724,154 @@ const Home = () => {
             ))}
 
           </motion.div>
+
+          {createPortal(
+            <AnimatePresence>
+              {selectedRole && selectedRoleDetails && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) {
+                      setSelectedRole(null);
+                    }
+                  }}
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 2147483647,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "20px",
+                    background: "rgba(2, 6, 23, 0.85)",
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 16, scale: 0.97 }}
+                    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="career-role-modal-title"
+                    onMouseDown={(event) => event.stopPropagation()}
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      maxWidth: "640px",
+                      maxHeight: "90vh",
+                      overflowY: "auto",
+                      padding: "34px",
+                      borderRadius: "18px",
+                      color: "#fff",
+                      background:
+                        "linear-gradient(145deg, rgba(15,23,42,.98), rgba(30,27,75,.98))",
+                      border: "1px solid rgba(96,165,250,.35)",
+                      boxShadow: "0 28px 90px rgba(0,0,0,.55)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRole(null)}
+                      aria-label="Close career role details"
+                      style={{
+                        position: "absolute",
+                        top: "16px",
+                        right: "16px",
+                        width: "34px",
+                        height: "34px",
+                        border: "1px solid rgba(148,163,184,.3)",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#cbd5e1",
+                        background: "rgba(15,23,42,.65)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FaTimes size={13} />
+                    </button>
+
+                    <span
+                      style={{
+                        color: "#67e8f9",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Career Path
+                    </span>
+
+                    <h3 id="career-role-modal-title" className="fw-bold mt-2 mb-3">
+                      {selectedRole}
+                    </h3>
+
+                    <p className="text-white mb-4" style={{ lineHeight: 1.7 }}>
+                      {selectedRoleDetails.description}
+                    </p>
+
+                    <div className="mb-4">
+                      <h6 className="fw-bold mb-2">Key Skills</h6>
+                      <p className="text-white-50 mb-0" style={{ lineHeight: 1.7 }}>
+                        {selectedRoleDetails.skills}
+                      </p>
+                    </div>
+
+                    <div className="mb-4">
+                      <h6 className="fw-bold mb-2">Practice with HireSmart AI</h6>
+                      <div className="d-grid gap-2">
+                        {selectedRoleDetails.practice.map((item) => (
+                          <div
+                            key={item}
+                            className="d-flex align-items-center gap-2 text-white-50"
+                          >
+                            <FaCheckCircle style={{ color: "#22d3ee" }} size={14} />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div
+                      className="mb-4"
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "10px",
+                        background: "rgba(59,130,246,.1)",
+                        border: "1px solid rgba(96,165,250,.2)",
+                      }}
+                    >
+                      <h6 className="fw-bold mb-1">Interview Focus</h6>
+                      <span className="text-white-50">{selectedRoleDetails.focus}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleStart}
+                      className="btn text-white fw-bold w-100"
+                      style={{
+                        padding: "13px 20px",
+                        border: "none",
+                        borderRadius: "9px",
+                        background: "linear-gradient(90deg,#7c3aed,#2563eb)",
+                      }}
+                    >
+                      Start Practicing <FaArrowRight className="ms-2" size={12} />
+                    </button>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>,
+            document.body
+          )}
 
         </div>
 
@@ -2527,332 +3359,370 @@ const Home = () => {
 
       </section>
 
-      {/* ===================================================
-          FINAL CTA
-      =================================================== */}
+     {/* =========================================================
+    PRICING SECTION
+========================================================= */}
 
-      <section
+<section
+  id="pricing"
+  style={{
+    position: "relative",
+    zIndex: 2,
+    padding: "110px 0",
+  }}
+>
+  <div className="container">
+
+    {/* Heading */}
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.7 }}
+      className="text-center mb-5"
+    >
+      <span
         style={{
-          position: "relative",
-          zIndex: 2,
-          padding: "80px 0 110px",
+          display: "inline-block",
+          padding: "8px 15px",
+          borderRadius: "30px",
+          color: "#c084fc",
+          border: "1px solid rgba(168,85,247,.4)",
+          background: "rgba(124,58,237,.06)",
+          fontSize: "12px",
+          fontWeight: 700,
+          letterSpacing: ".5px",
         }}
       >
+        SIMPLE PRICING
+      </span>
 
-        <div className="container">
+      <h2
+        className="display-4 fw-bold mt-3"
+        style={{
+          color: "#fff",
+        }}
+      >
+        Choose Your{" "}
+        <span
+          style={{
+            background:
+              "linear-gradient(90deg,#a855f7,#06b6d4)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          Interview Plan
+        </span>
+      </h2>
+
+      <p
+        className="mx-auto"
+        style={{
+          maxWidth: "680px",
+          color: "#ffffff",
+          fontSize: "16px",
+          lineHeight: 1.7,
+        }}
+      >
+        Practice smarter with AI-powered interviews, resume analysis,
+        personalized feedback and performance tracking.
+      </p>
+    </motion.div>
+
+    {/* Pricing Cards */}
+    <div className="row g-4 justify-content-center">
+
+      {[
+        {
+          name: "Free",
+          price: "₹0",
+          period: "Forever",
+          description:
+            "Get started with essential interview preparation.",
+          features: [
+            "AI Mock Interviews",
+            "Role-Based Questions",
+            "Basic AI Feedback",
+            "Limited Practice Sessions",
+          ],
+          button: "Start Free",
+          popular: false,
+        },
+
+        {
+          name: "Student",
+          price: "₹299",
+          period: "/ month",
+          description:
+            "Designed for students preparing for internships and placements.",
+          features: [
+            "Unlimited Mock Interviews",
+            "Resume + JD Interviews",
+            "Detailed AI Evaluation",
+            "Interview History",
+            "Skill Gap Insights",
+            "AI Interview Coach",
+          ],
+          button: "Choose Student",
+          popular: true,
+        },
+
+        {
+          name: "Pro",
+          price: "₹599",
+          period: "/ month",
+          description:
+            "Advanced preparation for serious interview practice.",
+          features: [
+            "Everything in Student",
+            "Advanced AI Evaluation",
+            "Voice Interview Practice",
+            "Interview Replay",
+            "Personalized Recommendations",
+            "Priority Features",
+          ],
+          button: "Choose Pro",
+          popular: false,
+        },
+      ].map((plan, index) => (
+
+        <div
+          className="col-lg-4 col-md-6"
+          key={plan.name}
+        >
 
           <motion.div
             initial={{
               opacity: 0,
-              scale: 0.92,
+              y: 50,
             }}
             whileInView={{
               opacity: 1,
-              scale: 1,
+              y: 0,
             }}
             viewport={{
               once: true,
+              amount: 0.15,
+            }}
+            transition={{
+              duration: 0.7,
+              delay: index * 0.12,
+            }}
+            whileHover={{
+              y: -10,
+              scale: 1.02,
             }}
             style={{
               position: "relative",
+              height: "100%",
+              padding: "32px",
+              borderRadius: "22px",
+
+              background: plan.popular
+                ? "linear-gradient(145deg,#101a3a,#071225)"
+                : "#07101f",
+
+              border: plan.popular
+                ? "1px solid rgba(99,102,241,.65)"
+                : "1px solid rgba(96,165,250,.16)",
+
+              boxShadow: plan.popular
+                ? "0 20px 60px rgba(99,102,241,.18)"
+                : "0 15px 45px rgba(0,0,0,.18)",
+
               overflow: "hidden",
-              textAlign: "center",
-              padding: "75px 30px",
-              borderRadius: "25px",
-              background:
-                "linear-gradient(120deg,rgba(76,29,149,.4),rgba(37,99,235,.3),rgba(6,182,212,.12))",
-              border:
-                "1px solid rgba(99,102,241,.45)",
-              boxShadow:
-                "0 30px 100px rgba(37,99,235,.12)",
             }}
           >
 
-            {/* CTA GLOW */}
+            {/* Popular Badge */}
+            {plan.popular && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "18px",
+                  right: "18px",
+                  padding: "6px 11px",
+                  borderRadius: "20px",
+                  background:
+                    "linear-gradient(90deg,#7c3aed,#2563eb)",
+                  color: "#fff",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                }}
+              >
+                MOST POPULAR
+              </div>
+            )}
 
-            <motion.div
-              animate={{
-                x: ["-100%", "100%"],
-              }}
-              transition={{
-                duration: 7,
-                repeat: Infinity,
-                ease: "linear",
-              }}
+            {/* Plan Name */}
+            <div
               style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                width: "200px",
-                background:
-                  "linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent)",
-                transform: "skewX(-20deg)",
+                color: plan.popular
+                  ? "#a78bfa"
+                  : "#60a5fa",
+                fontSize: "14px",
+                fontWeight: 700,
+                marginBottom: "12px",
+              }}
+            >
+              {plan.name}
+            </div>
+
+            {/* Price */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "baseline",
+                gap: "7px",
+                marginBottom: "12px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "42px",
+                  fontWeight: 800,
+                  color: "#fff",
+                  letterSpacing: "-1px",
+                }}
+              >
+                {plan.price}
+              </span>
+
+              <span
+                style={{
+                  color: "#64748b",
+                  fontSize: "13px",
+                }}
+              >
+                {plan.period}
+              </span>
+            </div>
+
+            {/* Description */}
+            <p
+              style={{
+                color: "#94a3b8",
+                fontSize: "14px",
+                lineHeight: 1.7,
+                minHeight: "48px",
+              }}
+            >
+              {plan.description}
+            </p>
+
+            {/* Divider */}
+            <div
+              style={{
+                borderTop:
+                  "1px solid rgba(148,163,184,.10)",
+                margin: "22px 0",
               }}
             />
 
-            <span
+            {/* Features */}
+            <div
               style={{
-                display: "inline-block",
-                padding: "8px 15px",
-                borderRadius: "30px",
-                color: "#c084fc",
-                border:
-                  "1px solid rgba(168,85,247,.4)",
-                fontSize: "12px",
-                fontWeight: 700,
+                display: "flex",
+                flexDirection: "column",
+                gap: "13px",
               }}
             >
-              START YOUR JOURNEY
-            </span>
+              {plan.features.map((feature) => (
+                <div
+                  key={feature}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    color: "#cbd5e1",
+                    fontSize: "13px",
+                  }}
+                >
+                  <FaCheckCircle
+                    size={14}
+                    style={{
+                      color: "#22c55e",
+                      flexShrink: 0,
+                    }}
+                  />
 
-            <h2
-              className="display-3 fw-bold mt-3"
-              style={{
-                position: "relative",
-              }}
-            >
-              Ready To Ace Your{" "}
-              <span
-                style={{
-                  background:
-                    "linear-gradient(90deg,#a855f7,#2563eb,#06b6d4)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Next Interview?
-              </span>
-            </h2>
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
 
-            <p
-              className="text-white-50 fs-5"
-              style={{
-                position: "relative",
-              }}
-            >
-              Practice with AI. Improve with data.
-              Interview with confidence.
-            </p>
-
+            {/* Button */}
             <motion.button
               whileHover={{
-                scale: 1.07,
-                boxShadow:
-                  "0 0 50px rgba(99,102,241,.6)",
+                scale: 1.03,
               }}
               whileTap={{
-                scale: 0.95,
+                scale: 0.97,
               }}
               onClick={handleStart}
               style={{
-                position: "relative",
-                marginTop: "20px",
-                border: "none",
-                borderRadius: "35px",
-                padding: "16px 35px",
+                width: "100%",
+                marginTop: "28px",
+                padding: "13px 18px",
+                borderRadius: "10px",
+                border: plan.popular
+                  ? "none"
+                  : "1px solid rgba(96,165,250,.25)",
+
+                background: plan.popular
+                  ? "linear-gradient(90deg,#7c3aed,#2563eb)"
+                  : "rgba(15,23,42,.7)",
+
                 color: "#fff",
                 fontWeight: 700,
-                background:
-                  "linear-gradient(90deg,#7c3aed,#2563eb)",
-                boxShadow:
-                  "0 10px 40px rgba(99,102,241,.35)",
+                cursor: "pointer",
+
+                boxShadow: plan.popular
+                  ? "0 10px 30px rgba(99,102,241,.25)"
+                  : "none",
               }}
             >
-              Get Started Now{" "}
-              <FaArrowRight size={12} />
+              {plan.button}
+              <FaArrowRight
+                className="ms-2"
+                size={11}
+              />
             </motion.button>
 
           </motion.div>
 
         </div>
+      ))}
+    </div>
 
-      </section>
+    {/* Bottom note */}
+    <motion.p
+      initial={{
+        opacity: 0,
+      }}
+      whileInView={{
+        opacity: 1,
+      }}
+      viewport={{
+        once: true,
+      }}
+      transition={{
+        delay: 0.4,
+      }}
+      className="text-center mt-4 mb-0"
+      style={{
+        color: "#ffffff",
+        fontSize: "20px",
+      }}
+    >
+      Start with the plan that fits your preparation journey.
+    </motion.p>
 
-      {/* ===================================================
-          FOOTER
-      =================================================== */}
-
-      <footer
-        style={{
-          position: "relative",
-          zIndex: 2,
-          padding: "60px 0 25px",
-          background: "#01030b",
-          borderTop:
-            "1px solid rgba(96,165,250,.12)",
-        }}
-      >
-
-        <div className="container">
-
-          <div className="row g-5">
-
-            <div className="col-lg-4">
-
-              <div
-                className="d-flex align-items-center gap-2 mb-3"
-                style={{
-                  fontSize: "21px",
-                  fontWeight: 800,
-                }}
-              >
-
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background:
-                      "linear-gradient(135deg,#06b6d4,#2563eb)",
-                  }}
-                >
-                  <FaRobot />
-                </div>
-
-                <span>
-                  <span className="text-info">
-                    HireSmart AI
-                  </span>{" "}
-                
-                </span>
-
-              </div>
-
-              <p
-                className="text-white small"
-                style={{
-                  maxWidth: "350px",
-                  lineHeight: 1.7,
-                }}
-              >
-                AI-powered interview preparation platform
-                helping candidates practice smarter and
-                interview with confidence.
-              </p>
-
-            </div>
-
-            <div className="col-6 col-lg-2">
-
-              <h6 className="fw-bold mb-3">
-                Product
-              </h6>
-
-              <div className="d-flex flex-column gap-2">
-
-                <a
-                  href="#features"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  HireSmart AI
-                </a>
-
-                <a
-                  href="#roles"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Role Explorer
-                </a>
-
-                <a
-                  href="#coach"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  AI Coach
-                </a>
-
-              </div>
-
-            </div>
-
-            <div className="col-6 col-lg-2">
-
-              <h6 className="fw-bold mb-3">
-                Students
-              </h6>
-
-              <div className="d-flex flex-column gap-2">
-
-                <Link
-                  to="/login"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Practice
-                </Link>
-
-                <Link
-                  to="/login"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Resume Analysis
-                </Link>
-
-                <Link
-                  to="/login"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Interview History
-                </Link>
-
-              </div>
-
-            </div>
-
-            <div className="col-6 col-lg-2">
-
-              <h6 className="fw-bold mb-3">
-                Support
-              </h6>
-
-              <div className="d-flex flex-column gap-2">
-
-                <a
-                  href="#top"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Privacy
-                </a>
-
-                <a
-                  href="#top"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Terms
-                </a>
-
-                <a
-                  href="#top"
-                  className="text-white-50 small text-decoration-none"
-                >
-                  Contact
-                </a>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          <div
-            className="text-center text-white-50 small mt-5 pt-4"
-            style={{
-              borderTop:
-                "1px solid rgba(255,255,255,.08)",
-            }}
-          >
-            © {new Date().getFullYear()}{" "}
-            <strong className="text-white">
-              HireSmart AI
-            </strong>
-            . All rights reserved.
-          </div>
-
-        </div>
-
-      </footer>
+  </div>
+</section>
+     {/* Footer */}
+      <LandingFooter />
 
     </div>
   );
