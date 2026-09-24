@@ -266,3 +266,96 @@ body {
 .floating-anim {
   animation: floatAnim 4s ease-in-out infinite;
 }
+
+/* ============================================================
+   RESPONSIVE SHELL LAYER (Phase 1-2)
+   Sidebars become Bootstrap offcanvas drawers below lg (992px)
+   and keep the exact pinned desktop layout at lg+.
+============================================================ */
+
+/* Drawer chrome: inner sidebar owns its own background/shadow */
+#studentSidebar,
+#adminSidebar,
+#superAdminSidebar {
+  background: transparent;
+  border-right: none;
+  box-shadow: none;
+}
+
+#studentSidebar {
+  width: min(294px, 85vw);
+}
+
+#adminSidebar {
+  width: min(250px, 85vw);
+}
+
+#superAdminSidebar {
+  width: min(240px, 85vw);
+}
+
+/* Admin / Super-admin menus are long: allow scrolling inside the drawer */
+#adminSidebar,
+#superAdminSidebar {
+  overflow-y: auto;
+}
+
+/* Student content column sits beside the sidebar only on desktop */
+.sidebar-content {
+  width: 100%;
+}
+
+/* Desktop (>=992px): pin each drawer exactly where it used to sit */
+@media (min-width: 992px) {
+  #studentSidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 294px;
+    height: 100vh;
+    z-index: 1020;
+    transform: none !important;
+    visibility: visible !important;
+  }
+
+  #adminSidebar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 250px;
+    height: calc(100vh - 60px);
+    z-index: 1020;
+    transform: none !important;
+    visibility: visible !important;
+  }
+
+  #superAdminSidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    width: 240px;
+    height: calc(100vh - 56px);
+    z-index: 1020;
+    transform: none !important;
+    visibility: visible !important;
+  }
+
+  /* Content columns offset by the pinned sidebar widths */
+  .sidebar-content {
+    margin-left: 294px;
+    width: calc(100% - 294px);
+  }
+
+  .admin-main {
+    margin-left: 250px;
+  }
+
+  .super-admin-main {
+    margin-left: 240px;
+  }
+
+  /* Never let an offcanvas backdrop survive a resize up to desktop */
+  .offcanvas-backdrop {
+    display: none !important;
+  }
+}

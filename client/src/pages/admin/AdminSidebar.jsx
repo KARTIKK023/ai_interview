@@ -84,7 +84,7 @@ const AdminSidebar = ({ onLogout }) => {
   return (
     <>
       <aside
-        className="admin-sidebar d-none d-lg-flex flex-column flex-shrink-0 h-100 p-3"
+        className="admin-sidebar d-flex flex-column flex-shrink-0 h-100 p-3"
         style={{
           width: '250px',
           background: '#210B4D',
@@ -92,8 +92,8 @@ const AdminSidebar = ({ onLogout }) => {
         }}
       >
         {/* BRANDING HEADER */}
-        <div className="px-2 pt-2 pb-4 mb-2">
-          <div className="d-flex align-items-center gap-2.5">
+        <div className="px-2 pt-2 pb-4 mb-2 d-flex align-items-center justify-content-between">
+          <div className="d-flex align-items-center gap-2">
             <div
               className="rounded-3 p-2 d-flex align-items-center justify-content-center"
               style={{ background: 'rgba(255, 255, 255, 0.05)' }}
@@ -112,6 +112,13 @@ const AdminSidebar = ({ onLogout }) => {
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            className="btn-close btn-close-white d-lg-none"
+            data-bs-dismiss="offcanvas"
+            data-bs-target="#adminSidebar"
+            aria-label="Close menu"
+          ></button>
         </div>
 
         {/* NAVIGATION ITEMS */}
@@ -174,7 +181,7 @@ const AdminSidebar = ({ onLogout }) => {
                 className="modal-header border-0 text-white p-4"
                 style={{ background: 'linear-gradient(135deg, #3A0D78 0%, #210B4D 100%)' }}
               >
-                <div className="d-flex align-items-center gap-2">
+<div className="d-flex align-items-center gap-2.5">
                   <div className="rounded-circle bg-danger bg-opacity-20 p-2 text-danger d-flex align-items-center justify-content-center">
                     <FaSignOutAlt size={18} className="text-white" />
                   </div>
