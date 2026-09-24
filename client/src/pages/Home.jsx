@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
@@ -28,6 +28,9 @@ import {
   FaLinkedinIn,
   FaInstagram,
   FaTimes,
+  FaUser,
+  FaChevronDown,
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { FaTwitter } from "react-icons/fa";
 
@@ -306,20 +309,37 @@ const hiringTexts = [
 ========================================================= */
 
 const Home = () => {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   const [questionIndex, setQuestionIndex] = useState(0);
   const [roleType, setRoleType] = useState("Technical");
   const [selectedRole, setSelectedRole] = useState(null);
-   const [hiringTextIndex, setHiringTextIndex] = useState(0);
+  const [hiringTextIndex, setHiringTextIndex] = useState(0);
 
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-const [demoStatus, setDemoStatus] = useState(0);
-const [demoTime, setDemoTime] = useState(12);
-const [speechIndex, setSpeechIndex] = useState(0);
+  const [demoStatus, setDemoStatus] = useState(0);
+  const [demoTime, setDemoTime] = useState(12);
+  const [speechIndex, setSpeechIndex] = useState(0);
+  const [activeNav, setActiveNav] = useState("Home");
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const smoothX = useSpring(mouseX, {
     stiffness: 80,
@@ -361,6 +381,17 @@ useEffect(() => {
 
   return () => clearInterval(interval);
 }, []);
+ 
+
+//AI Capabilities
+const featureRoutes = {
+  "AI Mock Interview": "/student/interview-preparation/ai-mock",
+  "Resume Intelligence": "/student/ats-scanner",
+  "Role-Based Questions": "/student/question-bank-reader",
+  "Voice & Video": "/student/interview-preparation/ai-mock",
+  "Smart Evaluation": "/student/interviews",
+  "AI Interview Coach": "/student/ask",
+};
 
   /* =======================================================
      QUESTION ROTATION
@@ -422,7 +453,7 @@ useEffect(() => {
 
   const handleStart = () => {
     if (isStudent) {
-      navigate("/student/dashboard");
+      navigate("/student/interview-preparation/ai-mock");
     } else {
       navigate("/login");
     }
@@ -676,38 +707,38 @@ useEffect(() => {
               color: "#ffffff"
             }}
           >
+         {[
+  ["Home", "#top"],
+  ["Features", "#features"],
+  ["How It Works", "#how"],
+  ["For Students", "#roles"],
+  ["AI Coach", "#coach"],
+  ["Enquiry", "/enquiry"],
+].map(([text, href]) => (
+  <a
+    key={text}
+    href={href}
+    onClick={() => setActiveNav(text)}
+    style={{
+      color:
+        activeNav === text
+          ? "#60a5fa"
+          : "#ffffff",
 
-            {[
-              ["Home", "#top"],
-              ["Features", "#features"],
-              ["How It Works", "#how"],
-              ["For Students", "#roles"],
-              ["AI Coach", "#coach"],
-              ["Enquiry", "/enquiry"],
-            ].map(([text, href]) => (
+      textDecoration: "none",
+      fontSize: "14px",
+      fontWeight:
+        activeNav === text
+          ? 700
+          : 600,
 
-              <a
-                key={text}
-                href={href}
-                style={{
-                  color: "#ffffff",
-                  textDecoration: "none",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  transition: ".3s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#fff";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color =
-                    "#94a3b8";
-                }}
-              >
-                {text}
-              </a>
-
-            ))}
+      transition: "color 0.25s ease",
+      cursor: "pointer",
+    }}
+  >
+    {text}
+  </a>
+))}
 
           </div>
 
@@ -716,41 +747,226 @@ useEffect(() => {
           <div
             className="d-flex align-items-center gap-3"
           >
+            {user ? (
+              <div
+                ref={dropdownRef}
+                style={{
+                  position: "relative",
+                }}
+              >
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowProfileDropdown((prev) => !prev)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    background: "rgba(15,23,42,.75)",
+                    border: "1px solid rgba(96,165,250,.20)",
+                    borderRadius: "30px",
+                    padding: "6px 14px 6px 8px",
+                    color: "#ffffff",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 20px rgba(0,0,0,.3)",
+                    outline: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg,#2563eb,#7c3aed)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      color: "#ffffff",
+                      boxShadow: "0 2px 8px rgba(37,99,235,.4)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {user?.profilePhoto || user?.profile?.profilePhoto ? (
+                      <img
+                        src={user.profilePhoto || user.profile.profilePhoto}
+                        alt={user?.fullName || user?.name || "User Profile"}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    ) : (
+                      <FaUser size={13} />
+                    )}
+                  </div>
 
-            <Link
-              to="/login"
-              style={{
-                color: "#ffffff",
-                textDecoration: "none",
-                fontWeight: 600,
-                fontSize: "14px",
-              }}
-            >
-              Login
-            </Link>
+                  <span
+                    style={{
+                      maxWidth: "140px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {user?.fullName || user?.name || "Student"}
+                  </span>
 
-            <motion.button
-              whileHover={{
-                scale: 1.05,
-              }}
-              whileTap={{
-                scale: 0.96,
-              }}
-              onClick={handleStart}
-              style={{
-                border: "none",
-                borderRadius: "30px",
-                padding: "12px 22px",
-                color: "#fff",
-                fontWeight: 700,
-                background:
-                  "linear-gradient(90deg,#7c3aed,#2563eb)",
-                boxShadow:
-                  "0 0 30px rgba(99,102,241,.4)",
-              }}
-            >
-              Get Started <FaArrowRight size={11} />
-            </motion.button>
+                  <FaChevronDown
+                    size={10}
+                    style={{
+                      color: "#94a3b8",
+                      transform: showProfileDropdown ? "rotate(180deg)" : "rotate(0deg)",
+                      transition: "transform 0.2s ease",
+                      marginLeft: "2px",
+                    }}
+                  />
+                </motion.button>
+
+                <AnimatePresence>
+                  {showProfileDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 10px)",
+                        right: 0,
+                        width: "240px",
+                        background: "#0b1224",
+                        border: "1px solid rgba(96,165,250,.20)",
+                        borderRadius: "16px",
+                        padding: "16px",
+                        boxShadow:
+                          "0 20px 40px rgba(0,0,0,.6), 0 0 25px rgba(59,130,246,.15)",
+                        zIndex: 1000,
+                      }}
+                    >
+                      {/* USER INFO */}
+                      <div style={{ paddingBottom: "12px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+                        <div
+                          style={{
+                            color: "#ffffff",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {user?.fullName || user?.name || "Student"}
+                        </div>
+                        {user?.email && (
+                          <div
+                            style={{
+                              color: "#94a3b8",
+                              fontSize: "12px",
+                              marginTop: "3px",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {user.email}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* DROPDOWN MENU ITEMS */}
+                      <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <motion.div
+                          whileHover={{ background: "rgba(96,165,250,.12)", x: 2 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setShowProfileDropdown(false);
+                            navigate("/student/profile");
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "9px 12px",
+                            borderRadius: "10px",
+                            color: "#ffffff",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "background 0.2s ease",
+                          }}
+                        >
+                          <FaUser size={13} style={{ color: "#60a5fa" }} />
+                          <span>My Profile</span>
+                        </motion.div>
+
+                        <motion.div
+                          whileHover={{ background: "rgba(248,113,113,.12)", x: 2 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={async () => {
+                            setShowProfileDropdown(false);
+                            if (logout) {
+                              await logout();
+                            }
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                            padding: "9px 12px",
+                            borderRadius: "10px",
+                            color: "#f87171",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            transition: "background 0.2s ease",
+                          }}
+                        >
+                          <FaSignOutAlt size={13} style={{ color: "#f87171" }} />
+                          <span>Logout</span>
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  style={{
+                    color: "#ffffff",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                  }}
+                >
+                  Login
+                </Link>
+
+                <motion.button
+                  whileHover={{
+                    scale: 1.05,
+                  }}
+                  whileTap={{
+                    scale: 0.96,
+                  }}
+                  onClick={handleStart}
+                  style={{
+                    border: "none",
+                    borderRadius: "30px",
+                    padding: "12px 22px",
+                    color: "#fff",
+                    fontWeight: 700,
+                    background:
+                      "linear-gradient(90deg,#7c3aed,#2563eb)",
+                    boxShadow:
+                      "0 0 30px rgba(99,102,241,.4)",
+                  }}
+                >
+                  Get Started <FaArrowRight size={11} />
+                </motion.button>
+              </>
+            )}
 
           </div>
 
@@ -1035,9 +1251,9 @@ useEffect(() => {
       }}
       style={{
         position: "relative",
-        maxWidth: "630px",
+        maxWidth: "620px",
         margin: "auto",
-        perspective: "1200px",
+        perspective: "1150px",
       }}
     >
 
@@ -1085,8 +1301,9 @@ useEffect(() => {
         style={{
           position: "relative",
           zIndex: 2,
-          padding: "20px",
+          padding: "22px",
           borderRadius: "24px",
+          width: "100%",
           background:
             "linear-gradient(145deg, rgba(15,23,42,.98), rgba(3,7,18,.98))",
           border:
@@ -1104,8 +1321,8 @@ useEffect(() => {
         <div
           className="d-flex justify-content-between align-items-center"
           style={{
-            paddingBottom: "15px",
-            marginBottom: "15px",
+            paddingBottom: "14px",
+            marginBottom: "16px",
             borderBottom:
               "1px solid rgba(255,255,255,.08)",
           }}
@@ -1127,8 +1344,8 @@ useEffect(() => {
                 repeat: Infinity,
               }}
               style={{
-                width: "48px",
-                height: "48px",
+                width: "42px",
+                height: "42px",
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
@@ -1138,15 +1355,16 @@ useEffect(() => {
                 color: "#fff",
               }}
             >
-              <FaRobot size={23} />
+              <FaRobot size={21} />
             </motion.div>
 
             <div>
               <div
                 style={{
                   fontSize: "15px",
-                  fontWeight: 800,
+                  fontWeight: 750,
                   color: "#fff",
+                  letterSpacing: "0.2px",
                 }}
               >
                 AI Interviewer
@@ -1165,6 +1383,7 @@ useEffect(() => {
                   fontSize: "10px",
                   fontWeight: 700,
                   marginTop: "2px",
+                  letterSpacing: "0.5px",
                 }}
               >
                 ● LIVE SESSION
@@ -1177,8 +1396,9 @@ useEffect(() => {
           <div
             style={{
               color: "#f87171",
-              fontSize: "11px",
+              fontSize: "12px",
               fontWeight: 700,
+              letterSpacing: "0.5px",
             }}
           >
             <motion.span
@@ -1204,7 +1424,7 @@ useEffect(() => {
         <div
           style={{
             position: "relative",
-            height: "190px",
+            height: "155px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1227,8 +1447,8 @@ useEffect(() => {
             }}
             style={{
               position: "absolute",
-              width: "160px",
-              height: "160px",
+              width: "145px",
+              height: "145px",
               borderRadius: "50%",
               border:
                 "1px solid rgba(59,130,246,.5)",
@@ -1249,8 +1469,8 @@ useEffect(() => {
             }}
             style={{
               position: "absolute",
-              width: "135px",
-              height: "135px",
+              width: "120px",
+              height: "120px",
               borderRadius: "50%",
               border:
                 "1px dashed rgba(168,85,247,.65)",
@@ -1270,12 +1490,12 @@ useEffect(() => {
             }}
             style={{
               position: "absolute",
-              width: "110px",
-              height: "110px",
+              width: "105px",
+              height: "105px",
               borderRadius: "50%",
               background:
                 "radial-gradient(circle, rgba(6,182,212,.30), transparent 70%)",
-              filter: "blur(12px)",
+              filter: "blur(10px)",
             }}
           />
 
@@ -1294,23 +1514,23 @@ useEffect(() => {
             style={{
               position: "relative",
               zIndex: 3,
-              width: "92px",
-              height: "92px",
-              borderRadius: "28px",
+              width: "72px",
+              height: "72px",
+              borderRadius: "22px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               background: "linear-gradient(145deg,#e0f2fe,#bfdbfe)",
-              boxShadow: "0 0 35px rgba(6,182,212,.55)",
+              boxShadow: "0 0 30px rgba(6,182,212,.55)",
             }}
           >
             <FaRobot
-              size={46}
+              size={40}
               style={{
                 color: "#06b6d4",
               }}
             />
-</motion.div>
+          </motion.div>
 
           {/* LISTENING PILL */}
           <motion.div
@@ -1327,7 +1547,7 @@ useEffect(() => {
               bottom: "12px",
               left: "50%",
               transform: "translateX(-50%)",
-              padding: "8px 16px",
+              padding: "6px 14px",
               borderRadius: "30px",
               background:
                 "rgba(2,6,23,.92)",
@@ -1358,7 +1578,7 @@ useEffect(() => {
           <div
             style={{
               position: "absolute",
-              left: "28px",
+              left: "20px",
               top: "50%",
               transform: "translateY(-50%)",
               display: "flex",
@@ -1384,8 +1604,8 @@ useEffect(() => {
                     delay: index * 0.08,
                   }}
                   style={{
-                    width: "3px",
-                    borderRadius: "4px",
+                    width: "2px",
+                    borderRadius: "3px",
                     background:
                       "linear-gradient(#7c3aed,#06b6d4)",
                     boxShadow:
@@ -1400,12 +1620,12 @@ useEffect(() => {
           <div
             style={{
               position: "absolute",
-              right: "28px",
+              right: "20px",
               top: "50%",
               transform: "translateY(-50%)",
               display: "flex",
               alignItems: "center",
-              gap: "3px",
+              gap: "2px",
             }}
           >
             {[26, 18, 30, 22, 14].map(
@@ -1426,8 +1646,8 @@ useEffect(() => {
                     delay: index * 0.08,
                   }}
                   style={{
-                    width: "3px",
-                    borderRadius: "4px",
+                    width: "2px",
+                    borderRadius: "3px",
                     background:
                       "linear-gradient(#06b6d4,#7c3aed)",
                     boxShadow:
@@ -1462,17 +1682,17 @@ useEffect(() => {
               }}
               style={{
                 position: "absolute",
-                top: "10px",
-                right: "20px",
-                maxWidth: "205px",
-                padding: "10px 13px",
+                top: "12px",
+                right: "16px",
+                maxWidth: "210px",
+                padding: "10px 14px",
                 borderRadius: "14px",
                 background:
                   "rgba(15,23,42,.92)",
                 border:
                   "1px solid rgba(124,58,237,.4)",
                 color: "#e2e8f0",
-                fontSize: "10px",
+                fontSize: "11px",
                 lineHeight: 1.5,
                 boxShadow:
                   "0 10px 30px rgba(0,0,0,.3)",
@@ -1498,13 +1718,13 @@ useEffect(() => {
               "rgba(6,182,212,.35)",
           }}
           style={{
-            padding: "16px",
-            borderRadius: "14px",
+            padding: "18px 20px",
+            borderRadius: "16px",
             background:
               "rgba(30,41,59,.65)",
             border:
               "1px solid rgba(96,165,250,.15)",
-            marginTop: "14px",
+            marginTop: "16px",
           }}
         >
 
@@ -1514,8 +1734,9 @@ useEffect(() => {
             <span
               style={{
                 color: "#06b6d4",
-                fontSize: "10px",
+                fontSize: "11px",
                 fontWeight: 800,
+                letterSpacing: "0.5px",
               }}
             >
               QUESTION{" "}
@@ -1526,7 +1747,8 @@ useEffect(() => {
             <span
               style={{
                 color: "#94a3b8",
-                fontSize: "10px",
+                fontSize: "11px",
+                fontWeight: 600,
               }}
             >
               {currentQuestion.category}
@@ -1552,9 +1774,9 @@ useEffect(() => {
                 duration: 0.4,
               }}
               style={{
-                color: "#fff",
-                fontSize: "14px",
-                lineHeight: 1.55,
+                color: "#f8fafc",
+                fontSize: "15px",
+                lineHeight: 1.6,
               }}
             >
               "{currentQuestion.text}"
@@ -1567,7 +1789,7 @@ useEffect(() => {
             LIVE ANALYSIS STATUS
         ================================================= */}
 
-        <div
+        {/* <div
           style={{
             display: "grid",
             gridTemplateColumns:
@@ -1647,7 +1869,7 @@ useEffect(() => {
             );
           })}
 
-        </div>
+        </div> */}
 
         {/* =================================================
             WAVEFORM
@@ -1655,9 +1877,9 @@ useEffect(() => {
 
         <div
           style={{
-            marginTop: "12px",
-            padding: "13px 15px",
-            borderRadius: "13px",
+            marginTop: "16px",
+            padding: "15px 18px",
+            borderRadius: "16px",
             background:
               "rgba(2,6,23,.85)",
             border:
@@ -1669,13 +1891,13 @@ useEffect(() => {
             <span
               style={{
                 color: "#cbd5e1",
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: 700,
               }}
             >
               <FaMicrophone
                 className="text-info me-2"
-                size={12}
+                size={13}
               />
               Listening to your answer...
             </span>
@@ -1683,8 +1905,9 @@ useEffect(() => {
             <span
               style={{
                 color: "#06b6d4",
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: 700,
+                letterSpacing: "0.5px",
               }}
             >
               00:{String(demoTime).padStart(2, "0")}
@@ -1694,8 +1917,8 @@ useEffect(() => {
           <div
             className="d-flex justify-content-center align-items-center gap-1"
             style={{
-              height: "42px",
-              marginTop: "8px",
+              height: "44px",
+              marginTop: "10px",
             }}
           >
             {[
@@ -1738,9 +1961,9 @@ useEffect(() => {
         ================================================= */}
 
         <div
-          className="row g-2"
+          className="row g-3"
           style={{
-            marginTop: "12px",
+            marginTop: "16px",
           }}
         >
 
@@ -1762,22 +1985,23 @@ useEffect(() => {
                   scale: 1.02,
                 }}
                 style={{
-                  padding: "11px",
-                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  borderRadius: "14px",
                   background:
-                    `${color}08`,
+                    `${color}0c`,
                   border:
                     `1px solid ${color}25`,
                 }}
               >
 
                 <div
-                  className="d-flex justify-content-between"
+                  className="d-flex justify-content-between align-items-center mb-2"
                 >
                   <span
                     style={{
-                      color: "#cbd5e1",
-                      fontSize: "14px",
+                      color: "#e2e8f0",
+                      fontSize: "13px",
+                      fontWeight: 600,
                     }}
                   >
                     {name}
@@ -1786,7 +2010,8 @@ useEffect(() => {
                   <strong
                     style={{
                       color,
-                      fontSize: "11px",
+                      fontSize: "13px",
+                      fontWeight: 700,
                     }}
                   >
                     {value}%
@@ -1795,8 +2020,8 @@ useEffect(() => {
 
                 <div
                   style={{
-                    height: "4px",
-                    marginTop: "7px",
+                    height: "5px",
+                    marginTop: "8px",
                     borderRadius: "10px",
                     background:
                       "rgba(255,255,255,.08)",
@@ -1857,11 +2082,11 @@ useEffect(() => {
         style={{
           position: "absolute",
           zIndex: 10,
-          right: "-28px",
-          top: "-22px",
+          right: "-20px",
+          top: "-20px",
           width: "175px",
-          padding: "13px",
-          borderRadius: "14px",
+          padding: "12px 16px",
+          borderRadius: "16px",
           background:
             "rgba(7,13,29,.96)",
           backdropFilter: "blur(20px)",
@@ -1884,9 +2109,9 @@ useEffect(() => {
               ease: "linear",
             }}
             style={{
-              width: "35px",
-              height: "35px",
-              borderRadius: "9px",
+              width: "36px",
+              height: "36px",
+              borderRadius: "10px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1901,8 +2126,10 @@ useEffect(() => {
           <div>
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "9px",
+                color: "#94a3b8",
+                fontSize: "10px",
+                fontWeight: 600,
+                marginBottom: "2px",
               }}
             >
               Resume Analysis
@@ -1911,7 +2138,8 @@ useEffect(() => {
             <strong
               style={{
                 color: "#06b6d4",
-                fontSize: "14px",
+                fontSize: "15px",
+                fontWeight: 800,
               }}
             >
               92% Match
@@ -1942,11 +2170,11 @@ useEffect(() => {
         style={{
           position: "absolute",
           zIndex: 10,
-          left: "-35px",
-          bottom: "-28px",
+          left: "-24px",
+          bottom: "-24px",
           width: "190px",
-          padding: "13px",
-          borderRadius: "14px",
+          padding: "12px 16px",
+          borderRadius: "16px",
           background:
             "rgba(7,13,29,.96)",
           backdropFilter: "blur(20px)",
@@ -1968,8 +2196,8 @@ useEffect(() => {
               repeat: Infinity,
             }}
             style={{
-              width: "35px",
-              height: "35px",
+              width: "36px",
+              height: "36px",
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
@@ -1985,8 +2213,10 @@ useEffect(() => {
           <div>
             <div
               style={{
-                color: "#ffffff",
-                fontSize: "9px",
+                color: "#94a3b8",
+                fontSize: "10px",
+                fontWeight: 600,
+                marginBottom: "2px",
               }}
             >
               AI Feedback
@@ -2013,6 +2243,7 @@ useEffect(() => {
                       ? "#34d399"
                       : "#cbd5e1",
                   fontSize: "13px",
+                  fontWeight: 700,
                 }}
               >
                 {[
@@ -2204,43 +2435,71 @@ useEffect(() => {
                 key={feature.title}
               >
 
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    y: 60,
-                    rotateX: 10,
-                  }}
-                  whileInView={{
-                    opacity: 1,
-                    y: 0,
-                    rotateX: 0,
-                  }}
-                  viewport={{
-                    once: true,
-                    amount: 0.15,
-                  }}
-                  transition={{
-                    duration: 0.7,
-                    delay: index * 0.08,
-                  }}
-                  whileHover={{
-                    y: -12,
-                    scale: 1.025,
-                  }}
-                  style={{
-                    height: "100%",
-                    padding: "28px",
-                    borderRadius: "18px",
-                    background:
-                      "linear-gradient(145deg,rgba(15,23,42,.85),rgba(2,6,23,.9))",
-                    border:
-                      "1px solid rgba(96,165,250,.18)",
-                    boxShadow:
-                      "0 15px 50px rgba(0,0,0,.2)",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
+              <motion.div
+  initial={{
+    opacity: 0,
+    y: 60,
+    rotateX: 10,
+  }}
+  whileInView={{
+    opacity: 1,
+    y: 0,
+    rotateX: 0,
+  }}
+  viewport={{
+    once: true,
+    amount: 0.15,
+  }}
+  transition={{
+    duration: 0.7,
+    delay: index * 0.08,
+  }}
+  whileHover={{
+    y: -12,
+    scale: 1.025,
+  }}
+  whileTap={{
+    scale: 0.98,
+  }}
+  onClick={() => {
+    const route = featureRoutes[feature.title];
+
+    if (route) {
+      navigate(route);
+    }
+  }}
+  onKeyDown={(event) => {
+    if (
+      event.key === "Enter" ||
+      event.key === " "
+    ) {
+      event.preventDefault();
+
+      const route = featureRoutes[feature.title];
+
+      if (route) {
+        navigate(route);
+      }
+    }
+  }}
+  role="link"
+  tabIndex={0}
+  aria-label={`Open ${feature.title}`}
+  style={{
+    height: "100%",
+    padding: "28px",
+    borderRadius: "18px",
+    background:
+      "linear-gradient(145deg,rgba(15,23,42,.85),rgba(2,6,23,.9))",
+    border:
+      "1px solid rgba(96,165,250,.18)",
+    boxShadow:
+      "0 15px 50px rgba(0,0,0,.2)",
+    position: "relative",
+    overflow: "hidden",
+    cursor: "pointer",
+  }}
+>
 
                   {/* Hover light */}
 
@@ -2321,186 +2580,209 @@ useEffect(() => {
           HOW IT WORKS
       =================================================== */}
 
-      <section
-        id="how"
+   <section
+  id="how"
+  style={{
+    position: "relative",
+    zIndex: 2,
+    padding: "110px 0",
+    background: "rgba(15,23,42,.25)",
+    borderTop: "1px solid rgba(96,165,250,.1)",
+    borderBottom: "1px solid rgba(96,165,250,.1)",
+  }}
+>
+  <div className="container">
+
+    <div className="text-center mb-5">
+
+      <span
         style={{
-          position: "relative",
-          zIndex: 2,
-          padding: "110px 0",
-          background:
-            "rgba(15,23,42,.25)",
-          borderTop:
-            "1px solid rgba(96,165,250,.1)",
-          borderBottom:
-            "1px solid rgba(96,165,250,.1)",
+          display: "inline-block",
+          padding: "8px 15px",
+          borderRadius: "30px",
+          color: "#a78bfa",
+          border: "1px solid rgba(124,58,237,.4)",
+          fontSize: "12px",
+          fontWeight: 700,
         }}
       >
+        YOUR AI INTERVIEW JOURNEY
+      </span>
 
-        <div className="container">
+      <h2 className="display-4 fw-bold mt-3">
+        From Resume{" "}
+        <span
+          style={{
+            background:
+              "linear-gradient(90deg,#8b5cf6,#06b6d4)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          To Interview Ready
+        </span>
+      </h2>
 
-          <div className="text-center mb-5">
+    </div>
 
-            <span
+    <div className="row g-4">
+
+      {[
+        [
+          "01",
+          <FaFileAlt />,
+          "Upload Resume",
+          "AI understands your profile, skills and experience.",
+        ],
+        [
+          "02",
+          <FaLaptopCode />,
+          "Choose Your Role",
+          "Select your target technical or non-technical role.",
+        ],
+        [
+          "03",
+          <FaMicrophone />,
+          "Take AI Interview",
+          "Answer dynamic questions through text or voice.",
+        ],
+        [
+          "04",
+          <FaChartLine />,
+          "Get Evaluation",
+          "Receive detailed AI performance analysis.",
+        ],
+        [
+          "05",
+          <FaLightbulb />,
+          "Improve",
+          "Use personalized recommendations to improve.",
+        ],
+      ].map(([number, icon, title, text], index) => {
+
+        const stepRoutes = {
+          "Upload Resume": "/student/resume",
+          "Choose Your Role": "/student/target-jobs",
+          "Take AI Interview": "/student/interview-preparation/ai-mock",
+          "Get Evaluation": "/student/interviews",
+          "Improve": "/student/ask",
+        };
+
+        return (
+          <div
+            className="col-lg col-md-6"
+            key={number}
+          >
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 50,
+              }}
+              whileInView={{
+                opacity: 1,
+                y: 0,
+              }}
+              viewport={{
+                once: true,
+              }}
+              transition={{
+                duration: 0.6,
+                delay: index * 0.12,
+              }}
+              whileHover={{
+                y: -8,
+                scale: 1.02,
+              }}
+              whileTap={{
+                scale: 0.98,
+              }}
+              onClick={() => {
+                const route = stepRoutes[title];
+
+                if (!route) return;
+
+                navigate(user ? route : "/login");
+              }}
+              role="link"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+
+                  const route = stepRoutes[title];
+
+                  if (!route) return;
+
+                  navigate(user ? route : "/login");
+                }
+              }}
+              className="text-center p-4 h-100"
               style={{
-                display: "inline-block",
-                padding: "8px 15px",
-                borderRadius: "30px",
-                color: "#a78bfa",
-                border:
-                  "1px solid rgba(124,58,237,.4)",
-                fontSize: "12px",
-                fontWeight: 700,
+                borderRadius: "18px",
+                background: "rgba(8,15,32,.7)",
+                border: "1px solid rgba(59,130,246,.18)",
+                cursor: "pointer",
+                transition:
+                  "border-color .3s ease, box-shadow .3s ease",
               }}
             >
-              YOUR AI INTERVIEW JOURNEY
-            </span>
 
-            <h2 className="display-4 fw-bold mt-3">
-              From Resume To{" "}
-              <span
+              <div
                 style={{
+                  fontSize: "42px",
+                  fontWeight: 800,
                   background:
                     "linear-gradient(90deg,#8b5cf6,#06b6d4)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                 }}
               >
-                Interview Ready
-              </span>
-            </h2>
-
-          </div>
-
-          <div className="row g-4">
-
-            {[
-              [
-                "01",
-                <FaFileAlt />,
-                "Upload Resume",
-                "AI understands your profile, skills and experience.",
-              ],
-              [
-                "02",
-                <FaLaptopCode />,
-                "Choose Your Role",
-                "Select your target technical or non-technical role.",
-              ],
-              [
-                "03",
-                <FaMicrophone />,
-                "Take AI Interview",
-                "Answer dynamic questions through text or voice.",
-              ],
-              [
-                "04",
-                <FaChartLine />,
-                "Get Evaluation",
-                "Receive detailed AI performance analysis.",
-              ],
-              [
-                "05",
-                <FaLightbulb />,
-                "Improve",
-                "Use personalized recommendations to improve.",
-              ],
-            ].map(([number, icon, title, text], index) => (
-
-              <div
-                className="col-lg col-md-6"
-                key={number}
-              >
-
-                <motion.div
-                  initial={{
-                    opacity: 0,
-                    y: 50,
-                  }}
-                  whileInView={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  viewport={{
-                    once: true,
-                  }}
-                  transition={{
-                    duration: 0.6,
-                    delay: index * 0.12,
-                  }}
-                  whileHover={{
-                    y: -8,
-                  }}
-                  className="text-center p-4 h-100"
-                  style={{
-                    borderRadius: "18px",
-                    background:
-                      "rgba(8,15,32,.7)",
-                    border:
-                      "1px solid rgba(59,130,246,.18)",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      fontSize: "42px",
-                      fontWeight: 800,
-                      background:
-                        "linear-gradient(90deg,#8b5cf6,#06b6d4)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    {number}
-                  </div>
-
-                  <motion.div
-                    whileHover={{
-                      scale: 1.15,
-                      rotate: 8,
-                    }}
-                    style={{
-                      width: "54px",
-                      height: "54px",
-                      margin: "10px auto 18px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderRadius: "50%",
-                      color: "#ffffff",
-                      background:
-                        "rgba(6,182,212,.1)",
-                      border:
-                        "1px solid rgba(6,182,212,.3)",
-                    }}
-                  >
-                    {icon}
-                  </motion.div>
-
-                  <h6 className="fw-bold">
-                    {title}
-                  </h6>
-
-                  <p
-                    className="small text-white mb-0"
-                    style={{
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {text}
-                  </p>
-
-                </motion.div>
-
+                {number}
               </div>
 
-            ))}
+              <motion.div
+                whileHover={{
+                  scale: 1.15,
+                  rotate: 8,
+                }}
+                style={{
+                  width: "54px",
+                  height: "54px",
+                  margin: "10px auto 18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "50%",
+                  color: "#ffffff",
+                  background: "rgba(6,182,212,.1)",
+                  border: "1px solid rgba(6,182,212,.3)",
+                }}
+              >
+                {icon}
+              </motion.div>
 
+              <h6 className="fw-bold">
+                {title}
+              </h6>
+
+              <p
+                className="small text-white mb-0"
+                style={{
+                  lineHeight: 1.6,
+                }}
+              >
+                {text}
+              </p>
+
+            </motion.div>
           </div>
+        );
+      })}
 
-        </div>
+    </div>
 
-      </section>
-
+  </div>
+</section>
       {/* ===================================================
           ROLES
       =================================================== */}
