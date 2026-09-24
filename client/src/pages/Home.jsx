@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import { AuthContext } from "../context/AuthContext";
 import LandingFooter from "./LandingFooter";
+import LandingEnquirySection from "./LandingEnquirySection";
 const MotionLink = motion(Link);
 
 import {
@@ -3163,483 +3164,654 @@ useEffect(() => {
           AI COACH
       =================================================== */}
 
-      <section
-        id="coach"
-        style={{
-          position: "relative",
-          zIndex: 2,
-          padding: "110px 0",
-          background:
-            "rgba(15,23,42,.3)",
-        }}
-      >
+    <section
+  id="coach"
+  style={{
+    position: "relative",
+    zIndex: 2,
+    padding: "110px 0",
+    background: "rgba(15,23,42,.3)",
+  }}
+>
+  <div className="container">
 
-        <div className="container">
+    <div className="row align-items-center g-5">
 
-          <div className="row align-items-center g-5">
+      {/* =====================================================
+          LEFT CONTENT
+      ===================================================== */}
 
-            <div className="col-lg-6">
+      <div className="col-lg-6">
+
+        <motion.div
+          initial={{
+            opacity: 0,
+            x: -50,
+          }}
+          whileInView={{
+            opacity: 1,
+            x: 0,
+          }}
+          viewport={{
+            once: true,
+          }}
+          transition={{
+            duration: 0.8,
+          }}
+        >
+
+          {/* LABEL */}
+          <span
+            style={{
+              display: "inline-block",
+              padding: "8px 15px",
+              borderRadius: "30px",
+              color: "#c084fc",
+              border: "1px solid rgba(168,85,247,.4)",
+              fontSize: "12px",
+              fontWeight: 700,
+              letterSpacing: "0.5px",
+            }}
+          >
+            PERSONALIZED AI COACHING
+          </span>
+
+          {/* HEADING */}
+          <h2
+            className="display-4 fw-bold mt-3"
+            style={{
+              lineHeight: 1.15,
+            }}
+          >
+            Your Personal{" "}
+            <span
+              style={{
+                background:
+                  "linear-gradient(90deg,#a855f7,#06b6d4)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              AI Interview Coach
+            </span>
+          </h2>
+
+          {/* DESCRIPTION */}
+          <p
+            className="text-white fs-5"
+            style={{
+              lineHeight: 1.7,
+            }}
+          >
+            Every interview becomes an opportunity to
+            improve. Understand your strengths, identify
+            weak areas and receive actionable AI feedback.
+          </p>
+
+          {/* =================================================
+              FEATURES
+          ================================================= */}
+
+          <div className="d-flex flex-column gap-3 mt-4">
+
+            {[
+              "Role-matched scenario questions",
+              "Dynamic AI follow-up probing",
+              "Technical and communication scoring",
+              "Personalized improvement recommendations",
+            ].map((item) => (
 
               <motion.div
-                initial={{
-                  opacity: 0,
-                  x: -50,
+                key={item}
+                whileHover={{
+                  x: 6,
                 }}
-                whileInView={{
-                  opacity: 1,
-                  x: 0,
+                transition={{
+                  duration: 0.2,
                 }}
-                viewport={{
-                  once: true,
-                }}
+                className="d-flex align-items-center gap-3"
               >
 
+                {/* CHECK ICON */}
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    flexShrink: 0,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#10b981",
+                    background:
+                      "rgba(16,185,129,.1)",
+                    border:
+                      "1px solid rgba(16,185,129,.2)",
+                  }}
+                >
+                  <FaCheckCircle />
+                </div>
+
+                {/* TEXT */}
                 <span
                   style={{
-                    display: "inline-block",
-                    padding: "8px 15px",
-                    borderRadius: "30px",
-                    color: "#c084fc",
-                    border:
-                      "1px solid rgba(168,85,247,.4)",
-                    fontSize: "12px",
-                    fontWeight: 700,
+                    color: "#e2e8f0",
+                    fontSize: "15px",
                   }}
                 >
-                  PERSONALIZED AI COACHING
+                  {item}
                 </span>
-
-                <h2
-                  className="display-4 fw-bold mt-3"
-                  style={{
-                    lineHeight: 1.15,
-                  }}
-                >
-                  Your Personal{" "}
-                  <span
-                    style={{
-                      background:
-                        "linear-gradient(90deg,#a855f7,#06b6d4)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    }}
-                  >
-                    AI Interview Coach
-                  </span>
-                </h2>
-
-                <p
-                  className="text-white fs-5"
-                  style={{
-                    lineHeight: 1.7,
-                  }}
-                >
-                  Every interview becomes an opportunity to
-                  improve. Understand your strengths, identify
-                  weak areas and receive actionable AI feedback.
-                </p>
-
-                <div className="d-flex flex-column gap-3 mt-4">
-
-                  {[
-                    "Role-matched scenario questions",
-                    "Dynamic AI follow-up probing",
-                    "Technical and communication scoring",
-                    "Personalized improvement recommendations",
-                  ].map((item) => (
-
-                    <div
-                      key={item}
-                      className="d-flex align-items-center gap-3"
-                    >
-
-                      <div
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#10b981",
-                          background:
-                            "rgba(16,185,129,.1)",
-                        }}
-                      >
-                        <FaCheckCircle />
-                      </div>
-
-                      <span>{item}</span>
-
-                    </div>
-
-                  ))}
-
-                </div>
 
               </motion.div>
 
-            </div>
+            ))}
 
-            <div className="col-lg-6">
+          </div>
 
-              <motion.div
-                initial={{
-                  opacity: 0,
-                  x: 50,
-                  scale: 0.9,
-                }}
-                whileInView={{
-                  opacity: 1,
-                  x: 0,
-                  scale: 1,
-                }}
-                viewport={{
-                  once: true,
-                }}
-                transition={{
-                  duration: 0.8,
-                }}
+          {/* =================================================
+              START AI COACHING BUTTON
+          ================================================= */}
+
+          <div className="mt-4">
+
+            <motion.button
+              whileHover={{
+                scale: 1.05,
+                boxShadow:
+                  "0 12px 35px rgba(139,92,246,.35)",
+              }}
+              whileTap={{
+                scale: 0.97,
+              }}
+              onClick={() => {
+                navigate(
+                  user
+                    ? "/student/ask"
+                    : "/login"
+                );
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                padding: "14px 26px",
+                border: "none",
+                borderRadius: "12px",
+                color: "#ffffff",
+                fontSize: "15px",
+                fontWeight: 700,
+                background:
+                  "linear-gradient(90deg,#8b5cf6,#06b6d4)",
+                boxShadow:
+                  "0 8px 25px rgba(99,102,241,.25)",
+                cursor: "pointer",
+                transition: "all .3s ease",
+              }}
+            >
+              Start AI Coaching
+              <FaArrowRight size={15} />
+            </motion.button>
+
+          </div>
+
+        </motion.div>
+
+      </div>
+
+
+      {/* =====================================================
+          RIGHT PERFORMANCE CARD
+      ===================================================== */}
+
+      <div className="col-lg-6">
+
+        <motion.div
+          initial={{
+            opacity: 0,
+            x: 50,
+            scale: 0.9,
+          }}
+          whileInView={{
+            opacity: 1,
+            x: 0,
+            scale: 1,
+          }}
+          viewport={{
+            once: true,
+          }}
+          transition={{
+            duration: 0.8,
+          }}
+          style={{
+            padding: "25px",
+            borderRadius: "20px",
+            background:
+              "rgba(8,15,32,.85)",
+            border:
+              "1px solid rgba(99,102,241,.35)",
+            boxShadow:
+              "0 30px 80px rgba(0,0,0,.4)",
+          }}
+        >
+
+          {/* HEADER */}
+          <h5 className="fw-bold mb-4">
+            <FaChartLine
+              className="text-info me-2"
+            />
+            Live Performance Breakdown
+          </h5>
+
+
+          {/* =================================================
+              PERFORMANCE SCORES
+          ================================================= */}
+
+          {[
+            [
+              "Technical Knowledge",
+              91,
+              "#06b6d4",
+            ],
+            [
+              "Communication & Clarity",
+              84,
+              "#3b82f6",
+            ],
+            [
+              "Confidence & Speech Flow",
+              88,
+              "#10b981",
+            ],
+            [
+              "Answer Relevance",
+              94,
+              "#facc15",
+            ],
+          ].map(([name, score, color]) => (
+
+            <div
+              className="mb-4"
+              key={name}
+            >
+
+              {/* SCORE HEADER */}
+              <div className="d-flex justify-content-between mb-2">
+
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: "#e2e8f0",
+                  }}
+                >
+                  {name}
+                </span>
+
+                <strong
+                  style={{
+                    color,
+                  }}
+                >
+                  {score}%
+                </strong>
+
+              </div>
+
+              {/* PROGRESS BAR */}
+              <div
                 style={{
-                  padding: "25px",
+                  height: "7px",
                   borderRadius: "20px",
                   background:
-                    "rgba(8,15,32,.85)",
-                  border:
-                    "1px solid rgba(99,102,241,.35)",
-                  boxShadow:
-                    "0 30px 80px rgba(0,0,0,.4)",
+                    "rgba(255,255,255,.1)",
+                  overflow: "hidden",
                 }}
               >
 
-                <h5 className="fw-bold mb-4">
-                  <FaChartLine className="text-info me-2" />
-                  Live Performance Breakdown
-                </h5>
-
-                {[
-                  ["Technical Knowledge", 91, "#06b6d4"],
-                  ["Communication & Clarity", 84, "#3b82f6"],
-                  ["Confidence & Speech Flow", 88, "#10b981"],
-                  ["Answer Relevance", 94, "#facc15"],
-                ].map(([name, score, color]) => (
-
-                  <div
-                    className="mb-4"
-                    key={name}
-                  >
-
-                    <div className="d-flex justify-content-between mb-2">
-
-                      <span
-                        style={{
-                          fontSize: "14px",
-                        }}
-                      >
-                        {name}
-                      </span>
-
-                      <strong style={{ color }}>
-                        {score}%
-                      </strong>
-
-                    </div>
-
-                    <div
-                      style={{
-                        height: "7px",
-                        borderRadius: "20px",
-                        background:
-                          "rgba(255,255,255,.1)",
-                        overflow: "hidden",
-                      }}
-                    >
-
-                      <motion.div
-                        initial={{
-                          width: 0,
-                        }}
-                        whileInView={{
-                          width: `${score}%`,
-                        }}
-                        viewport={{
-                          once: true,
-                        }}
-                        transition={{
-                          duration: 1.4,
-                          ease: "easeOut",
-                        }}
-                        style={{
-                          height: "100%",
-                          borderRadius: "20px",
-                          background: color,
-                          boxShadow:
-                            `0 0 12px ${color}`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-                ))}
-
                 <motion.div
                   initial={{
-                    opacity: 0,
-                    y: 20,
+                    width: 0,
                   }}
                   whileInView={{
-                    opacity: 1,
-                    y: 0,
+                    width: `${score}%`,
                   }}
                   viewport={{
                     once: true,
                   }}
                   transition={{
-                    delay: 1,
+                    duration: 1.4,
+                    ease: "easeOut",
                   }}
                   style={{
-                    padding: "17px",
-                    borderRadius: "12px",
-                    background:
-                      "rgba(37,99,235,.08)",
-                    border:
-                      "1px solid rgba(37,99,235,.25)",
+                    height: "100%",
+                    borderRadius: "20px",
+                    background: color,
+                    boxShadow:
+                      `0 0 12px ${color}`,
                   }}
-                >
+                />
 
-                  <strong
-                    className="text-info"
-                    style={{
-                      fontSize: "12px",
-                    }}
-                  >
-                    AI RECOMMENDATION
-                  </strong>
-
-                  <p
-                    className="text-white-50 small mb-0 mt-2"
-                  >
-                    Your technical explanation is strong.
-                    Focus on structuring behavioral answers more
-                    clearly using the STAR method.
-                  </p>
-
-                </motion.div>
-
-              </motion.div>
+              </div>
 
             </div>
 
-          </div>
+          ))}
 
-        </div>
 
-      </section>
+          {/* =================================================
+              AI RECOMMENDATION
+          ================================================= */}
+
+          <motion.div
+            initial={{
+              opacity: 0,
+              y: 20,
+            }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+            }}
+            viewport={{
+              once: true,
+            }}
+            transition={{
+              delay: 1,
+              duration: 0.6,
+            }}
+            style={{
+              padding: "17px",
+              borderRadius: "12px",
+              background:
+                "rgba(37,99,235,.08)",
+              border:
+                "1px solid rgba(37,99,235,.25)",
+            }}
+          >
+
+            <strong
+              className="text-info"
+              style={{
+                fontSize: "12px",
+                letterSpacing: "0.5px",
+              }}
+            >
+              AI RECOMMENDATION
+            </strong>
+
+            <p
+              className="text-white-50 small mb-0 mt-2"
+              style={{
+                lineHeight: 1.6,
+              }}
+            >
+              Your technical explanation is strong.
+              Focus on structuring behavioral answers more
+              clearly using the STAR method.
+            </p>
+
+          </motion.div>
+
+        </motion.div>
+
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+      {/* ===================================================
+          Enquiry Section
+      =================================================== */}
+
+<LandingEnquirySection />
 
       {/* ===================================================
           RESUME / ATS
       =================================================== */}
 
-      <section
-        style={{
-          position: "relative",
-          zIndex: 2,
-          padding: "100px 0",
-        }}
-      >
+ <section
+  style={{
+    position: "relative",
+    zIndex: 2,
+    padding: "100px 0",
+  }}
+>
+  <div className="container">
 
-        <div className="container">
+    <div className="row g-4">
 
-          <div className="row g-4">
+      {/* RESUME */}
+      <div className="col-lg-6">
+        <motion.div
+          whileHover={{
+            y: -10,
+            scale: 1.01,
+          }}
+          whileTap={{
+            scale: 0.98,
+          }}
+          onClick={() => {
+            navigate(
+              user
+                ? "/student/resume"
+                : "/login"
+            );
+          }}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
 
-            {/* RESUME */}
+              navigate(
+                user
+                  ? "/student/resume"
+                  : "/login"
+              );
+            }
+          }}
+          style={{
+            height: "100%",
+            padding: "40px",
+            borderRadius: "20px",
+            background:
+              "linear-gradient(145deg,rgba(15,23,42,.9),rgba(2,6,23,.9))",
+            border:
+              "1px solid rgba(6,182,212,.25)",
+            cursor: "pointer",
+            transition:
+              "border-color .3s ease, box-shadow .3s ease",
+          }}
+        >
 
-            <div className="col-lg-6">
+          <div
+            style={{
+              width: "58px",
+              height: "58px",
+              borderRadius: "14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#06b6d4",
+              background: "rgba(6,182,212,.1)",
+              marginBottom: "25px",
+            }}
+          >
+            <FaFileAlt size={27} />
+          </div>
 
-              <motion.div
-                whileHover={{
-                  y: -10,
-                }}
-                style={{
-                  height: "100%",
-                  padding: "40px",
-                  borderRadius: "20px",
-                  background:
-                    "linear-gradient(145deg,rgba(15,23,42,.9),rgba(2,6,23,.9))",
-                  border:
-                    "1px solid rgba(6,182,212,.25)",
-                }}
-              >
+          <h3 className="fw-bold">
+            Your Resume Becomes Your
+            Interview Blueprint
+          </h3>
 
-                <div
-                  style={{
-                    width: "58px",
-                    height: "58px",
-                    borderRadius: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#06b6d4",
-                    background:
-                      "rgba(6,182,212,.1)",
-                    marginBottom: "25px",
-                  }}
-                >
-                  <FaFileAlt size={27} />
-                </div>
+          <p className="text-white-50">
+            AI analyzes your resume and creates
+            personalized interview questions based on
+            your actual profile.
+          </p>
 
-                <h3 className="fw-bold">
-                  Your Resume Becomes Your
-                  Interview Blueprint
-                </h3>
+          {[
+            "Skills detected",
+            "Projects analyzed",
+            "Experience mapped",
+            "Personalized questions",
+          ].map((item) => (
+            <div
+              className="small text-white-50 mb-3"
+              key={item}
+            >
+              <FaCheckCircle
+                className="text-success me-2"
+              />
+              {item}
+            </div>
+          ))}
 
-                <p className="text-white-50">
-                  AI analyzes your resume and creates
-                  personalized interview questions based on
-                  your actual profile.
-                </p>
+        </motion.div>
+      </div>
 
-                {[
-                  "Skills detected",
-                  "Projects analyzed",
-                  "Experience mapped",
-                  "Personalized questions",
-                ].map((item) => (
 
-                  <div
-                    className="small text-white-50 mb-3"
-                    key={item}
-                  >
-                    <FaCheckCircle
-                      className="text-success me-2"
-                    />
-                    {item}
-                  </div>
+      {/* ATS */}
+      <div className="col-lg-6">
+        <motion.div
+          whileHover={{
+            y: -10,
+            scale: 1.01,
+          }}
+          whileTap={{
+            scale: 0.98,
+          }}
+          onClick={() => {
+            navigate(
+              user
+                ? "/student/interview-preparation/ai-mock"
+                : "/login"
+            );
+          }}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
 
-                ))}
+              navigate(
+                user
+                  ? "/student/interview-preparation/ai-mock"
+                  : "/login"
+              );
+            }
+          }}
+          style={{
+            height: "100%",
+            padding: "40px",
+            borderRadius: "20px",
+            background:
+              "linear-gradient(145deg,rgba(15,23,42,.9),rgba(2,6,23,.9))",
+            border:
+              "1px solid rgba(59,130,246,.25)",
+            cursor: "pointer",
+            transition:
+              "border-color .3s ease, box-shadow .3s ease",
+          }}
+        >
 
-              </motion.div>
+          <div
+            style={{
+              width: "58px",
+              height: "58px",
+              borderRadius: "14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#3b82f6",
+              background: "rgba(37,99,235,.1)",
+              marginBottom: "25px",
+            }}
+          >
+            <TbScan size={30} />
+          </div>
+
+          <h3 className="fw-bold">
+            Practice Against The Actual
+            Job Description
+          </h3>
+
+          <p className="text-white-50">
+            Match your resume and skills against your
+            target job description before your interview.
+          </p>
+
+          <div
+            style={{
+              marginTop: "25px",
+              padding: "20px",
+              borderRadius: "15px",
+              background: "rgba(2,6,23,.8)",
+              border:
+                "1px solid rgba(59,130,246,.2)",
+            }}
+          >
+
+            <div className="d-flex justify-content-between">
+
+              <span className="fw-bold">
+                ATS Match
+              </span>
+
+              <strong className="text-info">
+                92%
+              </strong>
 
             </div>
 
-            {/* ATS */}
-
-            <div className="col-lg-6">
+            <div
+              style={{
+                height: "8px",
+                borderRadius: "20px",
+                marginTop: "12px",
+                background:
+                  "rgba(255,255,255,.1)",
+              }}
+            >
 
               <motion.div
-                whileHover={{
-                  y: -10,
+                initial={{
+                  width: 0,
+                }}
+                whileInView={{
+                  width: "92%",
+                }}
+                viewport={{
+                  once: true,
+                }}
+                transition={{
+                  duration: 1.5,
                 }}
                 style={{
                   height: "100%",
-                  padding: "40px",
                   borderRadius: "20px",
                   background:
-                    "linear-gradient(145deg,rgba(15,23,42,.9),rgba(2,6,23,.9))",
-                  border:
-                    "1px solid rgba(59,130,246,.25)",
+                    "linear-gradient(90deg,#06b6d4,#10b981)",
+                  boxShadow:
+                    "0 0 15px rgba(6,182,212,.5)",
                 }}
-              >
-
-                <div
-                  style={{
-                    width: "58px",
-                    height: "58px",
-                    borderRadius: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#3b82f6",
-                    background:
-                      "rgba(37,99,235,.1)",
-                    marginBottom: "25px",
-                  }}
-                >
-                  <TbScan size={30} />
-                </div>
-
-                <h3 className="fw-bold">
-                  Practice Against The Actual
-                  Job Description
-                </h3>
-
-                <p className="text-white-50">
-                  Match your resume and skills against your
-                  target job description before your interview.
-                </p>
-
-                <div
-                  style={{
-                    marginTop: "25px",
-                    padding: "20px",
-                    borderRadius: "15px",
-                    background:
-                      "rgba(2,6,23,.8)",
-                    border:
-                      "1px solid rgba(59,130,246,.2)",
-                  }}
-                >
-
-                  <div className="d-flex justify-content-between">
-
-                    <span className="fw-bold">
-                      ATS Match
-                    </span>
-
-                    <strong className="text-info">
-                      92%
-                    </strong>
-
-                  </div>
-
-                  <div
-                    style={{
-                      height: "8px",
-                      borderRadius: "20px",
-                      marginTop: "12px",
-                      background:
-                        "rgba(255,255,255,.1)",
-                    }}
-                  >
-
-                    <motion.div
-                      initial={{
-                        width: 0,
-                      }}
-                      whileInView={{
-                        width: "92%",
-                      }}
-                      viewport={{
-                        once: true,
-                      }}
-                      transition={{
-                        duration: 1.5,
-                      }}
-                      style={{
-                        height: "100%",
-                        borderRadius: "20px",
-                        background:
-                          "linear-gradient(90deg,#06b6d4,#10b981)",
-                        boxShadow:
-                          "0 0 15px rgba(6,182,212,.5)",
-                      }}
-                    />
-
-                  </div>
-
-                </div>
-
-              </motion.div>
+              />
 
             </div>
 
           </div>
 
-        </div>
+        </motion.div>
+      </div>
 
-      </section>
+    </div>
+
+  </div>
+</section>
 
      {/* =========================================================
     PRICING SECTION

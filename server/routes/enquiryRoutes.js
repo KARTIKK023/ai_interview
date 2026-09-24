@@ -1,9 +1,12 @@
 const express = require("express");
+const multer = require("multer");
 const router = express.Router();
 
 const { sendEnquiry } = require("../controllers/enquirycontroller");
 
 
-router.post("/", sendEnquiry);
+const parseEnquiryForm = multer().none();
+
+router.post("/", parseEnquiryForm, sendEnquiry);
 
 module.exports = router;

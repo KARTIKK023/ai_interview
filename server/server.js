@@ -39,7 +39,7 @@ app.use('/uploads', express.static(uploadsDir));
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('https://xk5nf2pg-5174.inc1.devtunnels.ms/')) {
+    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('https://localhost:5000')) {
       return callback(null, true);
     }
     return callback(null, true);
