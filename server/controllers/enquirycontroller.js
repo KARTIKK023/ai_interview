@@ -13,7 +13,16 @@ const sendEnquiry = async (req, res) => {
       message,
     } = req.body;
 
-    if (!name || !email || !enquiryType || !subject || !message) {
+    if (!name || !email || !phone || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill all required fields.",
+      });
+    }
+
+    const isDetailedEnquiry = Boolean(enquiryType || subject);
+
+    if (isDetailedEnquiry && (!enquiryType || !subject)) {
       return res.status(400).json({
         success: false,
         message: "Please fill all required fields.",
@@ -30,7 +39,7 @@ const sendEnquiry = async (req, res) => {
       // it will reply to the person who submitted the enquiry
       replyTo: email,
 
-      subject: `HireSmart AI Enquiry - ${subject}`,
+      subject: `HireSmart AI Enquiry - ${subject || "General Enquiry"}`,
 
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
@@ -45,17 +54,11 @@ const sendEnquiry = async (req, res) => {
 
           <p><strong>Phone:</strong> ${phone || "Not provided"}</p>
 
-          <p>
-            <strong>Organization:</strong>
-            ${organization || "Not provided"}
-          </p>
+          ${organization ? `<p><strong>Organization:</strong> ${organization}</p>` : ""}
 
-          <p>
-            <strong>Enquiry Type:</strong>
-            ${enquiryType}
-          </p>
+          ${enquiryType ? `<p><strong>Enquiry Type:</strong> ${enquiryType}</p>` : ""}
 
-          <p><strong>Subject:</strong> ${subject}</p>
+          ${subject ? `<p><strong>Subject:</strong> ${subject}</p>` : ""}
 
           <hr />
 
