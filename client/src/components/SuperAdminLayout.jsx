@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import SuperAdminSidebar from '../pages/super-admin/SuperAdminSidebar';
 import API from '../services/api';
+import bootstrap from 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import {
   FaShieldAlt,
   FaSearch,
@@ -15,12 +16,35 @@ import {
   FaUser,
   FaLock,
   FaSignOutAlt,
-  FaServer
+  FaServer,
+  FaBars
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const SuperAdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Close the mobile drawer after navigation and when resizing up to desktop
+  useEffect(() => {
+    const closeDrawer = () => {
+      const el = document.getElementById('superAdminSidebar');
+      if (el) {
+        const oc = bootstrap.Offcanvas.getInstance(el);
+        if (oc) oc.hide();
+      }
+    };
+    window.addEventListener('resize', closeDrawer);
+    return () => window.removeEventListener('resize', closeDrawer);
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById('superAdminSidebar');
+    if (el) {
+      const oc = bootstrap.Offcanvas.getInstance(el);
+      if (oc) oc.hide();
+    }
+  }, [location.pathname]);
 
   // Shared Navbar UI States
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,6 +140,16 @@ const SuperAdminLayout = () => {
       >
         {/* Left Branding */}
         <div className="d-flex align-items-center gap-2.5">
+          <button
+            className="btn border-0 text-white p-0 d-flex align-items-center d-lg-none"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#superAdminSidebar"
+            aria-controls="superAdminSidebar"
+            aria-label="Open navigation menu"
+          >
+            <FaBars size={20} />
+          </button>
           <div
             className="rounded-3 p-1.5 text-white d-flex align-items-center justify-content-center shadow-sm cursor-pointer"
             onClick={() => navigate('/super-admin/dashboard')}
@@ -201,11 +235,13 @@ const SuperAdminLayout = () => {
       {/* 2. MIDDLE BODY CONTAINER (PERSISTENT SIDEBAR + DYNAMIC MAIN OUTLET)       */}
       {/* ========================================================================= */}
       <div className="d-flex flex-grow-1 overflow-hidden">
-        {/* PERSISTENT FIXED SIDEBAR */}
-        <SuperAdminSidebar onLogout={handleLogout} />
+        {/* SIDEBAR: offcanvas drawer below lg, pinned 240px below the header at lg+ */}
+        <aside className="offcanvas offcanvas-start" id="superAdminSidebar" tabIndex="-1">
+          <SuperAdminSidebar onLogout={handleLogout} />
+        </aside>
 
         {/* MAIN COLUMN (DYNAMIC OUTLET + PERSISTENT FOOTER) */}
-        <main className="flex-grow-1 d-flex flex-column overflow-hidden h-100">
+        <main className="flex-grow-1 d-flex flex-column overflow-hidden h-100 super-admin-main">
           {/* DYNAMIC NAVIGATION SCROLLABLE MAIN CONTENT AREA */}
           <div className="flex-grow-1 overflow-y-auto">
             <Outlet />

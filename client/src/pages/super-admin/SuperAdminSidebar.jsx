@@ -53,7 +53,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
 
   return (
     <aside
-      className="super-admin-sidebar border-end d-none d-lg-flex flex-column flex-shrink-0 h-100 p-2.5"
+      className="super-admin-sidebar border-end d-flex flex-column flex-shrink-0 h-100 p-2.5"
       style={{
         width: '240px',
         background: '#4C1D95',
@@ -62,13 +62,20 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
       }}
     >
       {/* NAVIGATION HEADER */}
-      <div className="px-2 pt-1 pb-2 border-bottom" style={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}>
+      <div className="px-2 pt-1 pb-2 border-bottom d-flex align-items-center justify-content-between" style={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}>
         <span
           className="fw-bold uppercase"
           style={{ fontSize: '0.9rem', letterSpacing: '0.6px', color: '#FFFFFF' }}
         >
           Super Admin Menu
         </span>
+        <button
+          type="button"
+          className="btn-close btn-close-white d-lg-none"
+          data-bs-dismiss="offcanvas"
+          data-bs-target="#superAdminSidebar"
+          aria-label="Close menu"
+        ></button>
       </div>
 
       {/* NAVIGATION ITEMS */}
