@@ -10,7 +10,10 @@ import {
   FaAward,
   FaClipboardList,
   FaUserShield,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaCreditCard,
+  FaTags,
+  FaBoxOpen
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -34,6 +37,7 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'dashboard', label: 'Dashboard', icon: FaChartLine, route: '/super-admin/dashboard' },
    
     { id: 'students', label: 'Students Records', icon: FaUserGraduate, route: '/super-admin/students', badge: 'Live' },
+    { id: 'plans', label: 'Plans & Access', icon: FaBoxOpen, route: '/super-admin/plans', badge: 'Plans' },
     { id: 'registrations', label: 'Registration Records', icon: FaUserPlus, route: '/super-admin/registrations', badge: 'Records' },
     { id: 'ats-analysis', label: 'ATS Analysis History', icon: FaChartLine, route: '/super-admin/ats-resume-scans', badge: 'History' },
     { id: 'resumes', label: 'Resume Records', icon: FaFileAlt, route: '/super-admin/resumes', badge: 'ATS' },
@@ -41,6 +45,8 @@ const SuperAdminSidebar = ({ activeSidebarTab, setActiveSidebarTab, onLogout }) 
     { id: 'mock-interviews', label: 'Mock Interviews', icon: FaBrain, route: '/super-admin/mock-interviews', badge: 'AI' },
     { id: 'certificates', label: 'Certificates', icon: FaAward, route: '/super-admin/certificates', badge: 'Verify' },
     { id: 'inquiry', label: 'Inquiry Details', icon: FaClipboardList, route: '/super-admin/inquiry-details', badge: 'details' },
+    { id: 'payments', label: 'Payments', icon: FaCreditCard, route: '/super-admin/payments', badge: 'Razorpay' },
+    { id: 'coupons', label: 'Coupons', icon: FaTags, route: '/super-admin/coupons', badge: 'Offers' },
      { id: 'assign-role', label: 'Assign Role', icon: FaUserShield, route: '/super-admin/assign-role', badge: 'Assign' },
     { id: 'logout', label: 'Logout', icon: FaSignOutAlt, isLogout: true }
   ];

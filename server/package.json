@@ -26,6 +26,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "pdf-parse": "^2.4.5",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "razorpay": "^2.9.8"
   }
 }

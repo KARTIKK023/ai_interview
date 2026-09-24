@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import StudentLayout from '../../components/StudentLayout';
 import StatCard from '../../components/StatCard';
 import InterviewCard from '../../components/InterviewCard';
+import BuyCreditsModal from '../../components/BuyCreditsModal';
 import API from '../../services/api';
 import { AuthContext } from '../../context/AuthContext';
-import { FaPlay, FaHistory, FaTachometerAlt, FaStar, FaCheckCircle, FaExclamationCircle, FaVideo, FaFont, FaFileAlt, FaUserEdit } from 'react-icons/fa';
+import { FaPlay, FaHistory, FaTachometerAlt, FaStar, FaCheckCircle, FaExclamationCircle, FaVideo, FaFont, FaFileAlt, FaUserEdit, FaLock, FaCreditCard } from 'react-icons/fa';
 import { TbScan } from 'react-icons/tb';
 
 const StudentDashboard = () => {
   const { user } = useContext(AuthContext);
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [accessUnlocked, setAccessUnlocked] = useState(false);
   const [stats, setStats] = useState({
     totalInterviews: 0,
     practiceCount: 0,
@@ -27,7 +30,17 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchEntitlement();
   }, []);
+
+  const fetchEntitlement = async () => {
+    try {
+      const res = await API.get('/payments/entitlements');
+      setAccessUnlocked(!!(res.data?.mockLevelsUnlocked && res.data?.atsProUnlocked));
+    } catch (err) {
+      setAccessUnlocked(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -111,6 +124,35 @@ const StudentDashboard = () => {
         >
           <TbScan size={18} /> ATS Resume Checker
         </Link>
+        {accessUnlocked ? (
+          <span
+            className="badge rounded-pill px-3 py-2 fw-bold text-nowrap d-inline-flex align-items-center gap-2"
+            style={{
+              backgroundColor: 'rgba(22, 163, 74, 0.12)',
+              color: '#16A34A',
+              border: '1px solid rgba(22, 163, 74, 0.3)',
+              fontSize: '0.8rem'
+            }}
+          >
+            <FaCheckCircle /> Unlimited Access
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="btn d-flex align-items-center gap-2 shadow-sm text-nowrap fw-bold"
+            style={{
+              backgroundColor: '#ffffff',
+              border: '2px solid #4F46E5',
+              color: '#4F46E5',
+              borderRadius: '10px',
+              padding: '10px 18px',
+              fontSize: '0.875rem'
+            }}
+            onClick={() => setShowBuyModal(true)}
+          >
+            <FaCreditCard /> Get Access <FaLock size={13} />
+          </button>
+        )}
       </div>
 
       {/* STAT CARDS ROW */}
@@ -189,6 +231,13 @@ const StudentDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* UNLOCK FULL ACCESS MODAL */}
+      <BuyCreditsModal
+        show={showBuyModal}
+        onClose={() => setShowBuyModal(false)}
+        onUnlocked={(unlocked) => setAccessUnlocked(unlocked)}
+      />
     </StudentLayout>
   );
 };

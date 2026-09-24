@@ -732,6 +732,9 @@ HireSmart AI Team 🚀`;
           <span className="badge rounded-pill px-3 py-1" style={{ background: '#8B5CF6', color: '#FFFFFF' }}>
             Live Record of Students & Their Service Access
           </span>
+          <a href="/super-admin/plans" className="btn btn-sm btn-light fw-bold text-purple" style={{ color: '#4C1D95', borderColor: 'rgba(255,255,255,0.35)' }}>
+            Manage Plans & Access
+          </a>
         </div>
       </div>
 

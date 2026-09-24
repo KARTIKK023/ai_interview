@@ -8,12 +8,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'https://xk5nf2pg-5001.inc1.devtunnels.ms',
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://localhost:5000',
+        target: 'https://xk5nf2pg-5001.inc1.devtunnels.ms',
         changeOrigin: true,
         secure: false
       }

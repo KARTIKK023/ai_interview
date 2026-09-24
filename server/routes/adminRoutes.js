@@ -15,6 +15,9 @@ const {
   getAdminStudentProfile,
   getStudentLoginHistory,
   updateStudentServiceStatus,
+  updateStudentEntitlements,
+  getAdminEntitlements,
+  bulkUpdateEntitlements,
   deleteAdminStudent,
   getAdminRegistrations,
   getAdminResumes,
@@ -57,9 +60,12 @@ router.get('/resume-scans', protectAdmin, requirePermission('resumes'), getAdmin
 
 // Permission Enforced Specific Endpoints
 router.get('/students', protectAdmin, requirePermission('students'), getAdminStudents);
+router.get('/entitlements', protectSuperAdmin, requirePermission('students'), getAdminEntitlements);
+router.put('/entitlements/bulk', protectSuperAdmin, requirePermission('students'), bulkUpdateEntitlements);
 router.get('/students/:studentId/login-history', protectAdmin, requirePermission('students'), getStudentLoginHistory);
 router.get('/students/:id', protectAdmin, requirePermission('students'), getAdminStudentProfile);
 router.put('/students/:id/service-status', protectAdmin, requirePermission('students'), updateStudentServiceStatus);
+router.put('/students/:id/entitlements', protectSuperAdmin, requirePermission('students'), updateStudentEntitlements);
 router.delete('/students/:id', protectAdmin, requirePermission('students'), deleteAdminStudent);
 router.get('/registrations', protectAdmin, requirePermission('registrations'), getAdminRegistrations);
 router.get('/resumes', protectAdmin, requirePermission('resumes'), getAdminResumes);
@@ -70,5 +76,16 @@ router.post('/certificates/issue', protectAdmin, requirePermission('certificates
 router.get('/ats/analysis-history', protectAdmin, requirePermission('ats-analysis'), getAdminAtsAnalysisHistory);
 router.get('/ats-resume-scans', protectAdmin, requirePermission('ats-analysis'), getAdminAtsResumeScans);
 router.get('/ats/scans/:id/optimized-resume', protectAdmin, requirePermission('resumes'), downloadOptimizedResume);
+
+// Payments & Coupons (Strictly Super Admin; admins need the 'payments' permission)
+const paymentAdmin = require('../controllers/paymentAdminController');
+router.get('/payments', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getPayments);
+router.get('/payments/analytics', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getAnalytics);
+router.get('/payments/coupons', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getCoupons);
+router.post('/payments/coupons', protectSuperAdmin, requirePermission('payments'), paymentAdmin.createCoupon);
+router.put('/payments/coupons/:id', protectSuperAdmin, requirePermission('payments'), paymentAdmin.updateCoupon);
+router.delete('/payments/coupons/:id', protectSuperAdmin, requirePermission('payments'), paymentAdmin.deleteCoupon);
+router.get('/payments/groups', protectSuperAdmin, requirePermission('payments'), paymentAdmin.getGroups);
+router.post('/payments/groups', protectSuperAdmin, requirePermission('payments'), paymentAdmin.createGroup);
 
 module.exports = router;
