@@ -1,9 +1,9 @@
 import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { FaRobot, FaUser, FaSignOutAlt, FaPlusCircle, FaBriefcase, FaGraduationCap, FaShieldAlt } from 'react-icons/fa';
+import { FaRobot, FaUser, FaSignOutAlt, FaPlusCircle, FaBriefcase, FaGraduationCap, FaShieldAlt, FaBars } from 'react-icons/fa';
 
-const Navbar = () => {
+const Navbar = ({ drawerTarget }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -25,6 +25,19 @@ const Navbar = () => {
       }}
     >
       <div className="container-fluid">
+        {drawerTarget && (
+          <button
+            className="btn border-0 text-white p-1 d-flex align-items-center d-lg-none"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target={`#${drawerTarget}`}
+            aria-controls={drawerTarget}
+            aria-label="Open navigation menu"
+          >
+            <FaBars size={20} />
+          </button>
+        )}
+
         <Link className="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" to="/">
           <div className="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center" style={{ width: '38px', height: '38px' }}>
             <FaRobot size={22} />

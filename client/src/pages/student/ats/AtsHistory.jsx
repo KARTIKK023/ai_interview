@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -10,7 +11,6 @@ import {
   FaArrowUp,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-
 import StudentLayout from '../../../components/StudentLayout';
 import { atsApi, errorMessage, normalizeScan } from './atsApi';
 
@@ -113,15 +113,31 @@ const AtsHistory = () => {
     <StudentLayout>
       <style>
         {`
+          /* =========================================
+             BASE
+          ========================================= */
+
+          .ats-history-container {
+            width: 100%;
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+
+          .ats-history-board {
+            width: 100%;
+            overflow: hidden;
+          }
+
           .ats-history-grid {
             display: grid;
             grid-template-columns:
-              minmax(250px, 2.1fr)
-              minmax(150px, 1.15fr)
-              minmax(175px, 1.25fr)
-              minmax(205px, 1.4fr)
-              minmax(120px, 0.9fr)
-              minmax(250px, 1.7fr);
+              minmax(220px, 2.1fr)
+              minmax(140px, 1.15fr)
+              minmax(150px, 1.25fr)
+              minmax(180px, 1.4fr)
+              minmax(110px, 0.9fr)
+              minmax(230px, 1.7fr);
+
             align-items: center;
           }
 
@@ -135,6 +151,10 @@ const AtsHistory = () => {
             min-height: 88px;
             border-bottom: 1px solid #f0f1f3;
             transition: background-color 0.15s ease;
+          }
+
+          .ats-history-row:last-child {
+            border-bottom: 0;
           }
 
           .ats-history-row:hover {
@@ -160,6 +180,7 @@ const AtsHistory = () => {
           }
 
           .ats-history-title {
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -170,11 +191,11 @@ const AtsHistory = () => {
             justify-content: flex-end;
             align-items: center;
             gap: 8px;
-            white-space: nowrap;
+            flex-wrap: wrap;
           }
 
           .ats-history-action {
-            height: 36px;
+            min-height: 36px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -219,36 +240,236 @@ const AtsHistory = () => {
             background: #eef2ff;
           }
 
-          @media (max-width: 1200px) {
+          /* =========================================
+             TABLET
+          ========================================= */
+
+          @media (max-width: 1199.98px) {
             .ats-history-grid {
               grid-template-columns:
-                2fr
-                1fr
-                1.25fr
-                1.35fr
-                0.9fr
-                1.8fr;
+                minmax(190px, 2fr)
+                minmax(110px, 1fr)
+                minmax(125px, 1.1fr)
+                minmax(155px, 1.3fr)
+                minmax(95px, 0.8fr)
+                minmax(200px, 1.6fr);
             }
 
             .ats-history-cell {
-              padding-left: 14px;
-              padding-right: 14px;
+              padding-left: 12px;
+              padding-right: 12px;
             }
 
             .ats-history-cell:first-child {
-              padding-left: 18px;
+              padding-left: 16px;
             }
 
             .ats-history-cell:last-child {
-              padding-right: 18px;
+              padding-right: 16px;
+            }
+
+            .ats-history-actions {
+              gap: 6px;
+            }
+
+            .ats-history-action {
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+            }
+          }
+
+          /* =========================================
+             MOBILE
+          ========================================= */
+
+          @media (max-width: 767.98px) {
+            .ats-history-container {
+              padding-left: 12px;
+              padding-right: 12px;
+            }
+
+            .ats-history-page-header {
+              flex-direction: column;
+              align-items: stretch !important;
+            }
+
+            .ats-history-page-header > a:last-child {
+              width: 100%;
+              text-align: center;
+            }
+
+            .ats-history-page-header h2 {
+              font-size: 1.35rem !important;
+              letter-spacing: -0.5px !important;
+            }
+
+            .ats-history-page-header p {
+              font-size: 0.9rem;
+              line-height: 1.5;
+            }
+
+            .ats-history-title-wrap {
+              align-items: flex-start !important;
+            }
+
+            .ats-history-title-wrap > div:first-child {
+              width: 46px !important;
+              height: 46px !important;
+              flex: 0 0 46px;
+              margin-right: 12px !important;
+            }
+
+            /*
+             * Hide desktop table header.
+             */
+            .ats-history-header {
+              display: none;
+            }
+
+            /*
+             * Convert every row into a mobile card.
+             */
+            .ats-history-row {
+              display: block;
+              min-height: auto;
+              margin: 0;
+              padding: 18px;
+              border-bottom: 1px solid #edf0f4;
+            }
+
+            .ats-history-row:last-child {
+              border-bottom: 0;
+            }
+
+            .ats-history-cell {
+              padding: 0;
+            }
+
+            .ats-history-cell:first-child,
+            .ats-history-cell:last-child {
+              padding-left: 0;
+              padding-right: 0;
+            }
+
+            /*
+             * Target job.
+             */
+            .ats-history-cell:nth-child(1) {
+              margin-bottom: 16px;
+            }
+
+            /*
+             * Company.
+             */
+            .ats-history-cell:nth-child(2) {
+              margin-bottom: 14px;
+            }
+
+            /*
+             * Score and projected score.
+             */
+            .ats-history-cell:nth-child(3),
+            .ats-history-cell:nth-child(4) {
+              padding: 12px 0;
+              border-top: 1px solid #f0f1f3;
+            }
+
+            /*
+             * Date.
+             */
+            .ats-history-cell:nth-child(5) {
+              padding-top: 12px;
+              margin-bottom: 16px;
+            }
+
+            /*
+             * Actions.
+             */
+            .ats-history-cell:nth-child(6) {
+              padding-top: 14px;
+              border-top: 1px solid #f0f1f3;
+            }
+
+            .ats-history-title {
+              white-space: normal;
+              overflow: visible;
+              text-overflow: initial;
+              overflow-wrap: anywhere;
+            }
+
+            .ats-history-score {
+              justify-content: space-between;
+            }
+
+            .ats-history-score-bar {
+              flex: 1;
+              width: auto;
+              max-width: 180px;
+            }
+
+            .ats-history-projected {
+              width: 100%;
+            }
+
+            .ats-history-actions {
+              width: 100%;
+              display: grid;
+              grid-template-columns: 1fr 1fr auto;
+              gap: 8px;
+            }
+
+            .ats-history-action {
+              width: 100%;
+              min-height: 40px;
+            }
+
+            .ats-history-action:last-child {
+              width: 40px;
+            }
+          }
+
+          /* =========================================
+             SMALL MOBILE
+          ========================================= */
+
+          @media (max-width: 479.98px) {
+            .ats-history-row {
+              padding: 16px;
+            }
+
+            .ats-history-page-header h2 {
+              font-size: 1.25rem !important;
+            }
+
+            .ats-history-actions {
+              grid-template-columns: 1fr;
+            }
+
+            .ats-history-action,
+            .ats-history-action:last-child {
+              width: 100%;
+            }
+
+            .ats-history-score {
+              gap: 8px;
+            }
+
+            .ats-history-score-bar {
+              max-width: none;
+            }
+
+            .ats-history-projected-icon {
+              width: 34px;
+              height: 34px;
+              flex-basis: 34px;
             }
           }
         `}
       </style>
 
-      <div className="container-fluid px-0">
+      <div className="container-fluid ats-history-container">
         {/* Header */}
-        <div className="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+        <div className="ats-history-page-header d-flex justify-content-between align-items-end gap-3 mb-4">
           <div>
             <Link
               to="/student/ats-scanner"
@@ -258,7 +479,7 @@ const AtsHistory = () => {
               Back to Scanner
             </Link>
 
-            <div className="d-flex align-items-center mt-3">
+            <div className="ats-history-title-wrap d-flex align-items-center mt-3">
               <div
                 className="d-flex align-items-center justify-content-center rounded-4 me-3"
                 style={{
@@ -332,12 +553,7 @@ const AtsHistory = () => {
                 '0 8px 30px rgba(0, 0, 0, 0.05)',
             }}
           >
-            {/* Desktop / Tablet Grid */}
-            <div
-              style={{
-                minWidth: '1100px',
-              }}
-            >
+            <div className="ats-history-board">
               {/* Header */}
               <div className="ats-history-grid ats-history-header">
                 <div className="ats-history-cell">
@@ -574,8 +790,9 @@ const AtsHistory = () => {
                             className="text-primary me-2"
                             size={13}
                           />
+
                           <span className="small fw-semibold">
-                            {/* View */}
+                            View
                           </span>
                         </button>
 
@@ -599,7 +816,7 @@ const AtsHistory = () => {
                                 />
 
                                 <span className="small fw-semibold">
-                                  {/* Opening */}
+                                  Opening
                                 </span>
                               </>
                             ) : (
@@ -610,7 +827,7 @@ const AtsHistory = () => {
                                 />
 
                                 <span className="small fw-semibold">
-                                  {/* Resume */}
+                                  Resume
                                 </span>
                               </>
                             )}
@@ -623,7 +840,9 @@ const AtsHistory = () => {
                           style={{
                             width: '36px',
                           }}
-                          disabled={deleting === scan._id}
+                          disabled={
+                            deleting === scan._id
+                          }
                           onClick={() =>
                             remove(scan._id)
                           }
@@ -708,3 +927,5 @@ const AtsHistory = () => {
 };
 
 export default AtsHistory;
+
+

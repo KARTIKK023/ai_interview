@@ -53,7 +53,7 @@ const Sidebar = () => {
           SIDEBAR TITLE
       ============================================================ */}
 
-      <div className="mb-3 px-2">
+      <div className="mb-3 px-2 d-flex align-items-center justify-content-between">
         <h6
           className="text-uppercase text-white fw-bold small mb-0"
           style={{
@@ -64,6 +64,13 @@ const Sidebar = () => {
         >
           STUDENT WORKSPACE
         </h6>
+        <button
+          type="button"
+          className="btn-close btn-close-white d-lg-none"
+          data-bs-dismiss="offcanvas"
+          data-bs-target="#studentSidebar"
+          aria-label="Close menu"
+        ></button>
       </div>
 
 

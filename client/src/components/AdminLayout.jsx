@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import AdminSidebar from '../pages/admin/AdminSidebar';
 import { FaBars, FaShieldAlt, FaChevronDown } from 'react-icons/fa';
 import API from '../services/api';
+import bootstrap from 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 const AdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [adminUser, setAdminUser] = useState(null);
+
+  // Close the mobile drawer after navigation and when resizing up to desktop
+  useEffect(() => {
+    const closeDrawer = () => {
+      const el = document.getElementById('adminSidebar');
+      if (el) {
+        const oc = bootstrap.Offcanvas.getInstance(el);
+        if (oc) oc.hide();
+      }
+    };
+    window.addEventListener('resize', closeDrawer);
+    return () => window.removeEventListener('resize', closeDrawer);
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById('adminSidebar');
+    if (el) {
+      const oc = bootstrap.Offcanvas.getInstance(el);
+      if (oc) oc.hide();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     fetchAdminProfile();
@@ -50,7 +73,14 @@ const AdminLayout = () => {
       >
         {/* Left Header Info */}
         <div className="d-flex align-items-center gap-3">
-          <button className="btn border-0 text-white p-1 d-flex align-items-center">
+          <button
+            className="btn border-0 text-white p-1 d-flex align-items-center d-lg-none"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#adminSidebar"
+            aria-controls="adminSidebar"
+            aria-label="Open navigation menu"
+          >
             <FaBars size={18} />
           </button>
           <span className="text-white-50 font-monospace">|</span>
@@ -109,13 +139,15 @@ const AdminLayout = () => {
         </div>
       </header>
 
-      {/* 2. MIDDLE BODY CONTAINER (FIXED SIDEBAR + SCROLLABLE MAIN OUTLET) */}
+      {/* 2. MIDDLE BODY CONTAINER (DRAWER / PINNED SIDEBAR + SCROLLABLE MAIN OUTLET) */}
       <div className="d-flex flex-grow-1 overflow-hidden">
-        {/* PERSISTENT SIDEBAR */}
-        <AdminSidebar />
+        {/* SIDEBAR: offcanvas drawer below lg, pinned 250px below the header at lg+ */}
+        <aside className="offcanvas offcanvas-start" id="adminSidebar" tabIndex="-1">
+          <AdminSidebar />
+        </aside>
 
         {/* MAIN OUTLET & FOOTER */}
-        <main className="flex-grow-1 d-flex flex-column overflow-hidden h-100">
+        <main className="flex-grow-1 d-flex flex-column overflow-hidden h-100 admin-main">
           <div className="flex-grow-1 overflow-y-auto">
             <Outlet />
           </div>

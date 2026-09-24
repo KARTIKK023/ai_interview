@@ -1,39 +1,47 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import AICompanion from "../components/student/AICompanion";
+import bootstrap from 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 const StudentLayout = ({ children }) => {
+  const location = useLocation();
+
+  // Close the mobile drawer after navigation and when resizing up to desktop
+  useEffect(() => {
+    const closeDrawer = () => {
+      const el = document.getElementById('studentSidebar');
+      if (el) {
+        const oc = bootstrap.Offcanvas.getInstance(el);
+        if (oc) oc.hide();
+      }
+    };
+    window.addEventListener('resize', closeDrawer);
+    return () => window.removeEventListener('resize', closeDrawer);
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById('studentSidebar');
+    if (el) {
+      const oc = bootstrap.Offcanvas.getInstance(el);
+      if (oc) oc.hide();
+    }
+  }, [location.pathname]);
+
   return (
     <div className="min-vh-100 bg-light d-flex flex-column position-relative">
-      {/* FIXED LEFT SIDEBAR (top: 0, left: 0, width: 294px, height: 100vh) */}
-      <aside
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '294px',
-          height: '100vh',
-          zIndex: 1020,
-          overflowY: 'auto',
-          overflowX: 'hidden'
-        }}
-      >
+      {/* SIDEBAR: offcanvas drawer below lg, pinned fixed 294px at lg+ */}
+      <aside className="offcanvas offcanvas-start" id="studentSidebar" tabIndex="-1">
         <Sidebar />
       </aside>
 
-      {/* MAIN CONTAINER (Starts after 294px sidebar width) */}
-      <div
-        className="d-flex flex-column vh-100"
-        style={{
-          marginLeft: '294px',
-          width: 'calc(100% - 294px)'
-        }}
-      >
+      {/* MAIN CONTAINER (offset only on >= lg where the sidebar is pinned) */}
+      <div className="d-flex flex-column vh-100 sidebar-content">
         {/* FIXED NAVBAR AT TOP */}
         <header className="flex-shrink-0" style={{ zIndex: 1010 }}>
-          <Navbar />
+          <Navbar drawerTarget="studentSidebar" />
         </header>
 
         {/* VERTICALLY SCROLLABLE MAIN CONTENT AREA */}

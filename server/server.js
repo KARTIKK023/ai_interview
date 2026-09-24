@@ -100,16 +100,16 @@ app.get('/api/health', (req, res) => {
 
 // Serve the built React client for single-service production deploys.
 // Only active when ../client/dist exists, so local Vite dev (port 5173) is untouched.
-const clientDist = path.join(__dirname, '..', 'client', 'dist');
-if (fs.existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-      return next();
-    }
-    res.sendFile(path.join(clientDist, 'index.html'));
-  });
-}
+// const clientDist = path.join(__dirname, '..', 'client', 'dist');
+// if (fs.existsSync(clientDist)) {
+//   app.use(express.static(clientDist));
+//   app.get('*', (req, res, next) => {
+//     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+//       return next();
+//     }
+//     res.sendFile(path.join(clientDist, 'index.html'));
+//   });
+// }
 
 // Error Handler
 app.use(errorHandler);
