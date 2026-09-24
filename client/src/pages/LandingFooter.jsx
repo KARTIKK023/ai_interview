@@ -1,5 +1,6 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FaRobot,
   FaPhoneAlt,
@@ -12,8 +13,9 @@ import {
 } from "react-icons/fa";
 
 const LandingFooter = () => {
+  const { user } = useContext(AuthContext);
   const linkStyle = {
-    color: "#94a3b8",
+    color: "#ffffff",
     textDecoration: "none",
     fontSize: "14px",
     fontWeight: 600,
@@ -80,7 +82,7 @@ const LandingFooter = () => {
               style={{
                 maxWidth: "350px",
                 lineHeight: 1.7,
-                color: "#94a3b8",
+                color: "#ffffff",
               }}
             >
               AI-powered interview preparation platform
@@ -119,35 +121,49 @@ const LandingFooter = () => {
             </div>
           </div>
 
-          {/* Students */}
-          <div className="col-6 col-lg-2">
-            <h6 className="fw-bold mb-3">
-              Students
-            </h6>
+         {/* Students */}
+<div className="col-6 col-lg-2">
+  <h6 className="fw-bold mb-3">
+    Students
+  </h6>
 
-            <div className="d-flex flex-column gap-2">
-              <Link
-                to="/login"
-                style={linkStyle}
-              >
-                Practice
-              </Link>
+  <div className="d-flex flex-column gap-2">
 
-              <Link
-                to="/login"
-                style={linkStyle}
-              >
-                Resume Analysis
-              </Link>
+    <Link
+      to={
+        user
+          ? "/student/interview-preparation/ai-mock"
+          : "/login"
+      }
+      style={linkStyle}
+    >
+      Practice
+    </Link>
 
-              <Link
-                to="/login"
-                style={linkStyle}
-              >
-                Interview History
-              </Link>
-            </div>
-          </div>
+    <Link
+      to={
+        user
+          ? "/student/ats-scanner"
+          : "/login"
+      }
+      style={linkStyle}
+    >
+      Resume Analysis
+    </Link>
+
+    <Link
+      to={
+        user
+          ? "/student/interviews"
+          : "/login"
+      }
+      style={linkStyle}
+    >
+      Interview History
+    </Link>
+
+  </div>
+</div>
 
           {/* Support */}
           <div className="col-6 col-lg-2">
@@ -155,19 +171,22 @@ const LandingFooter = () => {
               Support
             </h6>
 
-            <div className="d-flex flex-column gap-2">
+            <div className="d-flex flex-column gap-2"
+            style={{
+              color: "#ffffff",
+            }}>
               <Link
                 to="/privacy"
                 style={linkStyle}
               >
-                Privacy
+                Privacy Policy
               </Link>
 
               <Link
                 to="/terms"
                 style={linkStyle}
               >
-                Terms
+                Terms & Conditions
               </Link>
 
               <Link
@@ -198,7 +217,7 @@ const LandingFooter = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
-                color: "#94a3b8",
+                color: "#ffffff",
                 fontSize: "14px",
                 marginBottom: "14px",
               }}
@@ -213,7 +232,7 @@ const LandingFooter = () => {
                 display: "flex",
                 alignItems: "flex-start",
                 gap: "10px",
-                color: "#94a3b8",
+                color: "#ffffff",
                 fontSize: "14px",
                 marginBottom: "14px",
               }}
@@ -233,32 +252,42 @@ const LandingFooter = () => {
             </div>
 
             {/* Address */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "10px",
-                color: "#94a3b8",
-                fontSize: "14px",
-                lineHeight: 1.5,
-              }}
-            >
-              <FaMapMarkerAlt
-                size={25}
-                style={{
-                  marginTop: "1px",
-                  flexShrink: 0,
-                }}
-              />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    color: "#ffffff",
+                    fontSize: "14px",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <FaMapMarkerAlt
+                    size={23}
+                    style={{
+                      marginTop: "1px",
+                      flexShrink: 0,
+                      color: "#ffffff",
+                    }}
+                  />
 
-              <span>
-                STPI 8th Floor, UPSIDA Complex,
-                Lakhanpur, Kanpur-208024, UP
-              </span>
-            </div>
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=STPI+8th+Floor%2C+UPSIDA+Complex%2C+Lakhanpur%2C+Kanpur-208024%2C+UP"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    STPI 8th Floor, UPSIDA Complex,
+                    Lakhanpur, Kanpur-208024, UP
+                  </a>
+                </div>
 
             {/* Social */}
-            <h6
+            {/* <h6
               className="fw-bold"
               style={{
                 color: "#ffffff",
@@ -268,9 +297,9 @@ const LandingFooter = () => {
               }}
             >
               Follow Us
-            </h6>
+            </h6> */}
 
-            <div
+            {/* <div
               style={{
                 display: "flex",
                 gap: "10px",
@@ -307,25 +336,35 @@ const LandingFooter = () => {
               >
                 <FaInstagram />
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
 
-        {/* Bottom */}
-        <div
-          className="text-center small mt-5 pt-4"
-          style={{
-            borderTop:
-              "1px solid rgba(255,255,255,.08)",
-            color: "#64748b",
-          }}
-        >
-          © {new Date().getFullYear()}{" "}
-          <strong style={{ color: "#fff" }}>
-            HireSmart AI
-          </strong>
-          . All rights reserved.
-        </div>
+<div
+  className="text-center small mt-5 pt-4"
+  style={{
+    borderTop: "1px solid rgba(255,255,255,.08)",
+    color: "#64748b",
+  }}
+>
+  © {new Date().getFullYear()}{" "}
+
+  <Link
+    to={{
+      pathname: "/",
+      hash: "#top",
+    }}
+    style={{
+      color: "#fff",
+      textDecoration: "none",
+      fontWeight: 700,
+    }}
+  >
+    HireSmart AI
+  </Link>
+
+  . All rights reserved.
+</div>
       </div>
     </footer>
   );
