@@ -111,10 +111,23 @@ const Login = () => {
                 <hr className="flex-grow-1" />
               </div>
 
-              <a href={GOOGLE_AUTH_URL} className="btn btn-outline-secondary w-100 mb-3 d-flex align-items-center justify-content-center gap-2">
-                <FaGoogle size={18} />
-                Continue with Google
-              </a>
+             <a
+  href={GOOGLE_AUTH_URL}
+  className="w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
+  style={{
+    height: "48px",
+    borderRadius: "12px",
+    background: "#ffffff",
+    border: "1px solid black",
+    color: "#1E3A5F",
+    fontWeight: 600,
+    textDecoration: "none",
+    boxShadow: "0 4px 15px rgba(0,0,0,.08)",
+  }}
+>
+  <FaGoogle size={18} color="#4285F4" />
+  Continue with Google
+</a>
 
               <div className="text-center mt-3 border-top pt-3">
                 <p className="text-muted small mb-1">

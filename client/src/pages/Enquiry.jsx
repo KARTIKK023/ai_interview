@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   FaRobot,
   FaArrowRight,
+  FaArrowLeft,
   FaEnvelope,
   FaPhone,
   FaMapMarkerAlt,
@@ -17,6 +18,8 @@ import {
 } from "react-icons/fa";
 
 const Enquiry = () => {
+ 
+  
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -26,6 +29,8 @@ const Enquiry = () => {
     subject: "",
     message: "",
   });
+  
+  
 
   const [submitted, setSubmitted] = useState(false);
 
@@ -144,156 +149,46 @@ const Enquiry = () => {
         />
       </div>
 
-      {/* ================= NAVBAR ================= */}
+
+
+      {/* ================= BACK BUTTON ================= */}
 
       <div
         className="container"
         style={{
           position: "relative",
           zIndex: 10,
-          paddingTop: "20px",
+          paddingTop: "24px",
         }}
       >
-        <nav
-          style={{
-            minHeight: "68px",
-            borderRadius: "40px",
-            padding: "0 24px",
-            display: "flex",
-            alignItems: "center",
-            background: "rgba(2,6,23,.78)",
-            backdropFilter: "blur(25px)",
-            border: "1px solid rgba(96,165,250,.22)",
-            boxShadow: "0 15px 50px rgba(0,0,0,.4)",
-          }}
+        <motion.div
+          whileHover={{ x: -4 }}
+          whileTap={{ scale: 0.96 }}
+          style={{ display: "inline-block" }}
         >
-
-          {/* LOGO */}
-
           <Link
             to="/"
-            className="text-decoration-none"
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
               gap: "10px",
-              color: "#fff",
-              fontSize: "21px",
-              fontWeight: 800,
-              minWidth: "210px",
+              padding: "10px 20px",
+              borderRadius: "30px",
+              background: "rgba(15, 23, 42, 0.82)",
+              border: "1px solid rgba(96, 165, 250, 0.25)",
+              color: "#ffffff",
+              textDecoration: "none",
+              fontSize: "14px",
+              fontWeight: 600,
+              backdropFilter: "blur(16px)",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.3)",
+              transition: "all 0.2s ease",
             }}
           >
-            <div
-              style={{
-                width: "42px",
-                height: "42px",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background:
-                  "linear-gradient(135deg,#06b6d4,#2563eb)",
-                boxShadow:
-                  "0 0 30px rgba(6,182,212,.4)",
-              }}
-            >
-              <FaRobot />
-            </div>
-
-            <span
-              style={{
-                background:
-                  "linear-gradient(90deg,#a855f7,#06b6d4)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              HireSmart AI
-            </span>
+            <FaArrowLeft size={13} style={{ color: "#60a5fa" }} />
+            <span>Back to Home</span>
           </Link>
-
-          {/* NAV LINKS */}
-
-          <div
-            className="d-none d-lg-flex"
-            style={{
-              flex: 1,
-              justifyContent: "center",
-              gap: "30px",
-            }}
-          >
-            <Link className="text-white text-decoration-none" to="/">
-              Home
-            </Link>
-
-            <a
-              className="text-white text-decoration-none"
-              href="/#features"
-            >
-              Features
-            </a>
-
-            <a
-              className="text-white text-decoration-none"
-              href="/#how"
-            >
-              How It Works
-            </a>
-
-            <a
-              className="text-white text-decoration-none"
-              href="/#roles"
-            >
-              For Students
-            </a>
-
-            <a
-              className="text-white text-decoration-none"
-              href="/#coach"
-            >
-              AI Coach
-            </a>
-
-            <Link
-              to="/enquiry"
-              className="text-decoration-none"
-              style={{
-                color: "#c084fc",
-                fontWeight: 700,
-              }}
-            >
-              Enquiry
-            </Link>
-          </div>
-
-          <div className="d-flex align-items-center gap-3">
-
-            <Link
-              to="/login"
-              className="text-white text-decoration-none fw-semibold"
-            >
-              Login
-            </Link>
-
-            <Link
-              to="/login"
-              className="text-decoration-none"
-              style={{
-                padding: "12px 22px",
-                borderRadius: "30px",
-                color: "#fff",
-                fontWeight: 700,
-                background:
-                  "linear-gradient(90deg,#7c3aed,#2563eb)",
-                boxShadow:
-                  "0 0 30px rgba(99,102,241,.4)",
-              }}
-            >
-              Get Started <FaArrowRight size={11} />
-            </Link>
-
-          </div>
-        </nav>
+        </motion.div>
       </div>
 
       {/* ================= HERO ================= */}

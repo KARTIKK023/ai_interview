@@ -595,12 +595,51 @@ useEffect(() => {
 
       </div>
 
+      <style>{`
+        @media (max-width: 768px) {
+          .landing-nav-container {
+            padding-top: 10px !important;
+          }
+          .landing-nav-bar {
+            height: 60px !important;
+            padding: 0 12px !important;
+            border-radius: 30px !important;
+          }
+          .landing-logo-link {
+            gap: 6px !important;
+          }
+          .landing-logo-text {
+            font-size: 16px !important;
+          }
+          .landing-logo-icon {
+            width: 36px !important;
+            height: 36px !important;
+          }
+          .landing-user-btn {
+            padding: 5px 8px 5px 6px !important;
+            gap: 6px !important;
+          }
+          .landing-user-name {
+            max-width: 75px !important;
+            font-size: 12px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .landing-logo-text {
+            font-size: 15px !important;
+          }
+          .landing-user-name {
+            max-width: 60px !important;
+          }
+        }
+      `}</style>
+
       {/* ===================================================
           NAVBAR
       =================================================== */}
 
       <div
-        className="container"
+        className="container landing-nav-container"
         style={{
           position: "relative",
           zIndex: 20,
@@ -620,12 +659,14 @@ useEffect(() => {
           transition={{
             duration: 0.8,
           }}
+          className="landing-nav-bar"
           style={{
             height: "68px",
             borderRadius: "40px",
             padding: "0 24px",
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             background: "rgba(2,6,23,.72)",
             backdropFilter: "blur(25px)",
             border:
@@ -639,7 +680,7 @@ useEffect(() => {
 
           <Link
             to="/"
-            className="text-decoration-none"
+            className="text-decoration-none landing-logo-link"
             style={{
               display: "flex",
               alignItems: "center",
@@ -647,7 +688,7 @@ useEffect(() => {
               color: "#fff",
               fontSize: "21px",
               fontWeight: 800,
-              minWidth: "210px",
+              flexShrink: 0,
             }}
           >
 
@@ -667,6 +708,7 @@ useEffect(() => {
                 duration: 2.5,
                 repeat: Infinity,
               }}
+              className="landing-logo-icon"
               style={{
                 width: "42px",
                 height: "42px",
@@ -676,12 +718,13 @@ useEffect(() => {
                 justifyContent: "center",
                 background:
                   "linear-gradient(135deg,#06b6d4,#2563eb)",
+                flexShrink: 0,
               }}
             >
               <FaRobot />
             </motion.div>
 
-            <span>
+            <span className="landing-logo-text">
               <span
                 style={{
                   background:
@@ -759,10 +802,11 @@ useEffect(() => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowProfileDropdown((prev) => !prev)}
+                  className="landing-user-btn"
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "10px",
+                    gap: "8px",
                     background: "rgba(15,23,42,.75)",
                     border: "1px solid rgba(96,165,250,.20)",
                     borderRadius: "30px",
@@ -773,6 +817,7 @@ useEffect(() => {
                     cursor: "pointer",
                     boxShadow: "0 4px 20px rgba(0,0,0,.3)",
                     outline: "none",
+                    flexShrink: 0,
                   }}
                 >
                   <div
@@ -802,8 +847,9 @@ useEffect(() => {
                   </div>
 
                   <span
+                    className="landing-user-name"
                     style={{
-                      maxWidth: "140px",
+                      maxWidth: "110px",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -819,6 +865,7 @@ useEffect(() => {
                       transform: showProfileDropdown ? "rotate(180deg)" : "rotate(0deg)",
                       transition: "transform 0.2s ease",
                       marginLeft: "2px",
+                      flexShrink: 0,
                     }}
                   />
                 </motion.button>
@@ -834,7 +881,7 @@ useEffect(() => {
                         position: "absolute",
                         top: "calc(100% + 10px)",
                         right: 0,
-                        width: "240px",
+                        width: "min(240px, 85vw)",
                         background: "#0b1224",
                         border: "1px solid rgba(96,165,250,.20)",
                         borderRadius: "16px",
@@ -944,7 +991,7 @@ useEffect(() => {
                   Login
                 </Link>
 
-                <motion.button
+                {/* <motion.button
                   whileHover={{
                     scale: 1.05,
                   }}
@@ -965,7 +1012,7 @@ useEffect(() => {
                   }}
                 >
                   Get Started <FaArrowRight size={11} />
-                </motion.button>
+                </motion.button> */}
               </>
             )}
 
@@ -1225,7 +1272,7 @@ useEffect(() => {
     AI INTERVIEWER - INTERACTIVE DEMO CARD
 ========================================================= */}
 
-  <div className="col-lg-6">
+  <div className="col-lg-5">
   <motion.div
     style={{
       x: smoothX,
@@ -1252,7 +1299,7 @@ useEffect(() => {
       }}
       style={{
         position: "relative",
-        maxWidth: "620px",
+        maxWidth: "600px",
         margin: "auto",
         perspective: "1150px",
       }}
@@ -1302,8 +1349,8 @@ useEffect(() => {
         style={{
           position: "relative",
           zIndex: 2,
-          padding: "22px",
-          borderRadius: "24px",
+          padding: "18px",
+          borderRadius: "20px",
           width: "100%",
           background:
             "linear-gradient(145deg, rgba(15,23,42,.98), rgba(3,7,18,.98))",
@@ -1322,8 +1369,8 @@ useEffect(() => {
         <div
           className="d-flex justify-content-between align-items-center"
           style={{
-            paddingBottom: "14px",
-            marginBottom: "16px",
+            paddingBottom: "8px",
+            marginBottom: "5px",
             borderBottom:
               "1px solid rgba(255,255,255,.08)",
           }}
@@ -1345,8 +1392,8 @@ useEffect(() => {
                 repeat: Infinity,
               }}
               style={{
-                width: "42px",
-                height: "42px",
+                width: "38px",
+                height: "38px",
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
@@ -1362,7 +1409,7 @@ useEffect(() => {
             <div>
               <div
                 style={{
-                  fontSize: "15px",
+                  fontSize: "13px",
                   fontWeight: 750,
                   color: "#fff",
                   letterSpacing: "0.2px",
@@ -1448,8 +1495,8 @@ useEffect(() => {
             }}
             style={{
               position: "absolute",
-              width: "145px",
-              height: "145px",
+              width: "140px",
+              height: "140px",
               borderRadius: "50%",
               border:
                 "1px solid rgba(59,130,246,.5)",
@@ -1545,17 +1592,17 @@ useEffect(() => {
             style={{
               position: "absolute",
               zIndex: 4,
-              bottom: "12px",
+              bottom: "9px",
               left: "50%",
               transform: "translateX(-50%)",
-              padding: "6px 14px",
+              padding: "4px 10px",
               borderRadius: "30px",
               background:
                 "rgba(2,6,23,.92)",
               border:
                 "1px solid rgba(6,182,212,.45)",
               color: "#67e8f9",
-              fontSize: "11px",
+              fontSize: "9px",
               fontWeight: 700,
               boxShadow:
                 "0 0 25px rgba(6,182,212,.18)",
@@ -1579,7 +1626,7 @@ useEffect(() => {
           <div
             style={{
               position: "absolute",
-              left: "20px",
+              left: "18px",
               top: "50%",
               transform: "translateY(-50%)",
               display: "flex",
@@ -1683,17 +1730,17 @@ useEffect(() => {
               }}
               style={{
                 position: "absolute",
-                top: "12px",
-                right: "16px",
-                maxWidth: "210px",
-                padding: "10px 14px",
+                top: "10px",
+                right: "14px",
+                maxWidth: "180px",
+                padding: "8px 10px",
                 borderRadius: "14px",
                 background:
                   "rgba(15,23,42,.92)",
                 border:
                   "1px solid rgba(124,58,237,.4)",
                 color: "#e2e8f0",
-                fontSize: "11px",
+                fontSize: "8px",
                 lineHeight: 1.5,
                 boxShadow:
                   "0 10px 30px rgba(0,0,0,.3)",
@@ -1719,13 +1766,13 @@ useEffect(() => {
               "rgba(6,182,212,.35)",
           }}
           style={{
-            padding: "18px 20px",
+            padding: "10px 15px",
             borderRadius: "16px",
             background:
               "rgba(30,41,59,.65)",
             border:
               "1px solid rgba(96,165,250,.15)",
-            marginTop: "16px",
+            marginTop: "5px",
           }}
         >
 
@@ -1918,8 +1965,8 @@ useEffect(() => {
           <div
             className="d-flex justify-content-center align-items-center gap-1"
             style={{
-              height: "44px",
-              marginTop: "10px",
+              height: "30px",
+              marginTop: "8px",
             }}
           >
             {[
@@ -1944,8 +1991,8 @@ useEffect(() => {
                   delay: index * 0.045,
                 }}
                 style={{
-                  width: "4px",
-                  borderRadius: "4px",
+                  width: "2px",
+                  borderRadius: "2px",
                   background:
                     "linear-gradient(#a855f7,#06b6d4)",
                   boxShadow:
@@ -1964,7 +2011,7 @@ useEffect(() => {
         <div
           className="row g-3"
           style={{
-            marginTop: "16px",
+            marginTop: "1px",
           }}
         >
 
@@ -1986,7 +2033,7 @@ useEffect(() => {
                   scale: 1.02,
                 }}
                 style={{
-                  padding: "14px 16px",
+                  padding: "10px 12px",
                   borderRadius: "14px",
                   background:
                     `${color}0c`,
@@ -2022,7 +2069,7 @@ useEffect(() => {
                 <div
                   style={{
                     height: "5px",
-                    marginTop: "8px",
+                    marginTop: "5px",
                     borderRadius: "10px",
                     background:
                       "rgba(255,255,255,.08)",
@@ -2085,8 +2132,8 @@ useEffect(() => {
           zIndex: 10,
           right: "-20px",
           top: "-20px",
-          width: "175px",
-          padding: "12px 16px",
+          width: "160px",
+          padding: "8px 10px",
           borderRadius: "16px",
           background:
             "rgba(7,13,29,.96)",
@@ -2127,7 +2174,7 @@ useEffect(() => {
           <div>
             <div
               style={{
-                color: "#94a3b8",
+                color: "#ffffff",
                 fontSize: "10px",
                 fontWeight: 600,
                 marginBottom: "2px",
@@ -2173,8 +2220,8 @@ useEffect(() => {
           zIndex: 10,
           left: "-24px",
           bottom: "-24px",
-          width: "190px",
-          padding: "12px 16px",
+          width: "160px",
+          padding: "8px 10px",
           borderRadius: "16px",
           background:
             "rgba(7,13,29,.96)",
@@ -2214,7 +2261,7 @@ useEffect(() => {
           <div>
             <div
               style={{
-                color: "#94a3b8",
+                color: "#ffffff",
                 fontSize: "10px",
                 fontWeight: 600,
                 marginBottom: "2px",

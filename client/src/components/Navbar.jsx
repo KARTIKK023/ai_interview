@@ -54,10 +54,10 @@ const Navbar = ({ drawerTarget }) => {
             {!user && (
               <>
                 <li className="nav-item">
-                  <Link className="nav-link text-white-50" to="/">Home</Link>
+                  <Link className="nav-link text-white" to="/">Home</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link text-white-50" to="/#features">Features</Link>
+                  <Link className="nav-link text-white" to="/#features">Features</Link>
                 </li>
               </>
             )}
@@ -155,8 +155,8 @@ const Navbar = ({ drawerTarget }) => {
               </div>
             ) : (
               <div className="d-flex gap-2">
-                <Link to="/login" className="btn btn-outline-light btn-sm px-3">Login</Link>
-                <Link to="/register" className="btn btn-primary btn-sm px-3 fw-bold">Get Started</Link>
+                {/* <Link to="/login" className="btn btn-outline-light btn-sm px-3">Login</Link>
+                <Link to="/register" className="btn btn-primary btn-sm px-3 fw-bold">Get Started</Link> */}
               </div>
             )}
           </div>
